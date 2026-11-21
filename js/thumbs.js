@@ -51,7 +51,7 @@ LS.Thumbs = {
   },
   render(item) {
     this.setup();
-    const m = this.model, tall = item.slot === 'hat' && (item.val === 'coroa diamante' || item.val === 'halo glitch'); // chapéus altos: câmera um pouco acima
+    const m = this.model, tall = item.slot === 'hat' && (item.val === 'coroa diamante' || item.val === 'halo glitch' || item.val === 'dino' || item.val === 'auréola'); // chapéus altos: câmera um pouco acima
     const C = tall ? { pos: [0.6, 1.8, 1.8], at: [0, 1.68, 0], fov: 34 } : this.CAMS[this.focusFor(item)];
     m.applyLook(this.lookFor(item));
     m.root.rotation.y = item.slot === 'hairStyle' && item.val === 'rabo' ? -0.9 : 0.45; // rabo de cavalo: mostra de lado

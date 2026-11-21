@@ -22,7 +22,7 @@ LS.Cosmetics = {
   // itens novos: [parte, valor, nome, raridade (0-3), preço]
   PREMIUM: [
     ['hat', 'coroa', 'Coroa Real', 3, 4000], ['hat', 'auréola', 'Auréola', 3, 3500], ['hat', 'cartola', 'Cartola', 2, 1800],
-    ['hat', 'chifres', 'Chifres', 2, 1600], ['hat', 'fones', 'Fones Neon', 1, 1000], ['hat', 'orelhas de gato', 'Orelhas de Gato', 1, 900], ['hat', 'boné reto', 'Boné Aba Reta', 0, 500],
+    ['hat', 'chifres', 'Chifres', 2, 1600], ['hat', 'fones', 'Fones Neon', 1, 1000], ['hat', 'orelhas de gato', 'Orelhas de Gato', 1, 900], ['hat', 'boné reto', 'Boné Aba Reta', 0, 500], ['hat', 'viseira', 'Viseira Esportiva', 1, 700],
     ['glasses', 'cyber', 'Visor Cyber', 2, 1600], ['glasses', 'coração', 'Óculos Coração', 1, 800], ['glasses', 'aviador', 'Aviador', 0, 500],
     ['mask', 'caveira', 'Caveira', 2, 1500], ['mask', 'gás', 'Máscara de Gás', 2, 1800], ['mask', 'ninja', 'Capuz Ninja', 1, 1000], ['mask', 'sorriso', 'Sorriso Neon', 1, 800],
     ['top', 'armadura', 'Armadura', 3, 3200], ['top', 'terno', 'Terno', 2, 2000], ['top', 'couro', 'Jaqueta de Couro', 1, 1100], ['top', 'kimono', 'Kimono', 1, 1200],
@@ -40,8 +40,10 @@ LS.Cosmetics = {
     { id: 'lenda', name: 'Lenda dos Códigos', look: { hat: 'coroa diamante', pattern: 'diamante', top: 'jaqueta', shirt: '#1a2a4a', accent: '#123a5a', pants: '#111111', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma' } },
     { id: 'astronauta', name: 'Astronauta', look: { hat: 'astronauta', top: 'colete', shirt: '#e8e8e8', pattern: 'liso', accent: '#ff8a1f', pants: '#e8e8e8', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', beard: 'nenhuma' } },
     { id: 'pirata', name: 'Capitão Pirata', look: { hat: 'pirata', beard: 'mago', top: 'jaqueta', shirt: '#f0f0f0', pattern: 'listras', accent: '#6a1a1a', pants: '#2a2a3a', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma' } },
-    { id: 'hacker', name: 'Hacker', look: { glasses: 'matrix', pattern: 'circuito', top: 'moletom', shirt: '#101410', accent: '#1a1f1a', pants: '#111111', legs: 'lisa', hat: 'nenhum', mask: 'nenhuma' } }
+    { id: 'hacker', name: 'Hacker', look: { glasses: 'matrix', pattern: 'circuito', top: 'camiseta', shirt: '#101410', accent: '#1a1f1a', pants: '#111111', legs: 'lisa', hat: 'nenhum', mask: 'nenhuma' } }
   ],
+  // peças que só vêm junto com a fantasia (não vendem separado): [parte, valor, nome, raridade]
+  COSTUME_PIECES: [['hat', 'dino', 'Capuz de Dino', 3], ['pattern', 'escamas', 'Escamas de Dino', 3]],
   // fantasias completas: comprar dá todas as peças de uma vez. Pagas em DIAMANTES (dprice)
   COSTUMES: [
     { id: 'rei', dprice: 4000, name: 'Rei do Galpão', rarity: 3, price: 7500, look: { hat: 'coroa', top: 'terno', shirt: '#b03030', pattern: 'liso', pants: '#111111', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', beard: 'cheia', accent: '#e0a020' } },
@@ -49,6 +51,7 @@ LS.Cosmetics = {
     { id: 'caveira', dprice: 1500, name: 'Motoqueiro Caveira', rarity: 2, price: 3800, look: { mask: 'caveira', top: 'couro', shirt: '#2a2a2a', pattern: 'chamas', pants: '#111111', legs: 'chamas', hat: 'nenhum', glasses: 'nenhum' } },
     { id: 'cyber', dprice: 3500, name: 'Cyber Punk', rarity: 3, price: 6000, look: { glasses: 'cyber', hat: 'fones', top: 'armadura', pattern: 'raio', accent: '#20d0e0', hairStyle: 'moicano', hair: '#d040a0', pants: '#1f2f6f', legs: 'listra', mask: 'nenhuma' } },
     { id: 'anjo', dprice: 2200, name: 'Anjo', rarity: 3, price: 5200, look: { hat: 'auréola', top: 'camiseta', shirt: '#e0e0e0', pattern: 'galáxia', pants: '#e0e0e0', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', accent: '#f0f0f0' } },
+    { id: 'dino', dprice: 1800, name: 'Dino Rex', rarity: 3, price: 0, look: { hat: 'dino', pattern: 'escamas', top: 'camiseta', shirt: '#3f9a3a', accent: '#2f7a2c', pants: '#2f7a2c', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', beard: 'nenhuma' } },
     { id: 'gasmask', dprice: 1200, name: 'Sobrevivente Tóxico', rarity: 2, price: 3600, look: { mask: 'gás', hat: 'boné reto', top: 'colete', shirt: '#3a4a2a', pattern: 'camuflado', accent: '#3a5a2a', pants: '#3a4a2a', legs: 'camuflada', glasses: 'nenhum' } }
   ],
   ROYALE_COST: 500, ROYALE_10: 5000, // 10 giros (+1 grátis)
@@ -63,6 +66,7 @@ LS.Cosmetics = {
     }
     this.PREMIUM.forEach(([slot, val, name, rarity, price]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity, price, free: false }));
     this.COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: c.rarity, price: c.price, dprice: c.dprice, free: false, look: c.look }));
+    this.COSTUME_PIECES.forEach(([slot, val, name, rarity]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity, price: 0, free: false, piece: true }));
     this.EXCLUSIVE.forEach(([slot, val, name]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity: 4, price: 0, free: false, code: true }));
     this.EXCLUSIVE_COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: 4, price: 0, free: false, code: true, look: c.look }));
     this.byId = {}; this.items.forEach(i => { this.byId[i.id] = i; });
@@ -111,6 +115,7 @@ LS.Cosmetics = {
     if (!it || it.free) return 'Item inválido.';
     if (this.owns(id)) return 'Você já tem esse item.';
     if (it.code) return 'Esse item só sai em codiguin.';
+    if (it.piece) return 'Essa peça vem junto com a fantasia.';
     if (it.dprice) return 'Esse item é comprado com diamantes.';
     if (this.coins() < it.price) return 'Moedas insuficientes: faltam ' + (it.price - this.coins()).toLocaleString('pt-BR') + '.';
     LS.stats.coins -= it.price; LS.saveStats();
@@ -127,7 +132,7 @@ LS.Cosmetics = {
   // ---------- Gold Royale ----------
   // chance por raridade (comum muito mais fácil que lendário); repetido vira moedas de volta
   ROYALE_WEIGHT: [46, 32, 16, 6],
-  royalePool() { return this.items.filter(i => !i.free && !i.code && i.slot !== 'costume'); },
+  royalePool() { return this.items.filter(i => !i.free && !i.code && !i.piece && i.slot !== 'costume'); },
   spin() {
     const pool = this.royalePool(), W = this.ROYALE_WEIGHT;
     let tot = 0; pool.forEach(i => { tot += W[i.rarity]; });

@@ -34,7 +34,7 @@ LS.Shop = {
   coins() { return LS.Cosmetics.coins().toLocaleString('pt-BR'); },
   gems() { return LS.Cosmetics.diamonds().toLocaleString('pt-BR'); },
   // preço do item: moedas, diamantes (fantasias) ou "só codiguin"
-  priceTag(it) { return it.code ? 'SÓ CODIGUIN' : it.dprice ? LS.icon('gem', 'gem-i') + it.dprice.toLocaleString('pt-BR') : LS.icon('coin', 'coin-i') + it.price.toLocaleString('pt-BR'); },
+  priceTag(it) { return it.code ? 'SÓ CODIGUIN' : it.piece ? 'NA FANTASIA' : it.dprice ? LS.icon('gem', 'gem-i') + it.dprice.toLocaleString('pt-BR') : LS.icon('coin', 'coin-i') + it.price.toLocaleString('pt-BR'); },
   dailyReady() { const me = LS.Account.logged() && LS.Account.me; return !!me && Date.now() - (me.dailyAt || 0) >= 20 * 3600e3; },
   card(it, extra) {
     const C = LS.Cosmetics, R = C.RARITY[it.rarity], own = C.owns(it.id);
@@ -51,7 +51,7 @@ LS.Shop = {
       '<div class="sh-coins gem" title="Diamantes">' + LS.icon('gem', 'gem-i') + '<b>' + this.gems() + '</b></div><div class="sh-coins">' + LS.icon('coin', 'coin-i') + '<b>' + this.coins() + '</b></div></div></div>';
     if (shop) {
       const tab = this.TABS.find(t => t.id === this.tab) || this.TABS[0];
-      const items = C.items.filter(i => !i.free && (tab.id === 'code' || !i.code) && tab.test(i)).sort((a, b) => b.rarity - a.rarity || (b.dprice || b.price) - (a.dprice || a.price));
+      const items = C.items.filter(i => !i.free && !i.piece && (tab.id === 'code' || !i.code) && tab.test(i)).sort((a, b) => b.rarity - a.rarity || (b.dprice || b.price) - (a.dprice || a.price));
       h += '<div class="sh-tabs">' + this.TABS.map(t => '<button class="' + (t.id === tab.id ? 'on' : '') + '" data-sh="tab" data-v="' + t.id + '">' + t.label + '</button>').join('') + '</div>' +
         '<div class="sh-grid' + (tab.id === 'feat' ? ' big' : '') + '">' + items.map(i => this.card(i)).join('') + '</div>' +
         '<p class="sh-tip">' + (tab.id === 'code' ? 'Itens <b style="color:#2ee6ff">EXCLUSIVOS</b>: só saem em codiguin. Fique de olho nos códigos do jogo!' :
