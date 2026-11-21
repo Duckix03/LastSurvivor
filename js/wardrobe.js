@@ -82,7 +82,7 @@ LS.Wardrobe = {
         return '<button class="wr-card' + (on ? ' on' : '') + (sel ? ' sel' : '') + (own ? '' : ' locked') + '" data-wid="' + it.id + '" style="--rc:' + R[it.rarity].color + '">' +
           '<div class="wr-img"><img alt="" data-tid="' + it.id + '"></div>' + (on ? '<i class="wr-on">✓</i>' : '') +
           (own ? '' : '<i class="wr-lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></i>') +
-          '<b>' + it.name + '</b><small>' + (own ? (it.free ? 'GRÁTIS' : R[it.rarity].name) : '🪙 ' + it.price.toLocaleString('pt-BR')) + '</small></button>';
+          '<b>' + it.name + '</b><small>' + (own ? (it.free ? 'GRÁTIS' : R[it.rarity].name) : LS.icon('coin', 'coin-i') + it.price.toLocaleString('pt-BR')) + '</small></button>';
       }).join('') + '</div>';
     });
     (tab.colors || []).forEach(([key, list, label]) => {
@@ -94,8 +94,8 @@ LS.Wardrobe = {
     const it = this.sel && C.byId[this.sel];
     if (it && !C.owns(it.id)) {
       const pieces = it.slot === 'costume' ? C.pieces(it).filter(p => !C.owns(p.id)).length : 0;
-      h += '<div id="wr-buybar" style="--rc:' + R[it.rarity].color + '"><div><span class="wr-rar">' + R[it.rarity].name + '</span><b>' + it.name + '</b><small>Provando' + (pieces ? ' · ' + pieces + ' peças' : '') + ' · você tem 🪙 ' + C.coins().toLocaleString('pt-BR') + '</small><span class="wr-err"></span></div>' +
-        '<button class="btn btn-primary" data-wbuy="1">COMPRAR 🪙 ' + it.price.toLocaleString('pt-BR') + '</button>' + (it.slot !== 'costume' ? '<button class="btn small" data-wroyale="1">GOLD ROYALE</button>' : '') + '</div>';
+      h += '<div id="wr-buybar" style="--rc:' + R[it.rarity].color + '"><div><span class="wr-rar">' + R[it.rarity].name + '</span><b>' + it.name + '</b><small>Provando' + (pieces ? ' · ' + pieces + ' peças' : '') + ' · você tem ' + LS.icon('coin', 'coin-i') + ' ' + C.coins().toLocaleString('pt-BR') + '</small><span class="wr-err"></span></div>' +
+        '<button class="btn btn-primary" data-wbuy="1">COMPRAR ' + LS.icon('coin', 'coin-i') + ' ' + it.price.toLocaleString('pt-BR') + '</button>' + (it.slot !== 'costume' ? '<button class="btn small" data-wroyale="1">GOLD ROYALE</button>' : '') + '</div>';
     }
     const box = document.getElementById('lobby-options');
     box.innerHTML = h;

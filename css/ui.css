@@ -1058,3 +1058,7 @@ body.mobile .set-panel { height: calc(94vh / var(--uiz, 1)); }
 .pf-cost { background: rgba(255, 197, 49, 0.18); color: #ffd34d; border: 1px solid rgba(255, 197, 49, 0.5); }
 .pf-cost.no { background: rgba(255, 60, 80, 0.16); color: #ff9aa6; border-color: rgba(255, 60, 80, 0.5); }
 #lobby-name[readonly] { cursor: pointer; }
+/* moeda em SVG no lugar do emoji 🪙 (que não aparece em todo computador) */
+.svgi.coin-i { width: 1.1em; height: 1.1em; vertical-align: -0.2em; margin-right: 0.18em; color: #ffc531; stroke-width: 2.4; flex: none; }
+.btn-primary .svgi.coin-i, .gr-btn .svgi.coin-i, .use .svgi.coin-i { color: currentColor; }
+.sh-coins .svgi.coin-i { width: 20px; height: 20px; margin: 0; }
