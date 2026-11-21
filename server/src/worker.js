@@ -180,7 +180,7 @@ export class Match {
     let views = null; const getViews = () => views || (views = viewPoints(me.pos));
     for (const x of this.ents.values()) {
       if (!x.st || x.owner === pid) continue;
-      if (full || this.visible(pid, me, x, now, getViews)) e.push(x.st);
+      if (full || (me && !me.alive) || this.visible(pid, me, x, now, getViews)) e.push(x.st); // morto (espectador) vê todo mundo
     }
     return e;
   }
@@ -202,7 +202,7 @@ export class Match {
   // ouve o tiro: perto da origem, perto do caminho da bala, ou já está vendo quem atirou
   hears(pid, shooter, o, d, range) {
     if (pid === this.host) return true;
-    const me = this.ents.get(pid); if (!me || !me.pos) return true;
+    const me = this.ents.get(pid); if (!me || !me.pos || !me.alive) return true; // espectador ouve/vê os tiros de quem assiste
     const px = me.pos[0] - o[0], py = me.pos[1] - o[1], pz = me.pos[2] - o[2];
     if (Math.hypot(px, py, pz) < HEAR_R) return true;
     const t = Math.max(0, Math.min(range * 1.6 + 4, px * d[0] + py * d[1] + pz * d[2]));

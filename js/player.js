@@ -110,7 +110,7 @@ LS.Player = class extends LS.Fighter {
     }
     this.stepRecoil(dt);
     this.camPitch = LS.util.clamp(this.camPitch, -1.35, 1.2);
-    if (!this.alive) { this.updateCamera(dt, camera); return; }
+    if (!this.alive) { if (LS.Spectate.active) LS.Spectate.frame(camera); else this.updateCamera(dt, camera); return; } // morto: killcam / espectador
     this.updateTimers(dt);
 
     // direção de movimento relativa à câmera

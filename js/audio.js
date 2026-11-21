@@ -91,6 +91,7 @@ LS.Audio = {
   alert() { if (this.ctx) { const t = this.ctx.currentTime; for (let i = 0; i < 3; i++) this._tone('square', 880, 880, 0.12, 0.12, t + i * 0.22); } },
   click() { if (this.ctx) this._tone('square', 1200, 800, 0.03, 0.08); },
   victory() { if (this.ctx) { const t = this.ctx.currentTime; [523, 659, 784, 1046].forEach((f, i) => this._tone('triangle', f, f, 0.4, 0.25, t + i * 0.15)); } },
+  death() { if (this.ctx) { const t = this.ctx.currentTime; this._noise(0.6, 'lowpass', 160, 1, 0.55); this._tone('sine', 180, 42, 1.1, 0.4); this._tone('triangle', 520, 260, 0.5, 0.08, t + 0.05); } },
   defeat() { if (this.ctx) { const t = this.ctx.currentTime; [392, 330, 262].forEach((f, i) => this._tone('triangle', f, f * 0.98, 0.5, 0.25, t + i * 0.25)); } },
 
   // som contínuo (avião / vento do paraquedas)

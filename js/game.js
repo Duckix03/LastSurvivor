@@ -18,7 +18,7 @@ LS.Game = {
     // logarithmicDepthBuffer foi avaliado e ficou desligado: anula o polygonOffset (marcas de bala, vidro) e custa desempenho.
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.25, 1000);
     LS.Input.init(this.renderer.domElement);
-    LS.Input.onUnlock = () => { if (this.state === 'playing' && !this.inventoryOpen && !LS.Console.open && !LS.Duel.shopOpen) this.pause(); };
+    LS.Input.onUnlock = () => { if (this.state === 'playing' && !this.inventoryOpen && !LS.Console.open && !LS.Duel.shopOpen && !LS.Spectate.active) this.pause(); };
     LS.HUD.init();
     window.addEventListener('resize', () => {
       this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix();
@@ -84,7 +84,7 @@ LS.Game = {
       this.bots.forEach(b => b.model.applyLook(LS.Skin.randomLook()));
       this.plane.reset(); this.zone.reset();
       this.precompile();
-      this.time = 0; this.endTimer = 0; this.ended = false;
+      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop();
       const df = LS.BOT_LEVEL; this.botDamageMul = df.dmg; this.bots.forEach(b => { b.skill = LS.util.rand(df.skill[0], df.skill[1]); });
       this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
       document.getElementById('killfeed').innerHTML = '';
@@ -130,7 +130,7 @@ LS.Game = {
       if (host) N.send({ t: 'diff', dmg: df.dmg });
       this.fighters = fighters;
       this.precompile();
-      this.time = 0; this.endTimer = 0; this.ended = false;
+      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop();
       this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
       document.getElementById('killfeed').innerHTML = '';
       LS.UI.showScreen(null); LS.HUD.show(true); this.setInventory(false);
@@ -166,7 +166,7 @@ LS.Game = {
       this.fighters = mine.concat(foes);
       LS.Loot.clear(); LS.Effects.clear();
       this.plane.active = false; this.plane.mesh.visible = false;
-      this.time = 0; this.endTimer = 0; this.ended = false;
+      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop();
       LS.Duel.enter(this.scene, mine, foes); // monta o galpão, o 1º mapa e começa o round 1
       this.precompile();
       document.getElementById('killfeed').innerHTML = '';
@@ -213,9 +213,9 @@ LS.Game = {
       LS.HUD.centerMsg('ELIMINOU ' + victim.name.toUpperCase(), (head ? 'Tiro na cabeça! · ' : '') + this.player.kills + ' abate(s)', 1.8);
     }
     if (victim === this.player) this.lastKiller = killer && killer !== victim ? killer : null;
-    if (victim === this.player) { this.endTimer = 3; this.pendingWin = false; LS.HUD.centerMsg('VOCÊ FOI ELIMINADO', killer ? 'por ' + killer.name : weapon, 3); }
+    if (victim === this.player) { this.pendingWin = false; LS.Spectate.start(killer, weapon, head); } // killcam + cartão + espectador (js/spectate.js)
     else if (this.player.alive && this.aliveCount() === 1) { this.endTimer = 2; this.pendingWin = true; }
-    else if (!this.player.alive && this.aliveCount() <= 1) { /* já derrotado */ }
+    else LS.Spectate.onKill(victim, killer);
   },
   onGunshot(shooter) { LS.HUD.gunshot(shooter); // indicador na tela / minimapa de onde vem o tiro
     for (const b of this.bots) if (b !== shooter && b.alive && b.state === 'ground') b.hearShot(shooter); },
@@ -250,12 +250,14 @@ LS.Game = {
   resume() {
     if (this.state !== 'paused') return;
     LS.UI.showScreen(null);
-    this.state = 'playing'; LS.Input.enabled = true; LS.Input.lock();
+    this.state = 'playing';
+    if (LS.Spectate.active) LS.Input.enabled = false; // morto: o mouse fica solto (botões do espectador)
+    else { LS.Input.enabled = true; LS.Input.lock(); }
     if (LS.Audio.ctx) LS.Audio.ctx.resume();
     this.clock.getDelta();
   },
   quitToMenu() {
-    LS.Net.leave(); this.frozen = false; LS.HUD.clearShots(); LS.Victory.hide();
+    LS.Spectate.stop(); LS.Net.leave(); this.frozen = false; LS.HUD.clearShots(); LS.Victory.hide();
     this.state = 'menu'; LS.Input.enabled = false; LS.Input.unlock();
     this.setInventory(false);
     LS.HUD.show(false); LS.Audio.stopAll();
@@ -300,7 +302,7 @@ LS.Game = {
     LS.World.updateSky(this.mode === 'duel' ? 0.33 : this.time / 430, this.scene, P.pos, dt);
   },
   endMatch(win, celebrated) {
-    LS.Victory.hide(); LS.HUD.clearShots();
+    LS.Spectate.stop(); LS.Victory.hide(); LS.HUD.clearShots();
     LS.Net.leave();
     this.state = 'ended'; LS.Input.enabled = false; LS.Input.unlock();
     this.setInventory(false);
@@ -312,7 +314,7 @@ LS.Game = {
     t.textContent = win ? 'VITÓRIA!' : duel ? 'DERROTA' : 'FIM DE JOGO';
     t.className = win ? 'win' : 'lose';
     document.getElementById('end-sub').textContent = duel ? (LS.Duel.size > 1 ? (win ? 'Seu time venceu o 2v2!' : 'Seu time perdeu o 2v2. Tente de novo!') : (win ? 'Você venceu o duelo contra ' : 'Você perdeu o duelo contra ') + LS.Duel.opp.name + '!')
-      : win ? 'Você é o último sobrevivente da ilha!' : 'Você foi eliminado. Tente novamente!';
+      : win ? 'Você é o último sobrevivente da ilha!' : this.lastKiller ? 'Você foi eliminado por ' + this.lastKiller.name + '. Tente novamente!' : 'Você foi eliminado. Tente novamente!';
     const rw = LS.Menu.award(P, win);
     document.getElementById('end-xp').textContent = '+' + rw.xp + ' XP · +' + rw.coins + ' moedas' + (rw.levelUp ? ' · SUBIU PARA O NÍVEL ' + rw.level + '!' : '');
     // botão pra ver o perfil do oponente (duelo) ou de quem te eliminou (bot)
@@ -320,9 +322,8 @@ LS.Game = {
     LS.Profile.endFoe = foe; fb.classList.toggle('hidden', !foe);
     if (foe) fb.textContent = (duel ? 'PERFIL DO OPONENTE: ' : 'PERFIL DE QUEM TE ELIMINOU: ') + foe.name.toUpperCase();
     document.getElementById('end-place').textContent = duel ? sc[0] + ' x ' + sc[1] : '#' + (win ? 1 : P.placement);
-    document.getElementById('end-place-l').textContent = duel ? 'PLACAR' : 'COLOCAÇÃO';
-    document.getElementById('end-kills').textContent = P.kills;
-    document.getElementById('end-dmg').textContent = Math.round(P.damageDealt);
+    document.getElementById('end-place-l').textContent = duel ? 'PLACAR' : 'COLOCAÇÃO · DE ' + this.fighters.length;
+    LS.Spectate.countUp(document.getElementById('end-kills'), P.kills); LS.Spectate.countUp(document.getElementById('end-dmg'), Math.round(P.damageDealt));
     document.getElementById('end-time').textContent = LS.util.fmtTime(this.time);
     LS.HUD.show(false);
     LS.UI.showScreen('endscreen');
@@ -346,7 +347,7 @@ LS.Game = {
     const m = (a, t) => (1 + (t - 1) * v).toFixed(3);
     const f = v > 0 ? 'contrast(' + m(1, F.c) + ') saturate(' + m(1, F.s) + ') brightness(' + m(1, F.b) + ')' +
       (F.sep ? ' sepia(' + (F.sep * v).toFixed(3) + ')' : '') + (F.hue ? ' hue-rotate(' + (F.hue * v).toFixed(1) + 'deg)' : '') : '';
-    this.renderer.domElement.style.filter = f;
+    this.renderer.domElement.style.filter = (f + (this.fxFilter || '')).trim(); // fxFilter: tela sem cor ao morrer
   },
   applySettings() {
     const s = LS.settings, r = this.renderer;
@@ -379,7 +380,7 @@ LS.Game = {
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
     if (this.state === 'lobby' || (this.state === 'menu' && LS.Lobby.built)) { LS.Lobby.update(dt); LS.Post.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
     if (!this.built) return;
-    if (this.state === 'playing' || (this.state === 'paused' && LS.Net.online)) this.update(dt);
+    if (this.state === 'playing' || (this.state === 'paused' && LS.Net.online)) this.update(dt * LS.Spectate.timeScale()); // câmera lenta na hora da morte
     else if (this.state === 'victory') this.updateVictory(dt);
     else if (this.state === 'menu' || this.state === 'ended') { // câmera orbitando a ilha no fundo
       const t = performance.now() * 0.00005;
