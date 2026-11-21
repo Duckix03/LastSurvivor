@@ -211,7 +211,7 @@ LS.CharacterModel = class {
       });
     }
     else if (look.glasses === 'matrix') add(8.8, 1.3, 0.9, 0, 3.6, 4.35, glow(0x3dff6a));
-    if (look.pattern === 'circuito' || look.pattern === 'diamante') this.buildShirtFx(look);
+    if (LS.AccFX.ANIM.includes(look.pattern) || look.legs === 'chamas') this.buildShirtFx(look);
     this.hatVisible = look.hat && look.hat !== 'nenhum';
   }
   // ---------- cabelos com volume (camadas e mechas em vez de um bloco só) ----------
@@ -261,18 +261,34 @@ LS.CharacterModel = class {
       side(3.6, 3.2); add(5, 0.8, 0.7, 0, 2.35, 4.35, C); [-1, 1].forEach(sd => add(1, 1.8, 0.7, sd * 2.9, 1.5, 4.35, C));
     }
   }
-  // ---------- camisas animadas (circuito = chuva de código; diamante = pisca azul/branco) ----------
-  // Uma folha transparente na frente do peito, só onde a estampa aparece (a jaqueta aberta mostra só o meio, o moletom esconde).
+  // ---------- estampas animadas (circuito, diamante, galáxia, chamas) e Calça Chamas ----------
+  // Uma "capa" transparente em volta do tronco: frente, costas e os dois lados (e nas pernas, pra calça).
+  // Só aparece onde a estampa aparece (a jaqueta aberta mostra só o meio da frente, o moletom esconde tudo).
   buildShirtFx(look) {
-    const F = LS.AccFX, S = LS.Skin.PX, mask = F.mask(look.top || 'camiseta'); if (!mask) return;
-    const mat = F.shirtMat(look.pattern, look.top || 'camiseta');
-    const piece = (bone, w, h, y0, v0, v1, z) => {
-      const geo = new THREE.PlaneGeometry(w * S, h * S), uv = geo.attributes.uv;
-      for (let i = 0; i < 4; i++) uv.setY(i, uv.getY(i) > 0.5 ? v1 : v0);
-      const m = new THREE.Mesh(geo, mat); m.position.set(0, (y0 + h / 2) * S, z * S + 0.004); m.renderOrder = 2; bone.add(m); this.shirtFx.push(m);
+    const F = LS.AccFX, S = LS.Skin.PX;
+    const wrap = (bone, w, h, d, vTop, vBot, pivot, mat, W) => {
+      const e = 0.012, geo = new THREE.BoxGeometry(w * S + e, h * S, d * S + e), uv = geo.attributes.uv;
+      const reg = [[0, d], [d, 2 * d], [W - 1, W], [W - 1, W], [2 * d, 2 * d + w], [2 * d + w, 2 * d + 2 * w]]; // +x, -x, topo, base, frente, costas
+      for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) {
+        const id = f * 4 + i, [x0, x1] = reg[f];
+        uv.setXY(id, (x0 + uv.getX(id) * (x1 - x0)) / W, vBot + uv.getY(id) * (vTop - vBot));
+      }
+      const m = new THREE.Mesh(geo, mat); m.position.y = (pivot === 'bottom' ? 1 : -1) * h / 2 * S; m.renderOrder = 2; bone.add(m); this.shirtFx.push(m);
     };
-    piece(this.torso, 8 - 0.2, 7, 0, 1 - 7 / 12, 1, (4 - 0.2) / 2);   // peito (tronco de cima)
-    piece(this.hips, 8 - 0.5, 5, 0, 0, 1 - 7 / 12, (4 - 0.5) / 2);     // barriga (tronco de baixo)
+    if (F.ANIM.includes(look.pattern)) {
+      const mat = F.shirtMat(look.pattern, look.top || 'camiseta');
+      if (mat) {
+        wrap(this.torso, 8 - 0.2, 7, 4 - 0.2, 1, 1 - 7 / 12, 'bottom', mat, 25);   // tronco de cima
+        wrap(this.hips, 8 - 0.5, 5, 4 - 0.5, 1 - 7 / 12, 0, 'bottom', mat, 25);    // tronco de baixo
+      }
+    }
+    if (look.legs === 'chamas') { // calça: fogo subindo das canelas
+      const mat = F.legMat();
+      for (const [up, low] of [[this.legR, this.shinR], [this.legL, this.shinL]]) {
+        wrap(up, 4, 6, 4, 1, 1 - 6 / 12, 'top', mat, 17);
+        wrap(low, 4 - 0.3, 5, 4 - 0.3, 1 - 6 / 12, 1 - 11 / 12, 'top', mat, 17);
+      }
+    }
   }
   setGun(id) {
     if (this.gunId === id) return;
@@ -919,48 +935,77 @@ LS.AccFX = {
     const g = new THREE.Group(), w = this.glow(0xffffff), b = (x, y, z) => { const m = new THREE.Mesh(this.cube(), w); m.scale.set(x, y, z); g.add(m); };
     b(0.3, 1.7, 0.3); b(1.7, 0.3, 0.3); b(0.6, 0.6, 0.6); g.scale.setScalar(0.0001); return g;
   },
-  // onde a estampa aparece na frente do peito (8×12), conforme a roupa de cima
+  ANIM: ['circuito', 'diamante', 'galáxia', 'chamas'],
+  // onde a estampa aparece em cada lado do tronco (frente/costas 8×12, lados 4×12), conforme a roupa de cima
+  // (a estampa Chamas não é pintada em cima nem embaixo; as outras pintam os 4 lados)
   maskFn: {
-    camiseta: () => true, regata: (x, y) => !(y < 2 && (x < 2 || x > 5)), kimono: () => true,
-    jaqueta: x => x === 3 || x === 4, couro: (x, y) => (x === 3 || x === 4) && y < 9, colete: (x, y) => x === 3 || x === 4 || y === 0 || y >= 10,
-    terno: (x, y) => (x === 3 || x === 4) && y >= 1 && y < 6,
+    camiseta: () => true, kimono: () => true,
+    regata: (f, x, y) => !(y < 2 && (f === 'L' || f === 'R' || (f === 'F' && (x < 2 || x > 5)))),
+    jaqueta: (f, x) => f === 'F' && (x === 3 || x === 4),
+    couro: (f, x, y) => f === 'F' && (x === 3 || x === 4) && y < 9,
+    colete: (f, x, y) => f === 'L' || f === 'R' || (f === 'F' && (x === 3 || x === 4)) || y === 0 || y >= 10,
+    terno: (f, x, y) => f === 'F' && (x === 3 || x === 4) && y >= 1 && y < 6,
+    calca: () => true,
   },
   canvasTex(w, h) {
     const c = document.createElement('canvas'); c.width = w; c.height = h;
     const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
     return { c, x: c.getContext('2d'), t };
   },
-  mask(top) {
-    const f = this.maskFn[top]; if (!f) return null; // moletom/armadura: a estampa não aparece
-    if (this.masks[top]) return this.masks[top];
-    const T = this.canvasTex(8, 12); T.x.fillStyle = '#000'; T.x.fillRect(0, 0, 8, 12); T.x.fillStyle = '#fff';
-    for (let y = 0; y < 12; y++) for (let x = 0; x < 8; x++) if (f(x, y)) T.x.fillRect(x, y, 1, 1);
-    T.t.needsUpdate = true; return (this.masks[top] = T.t);
+  // atlas da capa: [lado +x | lado -x | frente | costas | 1 coluna vazia]; d = fundura, w = largura
+  mask(top, d, w) {
+    const fn = this.maskFn[top]; if (!fn) return null; // moletom/armadura: a estampa não aparece
+    const W = 2 * d + 2 * w + 1, k = top + W; if (this.masks[k]) return this.masks[k];
+    const T = this.canvasTex(W, 12); T.x.fillStyle = '#000'; T.x.fillRect(0, 0, W, 12); T.x.fillStyle = '#fff';
+    const faces = [['L', 0, d], ['R', d, d], ['F', 2 * d, w], ['B', 2 * d + w, w]];
+    for (const [f, x0, fw] of faces) for (let y = 0; y < 12; y++) for (let x = 0; x < fw; x++) if (fn(f, x, y)) T.x.fillRect(x0 + x, y, 1, 1);
+    T.t.needsUpdate = true; return (this.masks[k] = T.t);
   },
-  shirt(kind) {
-    if (this.shirts[kind]) return this.shirts[kind];
-    const T = this.canvasTex(8, 12), cols = Array.from({ length: 8 }, () => ({ o: Math.random() * 20, v: 6 + Math.random() * 8 }));
+  shirt(kind, W) {
+    const key = kind + W; if (this.shirts[key]) return this.shirts[key];
+    const T = this.canvasTex(W, 12), N = W - 1, R = Math.random;
+    const cols = Array.from({ length: N }, () => ({ o: R() * 20, v: 6 + R() * 8 }));
+    const stars = Array.from({ length: Math.round(N * 1.6) }, () => ({ x: Math.floor(R() * N), y: Math.floor(R() * 12), p: R() * 6.3, s: 1.5 + R() * 2.5 }));
+    const blobs = Array.from({ length: 4 }, (_, i) => ({ x: R() * N, y: R() * 12, p: i * 1.7, c: i % 2 ? '120,70,255' : '60,140,255' }));
+    const embers = Array.from({ length: Math.max(4, Math.round(N / 3)) }, () => ({ x: Math.floor(R() * N), t0: R() * 2, v: 0.8 + R() * 0.8 }));
+    const fill = (x, y, c) => { T.x.fillStyle = c; T.x.fillRect(x, y, 1, 1); };
     T.draw = t => {
-      const x = T.x; x.clearRect(0, 0, 8, 12);
+      T.x.clearRect(0, 0, W, 12);
       if (kind === 'circuito') { // chuva de código verde (estilo Matrix)
         cols.forEach((c, i) => { const head = (t * c.v + c.o) % 20 - 3;
-          for (let k = 0; k < 6; k++) { const y = Math.floor(head) - k; if (y < 0 || y > 11) continue;
-            x.fillStyle = k === 0 ? 'rgba(220,255,230,1)' : 'rgba(61,255,106,' + (0.85 - k * 0.14).toFixed(2) + ')'; x.fillRect(i, y, 1, 1); } });
-      } else { // diamante: a grade pisca de azul pra branco, em ondas com fade
-        for (let yy = 0; yy < 12; yy++) for (let xx = 0; xx < 8; xx++) {
+          for (let k = 0; k < 6; k++) { const y = Math.floor(head) - k; if (y >= 0 && y < 12) fill(i, y, k === 0 ? 'rgba(220,255,230,1)' : 'rgba(61,255,106,' + (0.85 - k * 0.14).toFixed(2) + ')'); } });
+      } else if (kind === 'diamante') { // a grade pisca de azul pra branco, em ondas com fade
+        for (let yy = 0; yy < 12; yy++) for (let xx = 0; xx < N; xx++) {
           const a = (xx + yy) % 4, b = ((xx - yy) % 4 + 4) % 4; if (a !== 0 && b !== 0) continue;
           const w = 0.5 + 0.5 * Math.sin(t * 2.8 - (xx + yy) * 0.75), cen = a === 0 && b === 0;
-          const r = Math.round(90 + 165 * w), g = Math.round(232 + 23 * w);
-          x.fillStyle = 'rgba(' + r + ',' + g + ',255,' + (cen ? 0.5 + 0.5 * w : 0.15 + 0.75 * w).toFixed(2) + ')'; x.fillRect(xx, yy, 1, 1);
+          fill(xx, yy, 'rgba(' + Math.round(90 + 165 * w) + ',' + Math.round(232 + 23 * w) + ',255,' + (cen ? 0.5 + 0.5 * w : 0.15 + 0.75 * w).toFixed(2) + ')');
         }
+      } else if (kind === 'galáxia') { // nebulosas que pulsam, estrelas piscando e uma estrela cadente
+        blobs.forEach(b => { const a = 0.18 + 0.16 * Math.sin(t * 0.9 + b.p), cx = (b.x + t * 0.6) % N;
+          for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const dd = Math.abs(dx) + Math.abs(dy); if (dd > 3) continue;
+            const x = Math.floor(cx + dx + N) % N, y = Math.floor(b.y + dy); if (y >= 0 && y < 12) fill(x, y, 'rgba(' + b.c + ',' + (a * (1 - dd / 4)).toFixed(2) + ')'); } });
+        stars.forEach(s2 => { const a = Math.pow(Math.max(0, Math.sin(t * s2.s + s2.p)), 3); if (a > 0.05) fill(s2.x, s2.y, 'rgba(255,255,' + (a > 0.7 ? 255 : 220) + ',' + a.toFixed(2) + ')'); });
+        const cyc = (t * 0.45) % 1; if (cyc < 0.35) { const k = cyc / 0.35, hx = Math.floor(k * (N + 6)) - 3, hy = Math.floor(1 + k * 6);
+          for (let i = 0; i < 4; i++) { const x = hx - i, y = hy - Math.floor(i / 2); if (x >= 0 && x < N && y >= 0) fill(x, y, 'rgba(255,255,255,' + (1 - i * 0.25).toFixed(2) + ')'); } }
+      } else { // chamas: fogo tremulando de baixo pra cima + faíscas subindo
+        for (let x = 0; x < N; x++) {
+          const h = 3.6 + 1.7 * Math.sin(t * 7.3 + x * 1.9) + 1.1 * Math.sin(t * 11.7 + x * 0.73) + 0.6 * Math.sin(t * 17 + x * 3.1);
+          for (let y = 0; y < h; y++) { const f = y / h; fill(x, 11 - y, f > 0.72 ? 'rgba(255,225,74,0.95)' : f > 0.4 ? 'rgba(255,138,31,0.92)' : 'rgba(216,54,26,0.9)'); }
+        }
+        embers.forEach(e2 => { const k = ((t * e2.v + e2.t0) % 1.6) / 1.6, y = Math.round(9 - k * 10);
+          if (y >= 0) fill((e2.x + Math.round(Math.sin(t * 5 + e2.x) * k * 1.5) + N) % N, y, 'rgba(255,' + (200 - Math.round(k * 120)) + ',60,' + (1 - k).toFixed(2) + ')'); });
       }
       T.t.needsUpdate = true;
     };
-    T.draw(0); return (this.shirts[kind] = T);
+    T.draw(0); return (this.shirts[key] = T);
   },
   shirtMat(kind, top) {
-    const k = kind + '|' + top; if (this.smats[k]) return this.smats[k];
-    return (this.smats[k] = new THREE.MeshBasicMaterial({ map: this.shirt(kind).t, alphaMap: this.mask(top), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }));
+    const k = kind + '|' + top; if (k in this.smats) return this.smats[k];
+    const mask = this.mask(top, 4, 8);
+    return (this.smats[k] = mask ? new THREE.MeshBasicMaterial({ map: this.shirt(kind, 25).t, alphaMap: mask, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }) : null);
+  },
+  legMat() {
+    return this.smats.__legs || (this.smats.__legs = new THREE.MeshBasicMaterial({ map: this.shirt('chamas', 17).t, alphaMap: this.mask('calca', 4, 4), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }));
   },
   // redesenha as camisas animadas no máximo 15x por segundo (uma vez pra todo mundo)
   frame() { const now = performance.now(); if (now - this.last < 66) return; this.last = now; const t = now / 1000; for (const k in this.shirts) this.shirts[k].draw(t); },
