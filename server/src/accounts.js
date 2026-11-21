@@ -11,7 +11,7 @@
 //   POST /api/logout                           sai (apaga o token)
 //   GET  /api/me                               sua conta
 //   POST /api/profile  {look, bio, avatarBg, cover, weapon}   salva o visual e o perfil
-//   POST /api/rename   {name}                  troca o nome (único; 1 vez a cada 7 dias)
+//   POST /api/rename   {name}                  troca o nome (único; custa 10.000 moedas, mudar só maiúsculas é grátis)
 //   POST /api/stats    {stats}                 salva as estatísticas
 //   GET  /api/profile/<id>                     perfil público de alguém (pelo ID)
 //   POST /api/like/<id>                        curte / descurte
@@ -30,7 +30,7 @@
 // Uso interno (só o Matchmaker chama, não fica exposto): /internal/resolve {token, name}
 'use strict';
 
-const TOKEN_DAYS = 90, RENAME_DAYS = 7, PBKDF2_ITER = 10000; // poucas iterações: o plano grátis tem só ~10 ms de CPU por pedido
+const TOKEN_DAYS = 90, RENAME_COST = 10000, PBKDF2_ITER = 10000; // trocar de nome custa 10.000 moedas (igual a js/config.js) // poucas iterações: o plano grátis tem só ~10 ms de CPU por pedido
 const BADGES = ['owner', 'dev', 'cc', 'verificado'];
 const MAX_FRIENDS = 200, ONLINE_MS = 150000; // online = mandou sinal nos últimos 2,5 min
 const RESERVED = ['admin', 'adm', 'moderador', 'owner', 'dono', 'dev', 'suporte', 'support', 'convidado', 'guest', 'lastsurvivor', 'last_survivor', 'sistema', 'system', 'claude', 'anthropic'];
@@ -136,7 +136,7 @@ export class Accounts {
     return tok;
   }
   // o que o dono da conta vê (sem a senha)
-  mine(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, renameAt: a.renameAt || 0, google: a.google ? { email: a.google.email } : null, hasPass: !!a.hash }; }
+  mine(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, renameAt: a.renameAt || 0, google: a.google ? { email: a.google.email } : null, hasPass: !!a.hash, freeRename: !!a.autoName }; }
   pub(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, created: a.created }; }
 
   cleanProfile(p, old) {
@@ -210,7 +210,7 @@ export class Accounts {
     // primeira vez: cria a conta (sem senha) com um nome livre
     const name = await this.freeName([String(b.name || ''), (g.email || '').split('@')[0]]);
     const id = await this.newId();
-    const a = { id, name, salt: null, hash: null, google: g, created: Date.now(), badges: [], likes: 0,
+    const a = { id, name, salt: null, hash: null, google: g, autoName: true, created: Date.now(), badges: [], likes: 0,
       profile: this.cleanProfile(b.profile), stats: this.cleanStats(b.stats) };
     await this.st.put('u:' + name.toLowerCase(), id); await this.st.put('g:' + g.sub, id); await this.st.put('a:' + id, a);
     return json({ token: await this.newToken(id), account: this.mine(a), created: true });
@@ -263,14 +263,18 @@ export class Accounts {
     const name = String(b.name || '').trim().slice(0, 32);
     const bad = this.checkName(name); if (bad) return fail(bad);
     if (name === a.name) return json({ account: this.mine(a) });
-    const left = (a.renameAt || 0) + RENAME_DAYS * 864e5 - Date.now();
-    if (left > 0 && name.toLowerCase() !== a.name.toLowerCase()) return fail('Você só pode trocar de nome de novo em ' + Math.ceil(left / 864e5) + ' dia(s).');
+    const caseOnly = name.toLowerCase() === a.name.toLowerCase();
+    const free = caseOnly || !!a.autoName; // só maiúsculas/minúsculas, ou o nome automático da conta do Google
+    a.stats = this.cleanStats(a.stats);
+    if (!free && a.stats.coins < RENAME_COST) return fail('Moedas insuficientes: trocar de nome custa ' + RENAME_COST.toLocaleString('pt-BR') + ' (você tem ' + a.stats.coins.toLocaleString('pt-BR') + ').');
     const key = 'u:' + name.toLowerCase(), owner = await this.st.get(key);
     if (owner && owner !== a.id) return fail('Esse nome já tem dono. Escolha outro.');
-    if (name.toLowerCase() !== a.name.toLowerCase()) { await this.st.delete('u:' + a.name.toLowerCase()); a.renameAt = Date.now(); }
+    if (!caseOnly) { await this.st.delete('u:' + a.name.toLowerCase()); a.renameAt = Date.now(); }
+    if (!free) a.stats.coins -= RENAME_COST;
+    delete a.autoName;
     await this.st.put(key, a.id);
     a.name = name; delete a._token; await this.st.put('a:' + a.id, a);
-    return json({ account: this.mine(a) });
+    return json({ account: this.mine(a), paid: free ? 0 : RENAME_COST });
   }
   cleanStats(s) { s = s && typeof s === 'object' ? s : {}; const o = {}; for (const k of STAT_KEYS) o[k] = nint(s[k], 1e9); return o; }
   async saveStats(a, b) {

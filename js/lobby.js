@@ -36,8 +36,10 @@ LS.Lobby = {
 
   buildUI() {
     LS.Wardrobe.init(); // guarda-roupa em grade (js/wardrobe.js)
+    // o nome é trocado no perfil (custa moedas): tocar no campo abre a edição do perfil
     const name = document.getElementById('lobby-name');
-    name.addEventListener('input', () => { LS.playerProfile.name = name.value.trim().slice(0, 16) || 'Jogador'; LS.saveProfile(); });
+    name.readOnly = true; name.title = 'Trocar de nome: no perfil (🪙 ' + LS.RENAME_COST.toLocaleString('pt-BR') + ')';
+    name.addEventListener('click', () => { LS.Audio.init(); LS.Audio.click(); LS.Wardrobe.leave(); LS.Game.quitToMenu(); LS.Profile.open(); LS.UI.openPanel('panel-stats'); LS.Profile.openEdit(); });
   },
   changed() {
     LS.saveProfile();
@@ -48,7 +50,7 @@ LS.Lobby = {
   syncUI() {
     document.getElementById('lobby-name').value = LS.playerProfile.name;
     document.getElementById('menu-player-name').textContent = LS.playerProfile.name;
-    const n = document.getElementById('lobby-name'); n.disabled = !!(LS.Account && LS.Account.logged());
+    const n = document.getElementById('lobby-name'); n.disabled = false; // só leitura; tocar abre o perfil
   },
   open() {
     this.build();

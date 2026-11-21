@@ -62,7 +62,7 @@ LS.Account = {
     if (LS.Menu && LS.Profile && LS.Profile.bound) LS.Menu.render();
     if (LS.Lobby && LS.Lobby.built) { LS.Lobby.model.applyLook(LS.playerProfile.look); LS.Lobby.model.setGun(LS.playerProfile.weapon || null); LS.Lobby.syncUI(); }
     const n = document.getElementById('lobby-name');
-    if (n) { n.disabled = this.logged(); n.title = this.logged() ? 'Seu nome é o da conta (troque no perfil)' : ''; }
+    if (n) n.disabled = false; // só leitura; tocar abre o perfil (trocar de nome custa moedas)
     if (LS.UI && LS.UI.current === 'panel-stats' && LS.Profile.bound) LS.Profile.render();
   },
   setToken(t) { this.token = t; try { localStorage.setItem(this.KEY, t); } catch (e) { /* ignora */ } },
@@ -91,7 +91,13 @@ LS.Account = {
   async handoff() { return (await this.api('/api/handoff', {})).code; },
   async redeem(code) { const d = await this.api('/api/handoff/redeem', { code }); this.setToken(d.token); this.apply(d.account); return d; },
   async logout() { try { await this.api('/api/logout', {}); } catch (e) { /* tanto faz */ } this.drop(); },
-  async rename(name) { const d = await this.api('/api/rename', { name }); this.apply(d.account); },
+  // troca o nome da conta: o servidor cobra as moedas (manda as moedas atuais antes, pra ele saber quantas tem)
+  async rename(name) {
+    await this.api('/api/stats', { stats: LS.stats });
+    const d = await this.api('/api/rename', { name });
+    if (d.account.stats) { LS.stats.coins = d.account.stats.coins; localStorage.setItem('lastsurvivor_stats', JSON.stringify(LS.stats)); }
+    this.apply(d.account); return d;
+  },
   async claim(key) { const d = await this.api('/api/admin/claim', { key }); this.apply(d.account); },
   async setBadges(id, badges) { return (await this.api('/api/admin/badges', { id, badges })).profile; },
   async profile(id) { return await this.api('/api/profile/' + id); },

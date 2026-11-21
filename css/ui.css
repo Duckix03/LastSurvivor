@@ -1051,3 +1051,10 @@ body.mobile .set-tabs button { font-size: 15px; padding: 12px 6px; }
 .set-panel { height: min(640px, 92vh); }
 body.mobile .set-panel { height: calc(94vh / var(--uiz, 1)); }
 .ct-row .btn, .ct-inline .btn { width: auto; flex: none; padding: 8px 16px; min-height: 0; }
+/* editar perfil: preço da troca de nome */
+.pf-rename b { color: var(--accent2); }
+.pf-free, .pf-cost { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; vertical-align: middle; }
+.pf-free { background: rgba(60, 200, 110, 0.2); color: #7ef0a8; border: 1px solid rgba(60, 200, 110, 0.5); }
+.pf-cost { background: rgba(255, 197, 49, 0.18); color: #ffd34d; border: 1px solid rgba(255, 197, 49, 0.5); }
+.pf-cost.no { background: rgba(255, 60, 80, 0.16); color: #ff9aa6; border-color: rgba(255, 60, 80, 0.5); }
+#lobby-name[readonly] { cursor: pointer; }
