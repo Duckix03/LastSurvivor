@@ -345,7 +345,7 @@ LS.Profile = {
     const C = LS.Cosmetics, T = this.CG_TABS.find(t => t.id === this.cgTab) || this.CG_TABS[0];
     const items = C.items.filter(i => !i.free && T.test(i)).sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
     let pk = document.getElementById('cg-picker');
-    if (!pk) { pk = document.createElement('div'); pk.id = 'cg-picker'; document.querySelector('#pf-modal .pf-modal-box').appendChild(pk); }
+    if (!pk) { pk = document.createElement('div'); pk.id = 'cg-picker'; document.getElementById('pf-modal').appendChild(pk); } // fora da caixa que rola
     pk.innerHTML = '<div class="cgp-head"><b>ESCOLHA O ITEM</b><button class="btn small" data-pf="cg-pclose">FECHAR</button></div>' +
       '<div class="cgp-tabs">' + this.CG_TABS.map(t => '<button class="' + (t.id === T.id ? 'on' : '') + '" data-pf="cg-ptab" data-v="' + t.id + '">' + t.label + '</button>').join('') + '</div>' +
       '<div class="cgp-grid">' + items.map(it => { const R = C.RARITY[it.rarity];
