@@ -79,6 +79,54 @@ LS.CharacterModel = class {
     this.brim.visible = look.hairStyle === 'boné' && (!look.hat || look.hat === 'nenhum');
     if (this.brim.visible) this.brim.material = LS.lambert(new THREE.Color(look.shirt).multiplyScalar(0.55).getHex());
   }
+  // óculos escuros redondos (estilo lennon): lente preta brilhante em círculo de bloquinhos + armação fina metálica
+  buildRoundShades(add) {
+    const LM = LS._lensMat || (LS._lensMat = new THREE.MeshPhongMaterial({ color: 0x08080a, specular: 0x8a8f99, shininess: 90 }));
+    const FM = LS._frameMat || (LS._frameMat = new THREE.MeshPhongMaterial({ color: 0x55585e, specular: 0xcfd3da, shininess: 60 }));
+    const HL = LS._lensHL || (LS._lensHL = new THREE.MeshBasicMaterial({ color: 0x5a5f6a }));
+    const cy = 3.6, lensW = [1.6, 2.6, 3.0, 3.0, 2.6, 1.6], frameW = [1.9, 3.0, 3.4, 3.5, 3.5, 3.4, 3.0, 1.9];
+    [-1, 1].forEach(sd => {
+      const cx = sd * 2.05;
+      // cada linha não se sobrepõe (sem z-fight): lente na frente, armação um pouco maior atrás
+      lensW.forEach((w, i) => add(w, 0.5, 0.2, cx, cy + 1.25 - i * 0.5, 4.5, LM));
+      frameW.forEach((w, i) => add(w, 0.4375, 0.3, cx, cy + 1.53 - i * 0.4375, 4.35, FM));
+      add(0.45, 0.3, 0.05, cx - 0.75, cy + 0.85, 4.625, HL); // reflexo
+      add(0.25, 0.25, 0.05, cx - 1.05, cy + 0.45, 4.625, HL);
+      add(0.7, 0.3, 0.3, sd * 3.85, cy + 0.9, 4.35, FM); // dobradiça
+      add(0.25, 0.3, 4.2, sd * 4.15, cy + 0.9, 2.35, FM); // haste
+    });
+    add(0.9, 0.22, 0.25, 0, cy + 1.05, 4.38, FM); // ponte de cima
+    add(0.7, 0.2, 0.25, 0, cy + 0.45, 4.42, FM); // ponte de baixo
+  }
+  // óculos de estrela: duas estrelas vazadas pretas com glitter que pisca (bloquinhos)
+  buildStarShades(add) {
+    const BM = LS._starMat || (LS._starMat = new THREE.MeshPhongMaterial({ color: 0x0c0c10, specular: 0x9aa0ad, shininess: 80 }));
+    const SP = LS._sparkMat || (LS._sparkMat = new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    const SP2 = LS._sparkMat2 || (LS._sparkMat2 = new THREE.MeshBasicMaterial({ color: 0x9fb4ff }));
+    if (!LS._starCells) { // grade 15x15: estrela cheia menos a estrela de dentro (furo)
+      const N = 15, inStar = (x, y, R) => { const P = []; for (let k = 0; k < 10; k++) { const a = Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? R * 0.47 : R; P.push([Math.cos(a) * r, Math.sin(a) * r]); }
+        let c = false; for (let i = 0, j = 9; i < 10; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+      const rows = [];
+      for (let j = 0; j < N; j++) { const y = (N - 1) / 2 - j + 1.0, row = []; for (let i = 0; i < N; i++) { const x = i - (N - 1) / 2; row.push(inStar(x, y, 7.5) && !inStar(x, y - 0.4, 3.4)); } rows.push(row); }
+      LS._starCells = rows;
+    }
+    const c = 0.34, rows = LS._starCells, N = rows.length, cy = 3.7, z = 4.45, spots = [];
+    [-1, 1].forEach(sd => {
+      const cx = sd * 2.5;
+      rows.forEach((row, j) => { // junta células seguidas da linha numa caixa só
+        for (let i = 0; i < N;) { if (!row[i]) { i++; continue; } let k = i; while (k < N && row[k]) k++;
+          const y = cy + ((N - 1) / 2 - j) * c, x0 = cx + (i - (N - 1) / 2) * c, x1 = cx + (k - 1 - (N - 1) / 2) * c;
+          add((k - i) * c, c, 0.3, (x0 + x1) / 2, y, z, BM);
+          for (let q = i; q < k; q++) if (((q * 7 + j * 13 + (sd > 0 ? 5 : 0)) % 6) === 0) spots.push([cx + (q - (N - 1) / 2) * c, y]);
+          i = k; }
+      });
+      add(0.25, 0.28, 4.1, sd * 4.18, cy + 0.6, 2.25, BM); // haste (sai de trás da estrela)
+    });
+    add(0.9, 0.3, 0.25, 0, cy + 0.55, 4.38, BM); // ponte
+    // glitter: pontinhos brancos/azulados que piscam com fade
+    const sp = spots.map((p, n) => { const m = add(0.16, 0.16, 0.04, p[0], p[1], z + 0.17, n % 3 ? SP : SP2); m.castShadow = false; return { m, ph: n * 1.7, sp: 2.2 + (n % 5) * 0.6 }; });
+    this.fx.push(t => { for (const s of sp) { const k = Math.max(0, Math.sin(t * s.sp + s.ph)); s.m.scale.setScalar(0.15 + k * k * 1.1); } });
+  }
   // acessórios 3D da cabeça: chapéus, óculos e barba cheia
   buildAccessories(look) {
     const S = LS.Skin.PX, g = this.accG, F = LS.AccFX;
@@ -194,7 +242,8 @@ LS.CharacterModel = class {
     if (look.glasses === 'cyber') add(8.8, 1.3, 0.9, 0, 3.6, 4.35, glow(0x20f0ff));
     else if (look.glasses === 'aviador') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x3a2a10));
     if (look.mask === 'gás') { add(4.2, 3, 2, 0, 1.6, 4.9, M(0x2a2d32)); [-1, 1].forEach(s => add(1.8, 1.8, 1.8, s * 2.6, 1.2, 5.3, M(0x50555c))); }
-    if (look.glasses === 'escuros') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x111111));
+    if (look.glasses === 'escuros') this.buildRoundShades(add);
+    else if (look.glasses === 'estrela' || look.glasses === 'redondos') this.buildStarShades(add);
     else if (look.glasses === 'viseira') add(8.6, 1.2, 0.8, 0, 3.6, 4.3, new THREE.MeshBasicMaterial({ color: acc }));
     this.buildBeard(look, add, M, glow);
     if (look.glasses === 'fogo') { // fogo queimando em bloquinhos que sobem dos olhos

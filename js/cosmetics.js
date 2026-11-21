@@ -126,7 +126,9 @@ LS.Cosmetics = {
   },
   // o visual só usa o que você tem (o resto volta pro grátis): evita usar item da loja sem comprar
   sanitize(look) {
-    const L = Object.assign({}, look), def = { hairStyle: 'curto', beard: 'nenhuma', glasses: 'nenhum', mask: 'nenhuma', hat: 'nenhum', top: 'camiseta', pattern: 'liso', legs: 'lisa' };
+    const L = Object.assign({}, look);
+    if (L.glasses === 'redondos') L.glasses = 'estrela'; // virou o óculos de estrela
+    const def = { hairStyle: 'curto', beard: 'nenhuma', glasses: 'nenhum', mask: 'nenhuma', hat: 'nenhum', top: 'camiseta', pattern: 'liso', legs: 'lisa' };
     for (const slot in this.SLOTS) if (L[slot] && !this.ownsValue(slot, L[slot])) L[slot] = def[slot];
     return L;
   },
