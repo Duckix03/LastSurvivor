@@ -99,6 +99,33 @@ LS.CharacterModel = class {
     else if (look.hat === 'fones') { add(9.6, 1, 2, 0, 8.5, 0, M(0x222428)); [-1, 1].forEach(s => { add(1, 4.6, 2, s * 4.8, 6.3, 0, M(0x222428)); add(1.6, 3, 3, s * 4.9, 3.9, 0, M(acc)); add(0.4, 1.6, 1.6, s * 5.8, 3.9, 0, glow(0x20f0ff)); }); }
     else if (look.hat === 'auréola') { const B = glow(0xfff1a0); add(7, 0.6, 1, 0, 10.6, 3, B); add(7, 0.6, 1, 0, 10.6, -3, B); add(1, 0.6, 5, 3, 10.6, 0, B); add(1, 0.6, 5, -3, 10.6, 0, B); }
     else if (look.hat === 'boné reto') { add(8.8, 2.4, 8.8, 0, 7.2, 0, M(acc)); add(8.8, 0.5, 4.2, 0, 6.2, 5.9, M(acc)); add(2, 1.4, 0.3, 0, 7.4, 4.5, M(0xffffff)); }
+    // ---- itens só de codiguin ----
+    else if (look.hat === 'coroa diamante') {
+      const D = glow(0x5ae8ff), base = M(0xdfe9f5);
+      add(9.2, 1.4, 9.2, 0, 6.7, 0, base);
+      [[-3.9, -3.9], [3.9, -3.9], [-3.9, 3.9], [3.9, 3.9]].forEach(([x, z]) => add(1.3, 3, 1.3, x, 8.8, z, D));
+      [[0, 3.9], [0, -3.9], [3.9, 0], [-3.9, 0]].forEach(([x, z]) => add(1.1, 2.2, 1.1, x, 8.4, z, D));
+      add(1.6, 1.4, 0.5, 0, 6.8, 4.7, glow(0xffffff)); add(0.5, 1.4, 1.6, 4.7, 6.8, 0, glow(0x9a6aff)); add(0.5, 1.4, 1.6, -4.7, 6.8, 0, glow(0x9a6aff));
+    }
+    else if (look.hat === 'astronauta') {
+      const W = M(0xeef1f6), T = M(0xff8a1f);
+      add(10, 1, 10, 0, 7.1, 0, W); add(10, 9.6, 1, 0, 2.3, -5, W); [-1, 1].forEach(sd => { add(1, 9.6, 10, sd * 5, 2.3, 0, W); add(1.2, 2.2, 2.2, sd * 5.3, 3.2, 0, T); });
+      add(10, 1.6, 1, 0, 6.3, 5, W); add(10, 2, 1, 0, -1.6, 5, W); [-1, 1].forEach(sd => add(1, 6.4, 1, sd * 4.5, 2.4, 5, W));
+      const glass = new THREE.MeshBasicMaterial({ color: 0x3aa8ff, transparent: true, opacity: 0.38 });
+      add(8, 6.4, 0.3, 0, 2.4, 5.1, glass);
+    }
+    else if (look.hat === 'pirata') {
+      const K = M(0x17141a), Gd = M(gold);
+      add(11.4, 0.7, 9, 0, 6.7, 0, K); add(8, 3, 6.6, 0, 8.4, -0.2, K);
+      const f = add(11.4, 2.6, 0.8, 0, 7.9, 4.4, K); f.rotation.x = -0.25;
+      add(11.6, 0.4, 0.9, 0, 6.95, 4.55, Gd);
+      add(2, 1.8, 0.3, 0, 8.3, 4.95, M(0xf2efe6)); add(0.5, 0.5, 0.2, -0.45, 8.5, 5.1, M(0x111111)); add(0.5, 0.5, 0.2, 0.45, 8.5, 5.1, M(0x111111));
+    }
+    else if (look.hat === 'halo glitch') {
+      const Mg = glow(0xff2bd6), Cy = glow(0x2ee6ff);
+      add(7, 0.6, 1, 0, 10.6, 3, Mg); add(7, 0.6, 1, 0, 10.6, -3, Cy); add(1, 0.6, 5, 3, 10.6, 0, Cy); add(1, 0.6, 5, -3, 10.6, 0, Mg);
+      add(3, 0.6, 1, 1.2, 11.3, 3, Cy); add(2, 0.6, 1, -2, 9.9, -3, Mg); add(1, 0.6, 2, 3.6, 11.2, -1, Mg);
+    }
     if (look.hairStyle === 'black power' && (!look.hat || look.hat === 'nenhum')) { add(10.4, 5, 10.4, 0, 7.6, -0.4, M(hairC)); add(8.4, 1.6, 2, 0, 9.6, 3.6, M(hairC)); }
     else if (look.hairStyle === 'rabo') { add(2.2, 2.2, 2, 0, 5.6, -4.8, M(hairC)); add(1.6, 4.4, 1.6, 0, 3.0, -5.4, M(hairC)); }
     if (look.glasses === 'cyber') add(8.8, 1.3, 0.9, 0, 3.6, 4.35, glow(0x20f0ff));
@@ -107,6 +134,10 @@ LS.CharacterModel = class {
     if (look.glasses === 'escuros') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x111111));
     else if (look.glasses === 'viseira') add(8.6, 1.2, 0.8, 0, 3.6, 4.3, new THREE.MeshBasicMaterial({ color: acc }));
     if (look.beard === 'cheia') add(7, 2.5, 1.2, 0, 0.6, 4.4, M(new THREE.Color(look.hair).getHex()));
+    else if (look.beard === 'mago') { const Wb = M(0xf4f4f0); add(7.4, 2.6, 1.3, 0, 0.6, 4.45, Wb); add(5.4, 3.4, 1.2, 0, -2.2, 4.5, Wb); add(3, 2.4, 1.1, 0, -4.8, 4.5, Wb); }
+    else if (look.beard === 'gelo') { const I = M(0xa8e8ff); add(7.2, 2.5, 1.2, 0, 0.6, 4.45, I); [-2.4, 0, 2.4].forEach(x => add(1.1, 1.8, 1, x, -1.4, 4.5, glow(0xd8f6ff))); }
+    if (look.glasses === 'fogo') { [-1, 1].forEach(sd => { add(2.2, 1.2, 0.4, sd * 2, 3.6, 4.45, glow(0xff7a1a)); add(1, 1.4, 0.4, sd * 2.4, 4.9, 4.45, glow(0xffe14a)); add(0.8, 0.8, 0.4, sd * 1.6, 5.9, 4.45, glow(0xff4a1a)); }); }
+    else if (look.glasses === 'matrix') add(8.8, 1.3, 0.9, 0, 3.6, 4.35, glow(0x3dff6a));
     this.hatVisible = look.hat && look.hat !== 'nenhum';
   }
   setGun(id) {

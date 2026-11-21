@@ -33,6 +33,7 @@ LS.Wardrobe = {
       const sw = e.target.closest('[data-wcol]'); if (sw) { this.color(sw.dataset.wcol, sw.dataset.v); return; }
       const b = e.target.closest('[data-wbuy]'); if (b) { this.buy(); return; }
       const g = e.target.closest('[data-wroyale]'); if (g) { LS.Audio.click(); this.leave(); LS.Shop.open('royale'); }
+      const cd = e.target.closest('[data-wcode]'); if (cd) { LS.Audio.click(); this.leave(); LS.Shop.open('shop'); LS.Shop.openRedeem(); }
     });
   },
   P() { return LS.playerProfile; },
@@ -59,8 +60,8 @@ LS.Wardrobe = {
     this.render();
   },
   color(key, v) { const P = this.P(); P.look[key] = v; if (this.preview) this.preview[key] = v; LS.Audio.click(); LS.Lobby.changed(); if (this.preview) LS.Lobby.model.applyLook(this.preview); this.render(); },
-  buy() {
-    const C = LS.Cosmetics, err = C.buy(this.sel);
+  async buy() {
+    const C = LS.Cosmetics, it = C.byId[this.sel], err = it && it.dprice ? await C.buyDiamond(this.sel) : C.buy(this.sel);
     const bar = document.getElementById('wr-buybar');
     if (err) { LS.Audio.click(); bar.querySelector('.wr-err').textContent = err; bar.classList.add('shake'); setTimeout(() => bar.classList.remove('shake'), 400); return; }
     LS.Audio.kill();
@@ -82,7 +83,7 @@ LS.Wardrobe = {
         return '<button class="wr-card' + (on ? ' on' : '') + (sel ? ' sel' : '') + (own ? '' : ' locked') + '" data-wid="' + it.id + '" style="--rc:' + R[it.rarity].color + '">' +
           '<div class="wr-img"><img alt="" data-tid="' + it.id + '"></div>' + (on ? '<i class="wr-on">✓</i>' : '') +
           (own ? '' : '<i class="wr-lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></i>') +
-          '<b>' + it.name + '</b><small>' + (own ? (it.free ? 'GRÁTIS' : R[it.rarity].name) : LS.icon('coin', 'coin-i') + it.price.toLocaleString('pt-BR')) + '</small></button>';
+          '<b>' + it.name + '</b><small>' + (own ? (it.free ? 'GRÁTIS' : R[it.rarity].name) : LS.Shop.priceTag(it)) + '</small></button>';
       }).join('') + '</div>';
     });
     (tab.colors || []).forEach(([key, list, label]) => {
@@ -94,8 +95,9 @@ LS.Wardrobe = {
     const it = this.sel && C.byId[this.sel];
     if (it && !C.owns(it.id)) {
       const pieces = it.slot === 'costume' ? C.pieces(it).filter(p => !C.owns(p.id)).length : 0;
-      h += '<div id="wr-buybar" style="--rc:' + R[it.rarity].color + '"><div><span class="wr-rar">' + R[it.rarity].name + '</span><b>' + it.name + '</b><small>Provando' + (pieces ? ' · ' + pieces + ' peças' : '') + ' · você tem ' + LS.icon('coin', 'coin-i') + ' ' + C.coins().toLocaleString('pt-BR') + '</small><span class="wr-err"></span></div>' +
-        '<button class="btn btn-primary" data-wbuy="1">COMPRAR ' + LS.icon('coin', 'coin-i') + ' ' + it.price.toLocaleString('pt-BR') + '</button>' + (it.slot !== 'costume' ? '<button class="btn small" data-wroyale="1">GOLD ROYALE</button>' : '') + '</div>';
+      h += '<div id="wr-buybar" style="--rc:' + R[it.rarity].color + '"><div><span class="wr-rar">' + R[it.rarity].name + '</span><b>' + it.name + '</b><small>Provando' + (pieces ? ' · ' + pieces + ' peças' : '') + ' · você tem ' + (it.dprice ? LS.icon('gem', 'gem-i') + ' ' + C.diamonds().toLocaleString('pt-BR') : LS.icon('coin', 'coin-i') + ' ' + C.coins().toLocaleString('pt-BR')) + '</small><span class="wr-err"></span></div>' +
+        (it.code ? '<button class="btn btn-primary" data-wcode="1">SÓ EM CODIGUIN</button>' : '<button class="btn btn-primary" data-wbuy="1">COMPRAR ' + LS.Shop.priceTag(it) + '</button>') +
+        (it.slot !== 'costume' && !it.code ? '<button class="btn small" data-wroyale="1">GOLD ROYALE</button>' : '') + '</div>';
     }
     const box = document.getElementById('lobby-options');
     box.innerHTML = h;

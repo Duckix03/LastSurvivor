@@ -90,6 +90,19 @@ LS.Account = {
   async setPassword(pass) { const d = await this.api('/api/password', { pass }); this.apply(d.account); },
   async handoff() { return (await this.api('/api/handoff', {})).code; },
   async redeem(code) { const d = await this.api('/api/handoff/redeem', { code }); this.setToken(d.token); this.apply(d.account); return d; },
+  // diamantes e codiguins (o servidor guarda os diamantes)
+  async buyDiamond(item) { const d = await this.api('/api/buy', { item }); this.apply(d.account); return d; },
+  async daily() { const d = await this.api('/api/daily', {}); this.apply(d.account); return d; },
+  async redeemCode(code) {
+    const d = await this.api('/api/redeem', { code }); const R = d.reward;
+    if (R.coins) { LS.stats.coins = (LS.stats.coins || 0) + R.coins; LS.saveStats(); }
+    this.apply(d.account);
+    if (R.item && LS.Cosmetics.byId[R.item]) LS.Cosmetics.give(R.item); // libera as peças (fantasia)
+    return R;
+  },
+  async adminCodes() { return (await this.api('/api/admin/codes', null, 'GET')).codes; },
+  async adminCreateCode(o) { return (await this.api('/api/admin/codes/create', o)).code; },
+  async adminDeleteCode(code) { return (await this.api('/api/admin/codes/delete', { code })).codes; },
   async logout() { try { await this.api('/api/logout', {}); } catch (e) { /* tanto faz */ } this.drop(); },
   // troca o nome da conta: o servidor cobra as moedas (manda as moedas atuais antes, pra ele saber quantas tem)
   async rename(name) {

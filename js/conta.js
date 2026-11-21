@@ -25,6 +25,8 @@ LS.Conta = {
       else if (a === 'pass') this.run(() => LS.Account.setPassword(document.getElementById('ct-newpass').value), 'Senha criada! Agora dá pra entrar com nome e senha também.');
       else if (a === 'app-google') this.appGoogle(LS.Account.logged());
       else if (a === 'profile') { LS.Profile.open(); LS.UI.openPanel('panel-stats'); }
+      else if (a === 'daily') this.run(async () => { const d = await LS.Account.daily(); LS.Menu.render(); this._msg = '+' + d.got + ' diamantes! Volte amanhã.'; }, null).then(() => this._msg && this.render(this._msg));
+      else if (a === 'redeem') this.redeem();
     });
     this.box().addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('.ct-form')) this.formGo(); });
   },
@@ -47,12 +49,13 @@ LS.Conta = {
         (g ? '<button class="btn small" data-ct="unlink">DESLIGAR</button>' : '<div class="ct-gslot" id="ct-gbtn"></div>') + '</div>' +
         (me.hasPass ? '' : '<div class="ct-row"><span class="ct-ico">🔑</span><div class="ct-rt"><b>Senha</b><small>Sua conta entra só pelo Google. Crie uma senha se quiser entrar com nome e senha também.</small>' +
           '<div class="ct-inline"><input id="ct-newpass" type="password" maxlength="64" placeholder="nova senha (6 ou mais)" autocomplete="new-password"><button class="btn small" data-ct="pass">CRIAR</button></div></div></div>') +
+        this.walletRows() +
         '<div class="ct-btns"><button class="btn" data-ct="profile">VER PERFIL</button><button class="btn" data-ct="logout">SAIR DA CONTA</button></div></div>';
     } else {
       const reg = this.formMode === 'register';
       el.innerHTML = '<div class="ct-card">' +
         '<div class="ct-head"><img class="ct-av" src="' + av + '" alt=""><div class="ct-who"><b>' + this.esc(P.name) + '</b><small>Convidado: o progresso fica só neste aparelho</small></div></div>' +
-        '<p class="ct-txt">Entre pra <b>sincronizar</b> o seu perfil, visual, itens e estatísticas entre o celular e o computador, e pra ninguém usar o seu nome.</p>' +
+        '<p class="ct-txt">Entre pra <b>sincronizar</b> o seu perfil, visual, itens e estatísticas entre o celular e o computador, e pra ninguém usar o seu nome. Com conta você também ganha <b>diamantes</b> e resgata <b>codiguins</b>.</p>' +
         note +
         '<div class="ct-gwrap" id="ct-gbtn"></div>' +
         '<div class="ct-or"><span>ou com nome e senha</span></div>' +
@@ -65,8 +68,26 @@ LS.Conta = {
     }
     this.googleButton(document.getElementById('ct-gbtn'), A.logged());
   },
+  // diamantes, recompensa diária e codiguin (só com conta)
+  walletRows() {
+    const me = LS.Account.me, left = (me.dailyAt || 0) + 20 * 3600e3 - Date.now();
+    return '<div class="ct-row"><span class="ct-ico dark">' + LS.icon('gem', 'gem-i') + '</span><div class="ct-rt"><b>' + (me.diamonds || 0).toLocaleString('pt-BR') + ' diamantes</b><small>Compram fantasias completas na loja. Ganhe em codiguins e todo dia aqui.</small></div>' +
+      (left <= 0 ? '<button class="btn small btn-primary" data-ct="daily">+10 DIÁRIO</button>' : '<small class="ct-wait">próximo em ' + Math.ceil(left / 3600e3) + ' h</small>') + '</div>' +
+      '<div class="ct-row"><span class="ct-ico dark">' + LS.icon('plus') + '</span><div class="ct-rt"><b>Codiguin</b><small>Itens exclusivos, moedas e diamantes.</small>' +
+      '<div class="ct-inline"><input id="ct-code" maxlength="20" spellcheck="false" autocomplete="off" placeholder="DIGITE O CÓDIGO" style="text-transform:uppercase;letter-spacing:2px"><button class="btn small" data-ct="redeem">RESGATAR</button></div></div></div>';
+  },
   async run(fn, okMsg) {
-    try { await fn(); this.render(okMsg); } catch (e) { this.render(e.message, true); }
+    try { this._msg = null; await fn(); if (okMsg) this.render(okMsg); } catch (e) { this.render(e.message, true); }
+  },
+  async redeem() {
+    const inp = document.getElementById('ct-code'); if (!inp || !inp.value.trim()) return;
+    try {
+      const R = await LS.Account.redeemCode(inp.value.trim()), it = R.item && LS.Cosmetics.byId[R.item], p = [];
+      if (it) p.push(it.name + (R.had ? ' (você já tinha)' : ''));
+      if (R.coins) p.push('+' + R.coins.toLocaleString('pt-BR') + ' moedas');
+      if (R.diamonds) p.push('+' + R.diamonds.toLocaleString('pt-BR') + ' diamantes');
+      LS.Audio.victory(); LS.Menu.render(); this.render('Codiguin resgatado: ' + p.join(', ') + '!');
+    } catch (e) { this.render(e.message, true); }
   },
   async formGo() {
     const n = document.getElementById('ct-name'), p = document.getElementById('ct-pass'), p2 = document.getElementById('ct-pass2');

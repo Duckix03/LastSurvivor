@@ -127,6 +127,7 @@ LS.Skin = {
     if (look.beard === 'curta') { for (let x = 0; x < 8; x++) { if (rnd() < 0.7) px(fx + x, fy + 7, bc, 0.25); } [0, 1, 6, 7].forEach(x => px(fx + x, fy + 6, bc, 0.25)); }
     else if (look.beard === 'cheia') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) { if (y === 6 && x >= 2 && x <= 5) continue; px(fx + x, fy + y, bc, 0.15); } [H[0], H[1]].forEach(r => rect(r, bc, 0.15, [5, 8])); }
     else if (look.beard === 'bigode') [2, 3, 4, 5].forEach(x => px(fx + x, fy + 5, bc, 0.1));
+    else if (look.beard === 'mago' || look.beard === 'gelo') { const c2 = look.beard === 'mago' ? '#f4f4f0' : '#a8e8ff'; for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) { if (y === 6 && x >= 2 && x <= 5) continue; px(fx + x, fy + y, c2, 0.06); } [H[0], H[1]].forEach(r => rect(r, c2, 0.06, [5, 8])); }
     if (look.mask === 'bandana') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, (x + y) % 3 === 0 ? '#f0f0f0' : acc, 0.08); [H[0], H[1]].forEach(r => rect(r, acc, 0.08, [5, 7])); }
     else if (look.mask === 'caveira') {
       for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#ece6d6', 0.05);
@@ -153,6 +154,8 @@ LS.Skin = {
     else if (look.glasses === 'cyber') { for (let x = 0; x < 8; x++) px(fx + x, fy + 4, '#20f0ff', 0); [H[0], H[1]].forEach(r => rect(r, '#20f0ff', 0, [4, 5])); }
     else if (look.glasses === 'coração') { [1, 2, 5, 6].forEach(x => px(fx + x, fy + 3, '#ff6aa8', 0)); [0, 1, 2, 5, 6, 7].forEach(x => px(fx + x, fy + 4, '#ff3d8a', 0)); [3, 4].forEach(x => px(fx + x, fy + 4, '#c02060', 0)); [1, 6].forEach(x => px(fx + x, fy + 5, '#ff3d8a', 0)); }
     else if (look.glasses === 'aviador') { for (let x = 0; x < 8; x++) px(fx + x, fy + 3, '#d8b050', 0); [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, '#3a2a10', 0)); }
+    else if (look.glasses === 'fogo') { [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, x === 2 || x === 5 ? '#ffe14a' : '#ff7a1a', 0)); }
+    else if (look.glasses === 'matrix') { for (let x = 0; x < 8; x++) px(fx + x, fy + 4, x % 2 ? '#3dff6a' : '#1a8a3a', 0); [H[0], H[1]].forEach(r => rect(r, '#3dff6a', 0, [4, 5])); }
     else if (look.glasses === 'viseira') { for (let x = 0; x < 8; x++) px(fx + x, fy + 4, acc, 0.05); [H[0], H[1]].forEach(r => rect(r, '#202020', 0.05, [4, 5])); }
     // ---- corpo ----
     const B = this.faceRects('body');
@@ -165,6 +168,13 @@ LS.Skin = {
     else if (look.pattern === 'tigre') [B[0], B[1], B[4], B[5]].forEach(r => { for (let i = 0; i < 4; i++) { const y0 = 1 + i * 3; for (let x = 0; x < r[2]; x++) { const y = y0 + Math.round(Math.sin(x * 1.3 + i) * 0.8); if (rnd() < 0.85) px(r[0] + x, r[1] + Math.max(0, Math.min(r[3] - 1, y)), '#16120e', 0.1); } } });
     else if (look.pattern === 'chamas') [B[0], B[1], B[4], B[5]].forEach(r => { for (let x = 0; x < r[2]; x++) { const h = 3 + Math.floor(rnd() * 5); for (let y = 0; y < h; y++) px(r[0] + x, r[1] + r[3] - 2 - y, y > h - 2 ? '#ffe14a' : y > h * 0.5 ? '#ff8a1f' : '#e0301a', 0.08); } });
     else if (look.pattern === 'galáxia') B.forEach(r => { for (let y = 0; y < r[3]; y++) for (let x = 0; x < r[2]; x++) { const v = rnd(); px(r[0] + x, r[1] + y, v < 0.08 ? '#ffffff' : v < 0.3 ? '#5a2a9a' : v < 0.45 ? '#2a3a8a' : '#120f2a', 0.1); } });
+    else if (look.pattern === 'glitch') B.forEach(r => { for (let y = 0; y < r[3]; y++) { const line = rnd(); for (let x = 0; x < r[2]; x++) { const v = rnd(); px(r[0] + x, r[1] + y, line < 0.18 && v < 0.8 ? (line < 0.09 ? '#ff2bd6' : '#2ee6ff') : v < 0.05 ? '#ffffff' : '#15141e', 0.06); } } });
+    else if (look.pattern === 'circuito') B.forEach(r => { for (let y = 0; y < r[3]; y++) for (let x = 0; x < r[2]; x++) px(r[0] + x, r[1] + y, '#0d1a12', 0.05);
+      for (let i = 0; i < r[2] * r[3] / 10; i++) { let x = Math.floor(rnd() * r[2]), y = Math.floor(rnd() * r[3]); const n = 2 + Math.floor(rnd() * 4), hz = rnd() < 0.5;
+        for (let k = 0; k < n; k++) { if (x >= 0 && x < r[2] && y >= 0 && y < r[3]) px(r[0] + x, r[1] + y, '#2fd46a', 0); hz ? x++ : y++; }
+        if (x >= 0 && x < r[2] && y >= 0 && y < r[3]) px(r[0] + x, r[1] + y, '#c8ffd8', 0); } });
+    else if (look.pattern === 'diamante') B.forEach(r => { for (let y = 0; y < r[3]; y++) for (let x = 0; x < r[2]; x++) { const a = (x + y) % 4, b = ((x - y) % 4 + 4) % 4;
+      px(r[0] + x, r[1] + y, a === 0 && b === 0 ? '#ffffff' : a === 0 || b === 0 ? '#5ae8ff' : '#123a5a', 0.05); } });
     else if (look.pattern === 'raio') { [[4, 0], [3, 1], [3, 2], [2, 3], [2, 4], [3, 4], [4, 4], [5, 4], [4, 5], [4, 6], [3, 7], [3, 8], [2, 9]].forEach(([x, y]) => { px(front[0] + x, front[1] + y, '#ffe14a', 0); if (x + 1 < 8) px(front[0] + x + 1, front[1] + y, '#ffc020', 0); }); }
     else if (look.pattern === 'faixa') { for (let y = 0; y < 11; y++) { const x = Math.floor(y * 8 / 11); px(front[0] + x, front[1] + y, '#f0f0f0'); if (x + 1 < 8) px(front[0] + x + 1, front[1] + y, '#f0f0f0'); } }
     const top = look.top || 'camiseta';

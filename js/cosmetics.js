@@ -5,7 +5,8 @@
 LS.Cosmetics = {
   RARITY: [
     { name: 'COMUM', color: '#9aa4b0' }, { name: 'RARO', color: '#3ab4ff' },
-    { name: 'ÉPICO', color: '#b060ff' }, { name: 'LENDÁRIO', color: '#ffc531' }
+    { name: 'ÉPICO', color: '#b060ff' }, { name: 'LENDÁRIO', color: '#ffc531' },
+    { name: 'CÓDIGO', color: '#2ee6ff' } // só sai em codiguin
   ],
   // cada parte do visual: campo no "look", nome e onde a câmera foca na foto 3D
   SLOTS: {
@@ -29,14 +30,26 @@ LS.Cosmetics = {
     ['legs', 'chamas', 'Calça Chamas', 2, 1400], ['legs', 'camuflada', 'Calça Camuflada', 1, 800], ['legs', 'listra', 'Calça Listrada', 1, 700], ['legs', 'rasgada', 'Calça Rasgada', 0, 400],
     ['hairStyle', 'black power', 'Black Power', 1, 900], ['hairStyle', 'rabo', 'Rabo de Cavalo', 0, 500]
   ],
-  // fantasias completas: comprar dá todas as peças de uma vez (mais barato que separado)
+  // só de codiguin (não vende na loja nem sai no Gold Royale): [parte, valor, nome]
+  EXCLUSIVE: [
+    ['hat', 'coroa diamante', 'Coroa de Diamante'], ['hat', 'astronauta', 'Capacete Espacial'], ['hat', 'pirata', 'Chapéu de Pirata'], ['hat', 'halo glitch', 'Halo Glitch'],
+    ['beard', 'mago', 'Barba de Mago'], ['beard', 'gelo', 'Barba de Gelo'], ['glasses', 'fogo', 'Olhos de Fogo'], ['glasses', 'matrix', 'Visor Matrix'],
+    ['pattern', 'glitch', 'Glitch'], ['pattern', 'circuito', 'Circuito'], ['pattern', 'diamante', 'Diamante']
+  ],
+  EXCLUSIVE_COSTUMES: [
+    { id: 'lenda', name: 'Lenda dos Códigos', look: { hat: 'coroa diamante', pattern: 'diamante', top: 'jaqueta', shirt: '#1a2a4a', accent: '#123a5a', pants: '#111111', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma' } },
+    { id: 'astronauta', name: 'Astronauta', look: { hat: 'astronauta', top: 'colete', shirt: '#e8e8e8', pattern: 'liso', accent: '#ff8a1f', pants: '#e8e8e8', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', beard: 'nenhuma' } },
+    { id: 'pirata', name: 'Capitão Pirata', look: { hat: 'pirata', beard: 'mago', top: 'jaqueta', shirt: '#f0f0f0', pattern: 'listras', accent: '#6a1a1a', pants: '#2a2a3a', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma' } },
+    { id: 'hacker', name: 'Hacker', look: { glasses: 'matrix', pattern: 'circuito', top: 'moletom', shirt: '#101410', accent: '#1a1f1a', pants: '#111111', legs: 'lisa', hat: 'nenhum', mask: 'nenhuma' } }
+  ],
+  // fantasias completas: comprar dá todas as peças de uma vez. Pagas em DIAMANTES (dprice)
   COSTUMES: [
-    { id: 'rei', name: 'Rei do Galpão', rarity: 3, price: 7500, look: { hat: 'coroa', top: 'terno', shirt: '#b03030', pattern: 'liso', pants: '#111111', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', beard: 'cheia', accent: '#e0a020' } },
-    { id: 'ninja', name: 'Ninja das Sombras', rarity: 2, price: 3200, look: { mask: 'ninja', top: 'kimono', shirt: '#1c1c22', pattern: 'liso', accent: '#c0302a', pants: '#111111', legs: 'lisa', hat: 'nenhum', glasses: 'nenhum' } },
-    { id: 'caveira', name: 'Motoqueiro Caveira', rarity: 2, price: 3800, look: { mask: 'caveira', top: 'couro', shirt: '#2a2a2a', pattern: 'chamas', pants: '#111111', legs: 'chamas', hat: 'nenhum', glasses: 'nenhum' } },
-    { id: 'cyber', name: 'Cyber Punk', rarity: 3, price: 6000, look: { glasses: 'cyber', hat: 'fones', top: 'armadura', pattern: 'raio', accent: '#20d0e0', hairStyle: 'moicano', hair: '#d040a0', pants: '#1f2f6f', legs: 'listra', mask: 'nenhuma' } },
-    { id: 'anjo', name: 'Anjo', rarity: 3, price: 5200, look: { hat: 'auréola', top: 'camiseta', shirt: '#e0e0e0', pattern: 'galáxia', pants: '#e0e0e0', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', accent: '#f0f0f0' } },
-    { id: 'gasmask', name: 'Sobrevivente Tóxico', rarity: 2, price: 3600, look: { mask: 'gás', hat: 'boné reto', top: 'colete', shirt: '#3a4a2a', pattern: 'camuflado', accent: '#3a5a2a', pants: '#3a4a2a', legs: 'camuflada', glasses: 'nenhum' } }
+    { id: 'rei', dprice: 4000, name: 'Rei do Galpão', rarity: 3, price: 7500, look: { hat: 'coroa', top: 'terno', shirt: '#b03030', pattern: 'liso', pants: '#111111', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', beard: 'cheia', accent: '#e0a020' } },
+    { id: 'ninja', dprice: 1000, name: 'Ninja das Sombras', rarity: 2, price: 3200, look: { mask: 'ninja', top: 'kimono', shirt: '#1c1c22', pattern: 'liso', accent: '#c0302a', pants: '#111111', legs: 'lisa', hat: 'nenhum', glasses: 'nenhum' } },
+    { id: 'caveira', dprice: 1500, name: 'Motoqueiro Caveira', rarity: 2, price: 3800, look: { mask: 'caveira', top: 'couro', shirt: '#2a2a2a', pattern: 'chamas', pants: '#111111', legs: 'chamas', hat: 'nenhum', glasses: 'nenhum' } },
+    { id: 'cyber', dprice: 3500, name: 'Cyber Punk', rarity: 3, price: 6000, look: { glasses: 'cyber', hat: 'fones', top: 'armadura', pattern: 'raio', accent: '#20d0e0', hairStyle: 'moicano', hair: '#d040a0', pants: '#1f2f6f', legs: 'listra', mask: 'nenhuma' } },
+    { id: 'anjo', dprice: 2200, name: 'Anjo', rarity: 3, price: 5200, look: { hat: 'auréola', top: 'camiseta', shirt: '#e0e0e0', pattern: 'galáxia', pants: '#e0e0e0', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', accent: '#f0f0f0' } },
+    { id: 'gasmask', dprice: 1200, name: 'Sobrevivente Tóxico', rarity: 2, price: 3600, look: { mask: 'gás', hat: 'boné reto', top: 'colete', shirt: '#3a4a2a', pattern: 'camuflado', accent: '#3a5a2a', pants: '#3a4a2a', legs: 'camuflada', glasses: 'nenhum' } }
   ],
   ROYALE_COST: 500, ROYALE_10: 5000, // 10 giros (+1 grátis)
 
@@ -49,7 +62,9 @@ LS.Cosmetics = {
       list.forEach(v => this.items.push({ id: slot + ':' + v, slot, val: v, name: this.cap(v), rarity: 0, price: 0, free: true }));
     }
     this.PREMIUM.forEach(([slot, val, name, rarity, price]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity, price, free: false }));
-    this.COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: c.rarity, price: c.price, free: false, look: c.look }));
+    this.COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: c.rarity, price: c.price, dprice: c.dprice, free: false, look: c.look }));
+    this.EXCLUSIVE.forEach(([slot, val, name]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity: 4, price: 0, free: false, code: true }));
+    this.EXCLUSIVE_COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: 4, price: 0, free: false, code: true, look: c.look }));
     this.byId = {}; this.items.forEach(i => { this.byId[i.id] = i; });
     // presets antigos (Sobrevivente, Militar...) viram fantasias grátis
     Object.keys(K.PRESETS).forEach(n => { const it = { id: 'costume:' + n, slot: 'costume', val: n, name: n, rarity: 0, price: 0, free: true, look: K.PRESETS[n] }; this.items.push(it); this.byId[it.id] = it; });
@@ -59,6 +74,19 @@ LS.Cosmetics = {
   },
   cap(v) { return v.charAt(0).toUpperCase() + v.slice(1); },
   coins() { return LS.stats.coins || 0; },
+  // diamantes ficam na conta (servidor); convidado não tem
+  diamonds() { return LS.Account && LS.Account.logged() ? (LS.Account.me.diamonds || 0) : 0; },
+  // fantasia com preço em diamante: o servidor cobra e guarda; depois o jogo libera as peças
+  async buyDiamond(id) {
+    const it = this.byId[id];
+    if (!it || !it.dprice) return 'Item inválido.';
+    if (this.owns(id)) return 'Você já tem esse item.';
+    if (!LS.Account.logged()) return 'Entre na sua conta pra usar diamantes (Configurações → Conta).';
+    if (this.diamonds() < it.dprice) return 'Diamantes insuficientes: faltam ' + (it.dprice - this.diamonds()).toLocaleString('pt-BR') + '.';
+    try { await LS.Account.buyDiamond(id); } catch (e) { return e.message; }
+    this.give(id);
+    return '';
+  },
   // peças que a fantasia libera
   pieces(c) { return Object.keys(c.look).map(k => this.byId[k + ':' + c.look[k]]).filter(i => i && !i.free); },
   owns(id) {
@@ -82,6 +110,8 @@ LS.Cosmetics = {
     const it = this.byId[id];
     if (!it || it.free) return 'Item inválido.';
     if (this.owns(id)) return 'Você já tem esse item.';
+    if (it.code) return 'Esse item só sai em codiguin.';
+    if (it.dprice) return 'Esse item é comprado com diamantes.';
     if (this.coins() < it.price) return 'Moedas insuficientes: faltam ' + (it.price - this.coins()).toLocaleString('pt-BR') + '.';
     LS.stats.coins -= it.price; LS.saveStats();
     this.give(id);
@@ -97,7 +127,7 @@ LS.Cosmetics = {
   // ---------- Gold Royale ----------
   // chance por raridade (comum muito mais fácil que lendário); repetido vira moedas de volta
   ROYALE_WEIGHT: [46, 32, 16, 6],
-  royalePool() { return this.items.filter(i => !i.free && i.slot !== 'costume'); },
+  royalePool() { return this.items.filter(i => !i.free && !i.code && i.slot !== 'costume'); },
   spin() {
     const pool = this.royalePool(), W = this.ROYALE_WEIGHT;
     let tot = 0; pool.forEach(i => { tot += W[i.rarity]; });

@@ -120,3 +120,22 @@ Como funciona:
   (`?glogin=app`), a pessoa entra com o Google lá e toca em **VOLTAR PRO JOGO**. O navegador devolve pro app
   um código de uso único (vale 3 minutos), e o app troca o código pela sessão. Nada de senha passa pela URL.
 - Conta que só entra pelo Google pode **criar uma senha** depois (Configurações → Conta).
+
+## 💎 Diamantes e codiguins
+
+- **Diamantes** ficam guardados só no servidor (`a.diamonds`). Compram as **fantasias completas** na loja
+  (preços em `DIAMOND_PRICES`, iguais aos `dprice` de `js/cosmetics.js`).
+- Como ganhar: **codiguins** e a **recompensa diária** (+10 a cada 20 h, em Configurações → Conta ou no botão DIÁRIO da loja).
+- **Itens exclusivos** (raridade CÓDIGO) só entram na conta por codiguin. O servidor não aceita que o jogo
+  "se dê" itens de diamante ou exclusivos pelo salvamento do perfil (lista `PROTECTED`).
+
+### Criar um codiguin (owner)
+Perfil → **ADMIN** → aba **GERADOR DE CODIGUIN**:
+1. **Selecionar item para codiguinho** (opcional): escolhe no painel com as fotos 3D (fantasias, exclusivos, chapéus...).
+2. Marque **Dar moedas ou diamantes?** e escolha **Moedas**, **Diamantes** ou **Os 2** com as quantidades.
+3. Código (vazio = aleatório, tipo `LSK2B79NJLLE`), **usos** (0 = sem limite) e **validade** em dias (0 = sempre).
+4. **Gerar codiguin** → aparece o código pra copiar. A lista embaixo mostra usos, validade e deixa apagar.
+
+Cada conta resgata cada código **uma vez** (Configurações → Conta ou botão **CODIGUIN** na loja).
+**Adicionar item exclusivo novo:** coloque em `EXCLUSIVE` (js/cosmetics.js), desenhe em `js/character.js`/`js/skin.js`
+e adicione o id em `EXCLUSIVE` no `server/src/accounts.js` (fantasia: `EXCLUSIVE_COSTUMES` com as peças).
