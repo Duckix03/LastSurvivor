@@ -46,14 +46,17 @@ const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pan
 const ITEM_RE = /^[a-zA-Z]{2,10}:[a-zA-Z0-9À-ÿ .\-]{1,24}$/; // itens da loja: "parte:valor" (ex.: hat:coroa)
 const STAT_KEYS = ['games', 'wins', 'kills', 'xp', 'coins', 'dmg', 'best'];
 // preços em diamantes (iguais aos de js/cosmetics.js)
-const DIAMOND_PRICES = { 'costume:rei': 4000, 'costume:cyber': 3500, 'costume:anjo': 2200, 'costume:caveira': 1500, 'costume:gasmask': 1200, 'costume:ninja': 1000 };
+const DIAMOND_PRICES = { 'costume:dino': 1800, 'costume:rei': 4000, 'costume:cyber': 3500, 'costume:anjo': 2200, 'costume:caveira': 1500, 'costume:gasmask': 1200, 'costume:ninja': 1000 };
 // itens só de codiguin (iguais aos de js/cosmetics.js) e as peças que cada fantasia exclusiva libera
 const EXCLUSIVE_COSTUMES = { 'costume:lenda': ['hat:coroa diamante', 'pattern:diamante'], 'costume:astronauta': ['hat:astronauta'],
   'costume:pirata': ['hat:pirata', 'beard:mago'], 'costume:hacker': ['glasses:matrix', 'pattern:circuito'] };
 const EXCLUSIVE = new Set(['hat:coroa diamante', 'hat:astronauta', 'hat:pirata', 'hat:halo glitch', 'beard:mago', 'beard:gelo', 'glasses:fogo', 'glasses:matrix',
   'pattern:glitch', 'pattern:circuito', 'pattern:diamante', ...Object.keys(EXCLUSIVE_COSTUMES)]);
+// peças que só vêm com uma fantasia de diamante
+const DIAMOND_PIECES = { 'costume:dino': ['hat:dino', 'pattern:escamas'] };
+const PIECE_SET = new Set(Object.values(DIAMOND_PIECES).flat());
 // esses só entram na conta pelo servidor (compra com diamante ou codiguin): o jogo não consegue se dar eles
-const PROTECTED = it => EXCLUSIVE.has(it) || it in DIAMOND_PRICES;
+const PROTECTED = it => EXCLUSIVE.has(it) || it in DIAMOND_PRICES || PIECE_SET.has(it);
 const DAILY_DIAMONDS = 10, DAILY_MS = 20 * 3600e3;
 const CODE_RE = /^[A-Z0-9-]{4,20}$/, CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -353,7 +356,7 @@ export class Accounts {
     a.profile = a.profile || this.cleanProfile({});
     const owned = a.profile.owned || (a.profile.owned = []);
     const had = owned.includes(item);
-    for (const x of [item, ...(EXCLUSIVE_COSTUMES[item] || [])]) if (!owned.includes(x)) owned.push(x);
+    for (const x of [item, ...(EXCLUSIVE_COSTUMES[item] || DIAMOND_PIECES[item] || [])]) if (!owned.includes(x)) owned.push(x);
     return !had;
   }
   async buyDiamond(a, b) {

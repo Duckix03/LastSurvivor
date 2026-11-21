@@ -58,6 +58,8 @@ LS.CharacterModel = class {
     this.helmetMesh = new THREE.Mesh(LS.boxGeo(9 * S, 4 * S, 9 * S, 2 * S), M(0x3a4a2a)); this.helmetMesh.position.y = 5.5 * S; this.helmetMesh.visible = false; this.headG.add(this.helmetMesh);
     this.brim = new THREE.Mesh(LS.boxGeo(8 * S, 0.8 * S, 3 * S), M(0x333333)); this.brim.position.set(0, 6.4 * S, 5.4 * S); this.headG.add(this.brim);
     this.accG = new THREE.Group(); this.headG.add(this.accG);
+    this.extraG = new THREE.Group(); this.hips.add(this.extraG); // acessórios do corpo (rabo do dino)
+    this.shirtFx = []; this.fx = []; this.fxT = 0;              // camisas animadas e efeitos dos acessórios
     this.anim = null; // LS.AnimPlayer, criado quando tocar a primeira animação externa
     // a arma fica num encaixe preso no corpo; as duas mãos seguram a arma por IK (como nos jogos de tiro modernos)
     this.gunSocket = new THREE.Group(); this.hips.add(this.gunSocket);
@@ -79,8 +81,11 @@ LS.CharacterModel = class {
   }
   // acessórios 3D da cabeça: chapéus, óculos e barba cheia
   buildAccessories(look) {
-    const S = LS.Skin.PX, g = this.accG;
+    const S = LS.Skin.PX, g = this.accG, F = LS.AccFX;
     while (g.children.length) g.remove(g.children[0]);
+    while (this.extraG.children.length) this.extraG.remove(this.extraG.children[0]);
+    this.shirtFx.forEach(m => m.parent && m.parent.remove(m)); this.shirtFx = [];
+    this.fx = [];
     const acc = new THREE.Color(look.accent || '#2a2a2a').getHex(), M = c => LS.lambert(c);
     const add = (w, h, d, x, y, z, mat) => { const m = new THREE.Mesh(LS.boxGeo(w * S, h * S, d * S), mat); m.position.set(x * S, y * S, z * S); m.castShadow = true; g.add(m); return m; };
     if (look.hat === 'gorro') { add(8.8, 3, 8.8, 0, 7.6, 0, M(acc)); add(9, 1, 9, 0, 6.2, 0, M(new THREE.Color(acc).multiplyScalar(0.75).getHex())); }
@@ -97,15 +102,37 @@ LS.CharacterModel = class {
     else if (look.hat === 'orelhas de gato') { add(8.6, 0.8, 1.2, 0, 7.9, 0, M(acc)); [-1, 1].forEach(s => { add(2.4, 2.6, 1.4, s * 2.6, 9.2, 0, M(acc)); add(1.2, 1.4, 0.4, s * 2.6, 9.0, 0.6, M(0xff9ab8)); }); }
     else if (look.hat === 'chifres') { [-1, 1].forEach(s => { const a = add(1.6, 3, 1.6, s * 3.1, 8.6, 0.6, M(0xb01818)); a.rotation.z = -s * 0.45; const b = add(1.1, 1.8, 1.1, s * 4.0, 10.5, 0.6, M(0xd83030)); b.rotation.z = -s * 0.75; }); }
     else if (look.hat === 'fones') { add(9.6, 1, 2, 0, 8.5, 0, M(0x222428)); [-1, 1].forEach(s => { add(1, 4.6, 2, s * 4.8, 6.3, 0, M(0x222428)); add(1.6, 3, 3, s * 4.9, 3.9, 0, M(acc)); add(0.4, 1.6, 1.6, s * 5.8, 3.9, 0, glow(0x20f0ff)); }); }
-    else if (look.hat === 'auréola') { const B = glow(0xfff1a0); add(7, 0.6, 1, 0, 10.6, 3, B); add(7, 0.6, 1, 0, 10.6, -3, B); add(1, 0.6, 5, 3, 10.6, 0, B); add(1, 0.6, 5, -3, 10.6, 0, B); }
+    else if (look.hat === 'auréola') { // halo que flutua e solta uma aurinha amarela e branca
+      const hm = new THREE.MeshBasicMaterial({ color: 0xfff1a0 }), hg = F.ring(this, g, hm, 10.6);
+      const P = F.pool(g, 12, () => ({ life: Math.random(), max: 0.9 + Math.random() * 0.6 }));
+      this.fx.push((t, dt) => {
+        hg.position.y = Math.sin(t * 2.2) * 0.3 * S; hm.color.setHex(Math.sin(t * 3) > 0.2 ? 0xfffbe0 : 0xfff1a0);
+        for (const p of P) {
+          p.life += dt; if (p.life > p.max) { p.life = 0; p.max = 0.9 + Math.random() * 0.6; [p.x, p.z] = F.onRing(3); p.c = Math.random() < 0.5 ? 0xfff1a0 : 0xffffff; }
+          const k = p.life / p.max; p.m.material = F.glow(p.c || 0xffffff);
+          p.m.position.set(p.x * (1 + k * 0.25) * S, (10.6 + k * 3.2) * S + hg.position.y, p.z * (1 + k * 0.25) * S); p.m.scale.setScalar((1 - k) * 0.7 * S + 0.0001);
+        }
+      });
+    }
     else if (look.hat === 'boné reto') { add(8.8, 2.4, 8.8, 0, 7.2, 0, M(acc)); add(8.8, 0.5, 4.2, 0, 6.2, 5.9, M(acc)); add(2, 1.4, 0.3, 0, 7.4, 4.5, M(0xffffff)); }
     // ---- itens só de codiguin ----
-    else if (look.hat === 'coroa diamante') {
-      const D = glow(0x5ae8ff), base = M(0xdfe9f5);
-      add(9.2, 1.4, 9.2, 0, 6.7, 0, base);
-      [[-3.9, -3.9], [3.9, -3.9], [-3.9, 3.9], [3.9, 3.9]].forEach(([x, z]) => add(1.3, 3, 1.3, x, 8.8, z, D));
-      [[0, 3.9], [0, -3.9], [3.9, 0], [-3.9, 0]].forEach(([x, z]) => add(1.1, 2.2, 1.1, x, 8.4, z, D));
-      add(1.6, 1.4, 0.5, 0, 6.8, 4.7, glow(0xffffff)); add(0.5, 1.4, 1.6, 4.7, 6.8, 0, glow(0x9a6aff)); add(0.5, 1.4, 1.6, -4.7, 6.8, 0, glow(0x9a6aff));
+    else if (look.hat === 'coroa diamante') { // rework: pedras lapidadas que pulsam azul/branco + brilhinhos piscando
+      const band = M(0xdfe9f5), trim = M(gold), gem = new THREE.MeshBasicMaterial({ color: 0x5ae8ff }), gem2 = new THREE.MeshBasicMaterial({ color: 0xb4f4ff });
+      add(9.2, 1.3, 9.2, 0, 6.65, 0, band); add(9.4, 0.35, 9.4, 0, 7.4, 0, trim); add(9.4, 0.35, 9.4, 0, 5.95, 0, trim);
+      const stone = (x, z, h) => { add(0.9, 0.7, 0.9, x, 7.9, z, gem2); add(1.6, h, 1.6, x, 8.25 + h / 2, z, gem); add(0.9, 0.9, 0.9, x, 8.7 + h, z, gem2); add(0.4, 0.6, 0.4, x, 9.4 + h, z, glow(0xffffff)); };
+      [[-3.9, -3.9], [3.9, -3.9], [-3.9, 3.9], [3.9, 3.9]].forEach(([x, z]) => stone(x, z, 1.8));
+      [[0, 3.9], [0, -3.9], [3.9, 0], [-3.9, 0]].forEach(([x, z]) => stone(x, z, 1.1));
+      add(2, 1.8, 0.5, 0, 6.7, 4.75, glow(0xffffff)); add(1.2, 1.0, 0.3, 0, 6.7, 5.05, gem);
+      add(0.5, 1.4, 1.6, 4.75, 6.7, 0, glow(0x9a6aff)); add(0.5, 1.4, 1.6, -4.75, 6.7, 0, glow(0x9a6aff));
+      const SP = [[-3.9, 11.6, -3.9], [3.9, 11.4, -3.9], [-3.9, 11.5, 3.9], [3.9, 11.7, 3.9], [0, 10.7, 4.4], [4.6, 10.6, 0], [-4.6, 10.8, 0], [0, 10.6, -4.4], [2.2, 9.4, 4.9], [-2.4, 9.6, 4.9]];
+      const sparks = []; for (let i = 0; i < 5; i++) { const sg = F.sparkle(); g.add(sg); sparks.push({ g: sg, t: -Math.random() * 1.2 }); }
+      this.fx.push((t, dt) => {
+        const w = 0.5 + 0.5 * Math.sin(t * 3.1); gem.color.setRGB(0.35 + 0.65 * w * 0.6, 0.91, 1); gem2.color.setRGB(0.7 + 0.3 * w, 0.95, 1);
+        for (const sp of sparks) {
+          sp.t += dt; if (sp.t > 0.55) { sp.t = -Math.random() * 0.9; const q = SP[Math.floor(Math.random() * SP.length)]; sp.g.position.set((q[0] + (Math.random() - 0.5) * 0.8) * S, (q[1] + (Math.random() - 0.5) * 0.6) * S, q[2] * S); sp.g.rotation.z = Math.random() < 0.5 ? 0 : Math.PI / 4; }
+          const k = sp.t < 0 ? 0 : Math.sin(sp.t / 0.55 * Math.PI); sp.g.scale.setScalar(k * S + 0.0001);
+        }
+      });
     }
     else if (look.hat === 'astronauta') {
       const W = M(0xeef1f6), T = M(0xff8a1f);
@@ -121,24 +148,131 @@ LS.CharacterModel = class {
       add(11.6, 0.4, 0.9, 0, 6.95, 4.55, Gd);
       add(2, 1.8, 0.3, 0, 8.3, 4.95, M(0xf2efe6)); add(0.5, 0.5, 0.2, -0.45, 8.5, 5.1, M(0x111111)); add(0.5, 0.5, 0.2, 0.45, 8.5, 5.1, M(0x111111));
     }
-    else if (look.hat === 'halo glitch') {
-      const Mg = glow(0xff2bd6), Cy = glow(0x2ee6ff);
-      add(7, 0.6, 1, 0, 10.6, 3, Mg); add(7, 0.6, 1, 0, 10.6, -3, Cy); add(1, 0.6, 5, 3, 10.6, 0, Cy); add(1, 0.6, 5, -3, 10.6, 0, Mg);
-      add(3, 0.6, 1, 1.2, 11.3, 3, Cy); add(2, 0.6, 1, -2, 9.9, -3, Mg); add(1, 0.6, 2, 3.6, 11.2, -1, Mg);
+    else if (look.hat === 'halo glitch') { // halo que treme e blocos que "dão tp" em volta dele
+      const hm = new THREE.MeshBasicMaterial({ color: 0xff2bd6 }), hg = F.ring(this, g, hm, 10.6, F.glow(0x2ee6ff));
+      const P = F.pool(g, 9, () => ({ timer: Math.random() * 0.3 }));
+      let jit = 0;
+      this.fx.push((t, dt) => {
+        jit -= dt; if (jit <= 0) { jit = 0.05 + Math.random() * 0.25; const big = Math.random() < 0.25; hg.position.set(big ? (Math.random() - 0.5) * 1.4 * S : 0, (big ? (Math.random() - 0.5) * 0.8 * S : 0), 0); hm.color.setHex(Math.random() < 0.15 ? 0xffffff : 0xff2bd6); }
+        for (const p of P) {
+          p.timer -= dt; if (p.timer > 0) continue;
+          p.timer = 0.06 + Math.random() * 0.28; p.m.visible = Math.random() < 0.75;
+          const [x, z] = F.onRing(3 + (Math.random() - 0.5) * 2.4);
+          p.m.position.set(x * S, (10.6 + (Math.random() - 0.5) * 2.2) * S, z * S); p.m.scale.set((0.5 + Math.random() * 1.6) * S, 0.6 * S, (0.5 + Math.random()) * S);
+          p.m.material = F.glow([0xff2bd6, 0x2ee6ff, 0xffffff][Math.floor(Math.random() * 3)]);
+        }
+      });
     }
-    if (look.hairStyle === 'black power' && (!look.hat || look.hat === 'nenhum')) { add(10.4, 5, 10.4, 0, 7.6, -0.4, M(hairC)); add(8.4, 1.6, 2, 0, 9.6, 3.6, M(hairC)); }
-    else if (look.hairStyle === 'rabo') { add(2.2, 2.2, 2, 0, 5.6, -4.8, M(hairC)); add(1.6, 4.4, 1.6, 0, 3.0, -5.4, M(hairC)); }
+    // ---- dino (fantasia original): capuz de dinossauro com dentes, olhos e espinhos, e rabo que balança ----
+    else if (look.hat === 'dino') {
+      const Gn = M(0x3f9a3a), Gd = M(0x2f7a2c), Or = M(0xff8a1f), Wt = M(0xf6f6f0), Bk = M(0x141414);
+      add(9.6, 1, 9.6, 0, 8.45, 0, Gn); add(9.6, 8.4, 1, 0, 4.2, -4.8, Gn); [-1, 1].forEach(sd => add(1, 8.4, 9.6, sd * 4.8, 4.2, 0, Gn));
+      add(9.6, 1.4, 1, 0, 7.7, 4.6, Gd);                                      // borda da testa
+      add(8.6, 3, 5.4, 0, 9.9, 3.4, Gn); add(8.8, 0.8, 2, 0, 8.6, 5.3, Gd);   // focinho por cima do rosto
+      [-3, -1.5, 0, 1.5, 3].forEach(x => add(0.8, 1, 0.7, x, 7.9, 5.9, Wt));    // dentes
+      [-1.4, 1.4].forEach(x => add(0.8, 0.5, 0.3, x, 10.8, 6.15, Bk));         // narinas
+      [-1, 1].forEach(sd => { add(1.8, 1.8, 1.2, sd * 3.3, 11.2, 1.6, Wt); add(0.8, 0.9, 0.3, sd * 3.3, 11.1, 2.3, Bk); }); // olhos
+      [[11.8, 0.4], [11.6, -2.2], [10.6, -4.4], [7.6, -5.6], [4.8, -5.6]].forEach(([y, z], i) => add(1.3, 1.6 - i * 0.12, 1.5, 0, y, z, Or)); // espinhos
+      // rabo (no quadril), em 3 pedaços que balançam
+      const seg = (parent, w, h, d, z, y) => { const sg = new THREE.Group(); sg.position.set(0, y * S, z * S); parent.add(sg);
+        const m = new THREE.Mesh(LS.boxGeo(w * S, h * S, d * S), Gn); m.position.z = -d / 2 * S; m.castShadow = true; sg.add(m);
+        const sp = new THREE.Mesh(LS.boxGeo(1 * S, 1.2 * S, 1.2 * S), Or); sp.position.set(0, (h / 2 + 0.5) * S, -d / 2 * S); sg.add(sp); return sg; };
+      const t1 = seg(this.extraG, 3.6, 3.2, 3.8, -1.8, 1.4), t2 = seg(t1, 2.8, 2.4, 3.2, -3.6, -0.3), t3 = seg(t2, 2, 1.7, 2.8, -3.0, -0.2);
+      t1.rotation.x = 0.25; t2.rotation.x = 0.15; t3.rotation.x = 0.12;
+      this.fx.push(t => { const w = Math.sin(t * 3.2); t1.rotation.y = w * 0.28; t2.rotation.y = Math.sin(t * 3.2 - 0.7) * 0.32; t3.rotation.y = Math.sin(t * 3.2 - 1.4) * 0.38; });
+    }
+    // ---- viseira esportiva (aba curva com filete branco) ----
+    else if (look.hat === 'viseira') {
+      const V = M(acc), Wt = M(0xf4f4f4);
+      add(8.9, 1.6, 0.5, 0, 6.3, 4.55, V); [-1, 1].forEach(sd => add(0.5, 1.6, 9.4, sd * 4.7, 6.3, 0, V)); add(9.4, 1.2, 0.5, 0, 6.5, -4.7, V);
+      add(9, 0.3, 0.55, 0, 7.15, 4.56, Wt);
+      const br = add(8.6, 0.45, 3.6, 0, 5.75, 6.4, V); br.rotation.x = 0.16;
+      const tr = add(8.8, 0.5, 0.45, 0, 5.45, 8.15, Wt); tr.rotation.x = 0.16;
+      [-1, 1].forEach(sd => { const c = add(1.6, 0.45, 2.2, sd * 4.6, 5.8, 5.9, V); c.rotation.y = -sd * 0.5; c.rotation.x = 0.16; });
+    }
+    this.buildHair(look, add, M, hairC);
     if (look.glasses === 'cyber') add(8.8, 1.3, 0.9, 0, 3.6, 4.35, glow(0x20f0ff));
     else if (look.glasses === 'aviador') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x3a2a10));
     if (look.mask === 'gás') { add(4.2, 3, 2, 0, 1.6, 4.9, M(0x2a2d32)); [-1, 1].forEach(s => add(1.8, 1.8, 1.8, s * 2.6, 1.2, 5.3, M(0x50555c))); }
     if (look.glasses === 'escuros') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x111111));
     else if (look.glasses === 'viseira') add(8.6, 1.2, 0.8, 0, 3.6, 4.3, new THREE.MeshBasicMaterial({ color: acc }));
-    if (look.beard === 'cheia') add(7, 2.5, 1.2, 0, 0.6, 4.4, M(new THREE.Color(look.hair).getHex()));
-    else if (look.beard === 'mago') { const Wb = M(0xf4f4f0); add(7.4, 2.6, 1.3, 0, 0.6, 4.45, Wb); add(5.4, 3.4, 1.2, 0, -2.2, 4.5, Wb); add(3, 2.4, 1.1, 0, -4.8, 4.5, Wb); }
-    else if (look.beard === 'gelo') { const I = M(0xa8e8ff); add(7.2, 2.5, 1.2, 0, 0.6, 4.45, I); [-2.4, 0, 2.4].forEach(x => add(1.1, 1.8, 1, x, -1.4, 4.5, glow(0xd8f6ff))); }
-    if (look.glasses === 'fogo') { [-1, 1].forEach(sd => { add(2.2, 1.2, 0.4, sd * 2, 3.6, 4.45, glow(0xff7a1a)); add(1, 1.4, 0.4, sd * 2.4, 4.9, 4.45, glow(0xffe14a)); add(0.8, 0.8, 0.4, sd * 1.6, 5.9, 4.45, glow(0xff4a1a)); }); }
+    this.buildBeard(look, add, M, glow);
+    if (look.glasses === 'fogo') { // fogo queimando em bloquinhos que sobem dos olhos
+      [-1, 1].forEach(sd => add(2.2, 1.0, 0.4, sd * 2, 3.6, 4.4, glow(0xff7a1a)));
+      const P = F.pool(g, 14, (i) => ({ life: Math.random() * 0.5, max: 0.5, side: i % 2 ? 1 : -1 }));
+      this.fx.push((t, dt) => {
+        for (const p of P) {
+          p.life += dt; if (p.life > p.max || p.x === undefined) { p.life = 0; p.max = 0.35 + Math.random() * 0.35; p.x = p.side * 2 + (Math.random() - 0.5) * 2.2; p.z = 4.55 + Math.random() * 0.3; }
+          const k = p.life / p.max;
+          p.m.position.set((p.x + Math.sin(t * 11 + p.x * 3) * 0.25 * k) * S, (3.8 + k * 3.4) * S, (p.z - k * 1.1) * S);
+          p.m.scale.setScalar(((1 - k) * 1.05 + 0.12) * S);
+          p.m.material = F.glow(k < 0.28 ? 0xfff27a : k < 0.6 ? 0xff8a1f : 0xd8361a);
+        }
+      });
+    }
     else if (look.glasses === 'matrix') add(8.8, 1.3, 0.9, 0, 3.6, 4.35, glow(0x3dff6a));
+    if (look.pattern === 'circuito' || look.pattern === 'diamante') this.buildShirtFx(look);
     this.hatVisible = look.hat && look.hat !== 'nenhum';
+  }
+  // ---------- cabelos com volume (camadas e mechas em vez de um bloco só) ----------
+  // Só aparecem sem chapéu (ou com halo/viseira, que não cobrem o cabelo); a textura da cabeça continua por baixo.
+  buildHair(look, add, M, hairC) {
+    const st = look.hairStyle || 'curto', hat = look.hat || 'nenhum', open = ['nenhum', 'viseira', 'auréola', 'halo glitch'].includes(hat);
+    const H = M(hairC), Hd = M(new THREE.Color(hairC).multiplyScalar(0.8).getHex());
+    const cap = () => { // topo com tufos e franja irregular
+      add(8.4, 0.6, 8.4, 0, 8.3, -0.1, H); add(3.2, 0.5, 3.4, -1.7, 8.8, -1.2, H); add(2.6, 0.4, 2.8, 1.9, 8.75, 0.8, Hd); add(2.2, 0.35, 2.2, 0.4, 8.75, -3, H);
+      add(3, 1.3, 0.5, -2.6, 7.55, 4.2, H); add(2.4, 0.9, 0.5, 0.1, 7.75, 4.2, Hd); add(2.6, 1.6, 0.5, 2.7, 7.4, 4.2, H);
+      [-1, 1].forEach(sd => add(0.45, 2.2, 6.6, sd * 4.2, 6.9, -0.7, H)); add(8.4, 3.2, 0.45, 0, 6.4, -4.2, H);
+    };
+    if (st === 'curto' && open) cap();
+    else if (st === 'longo' || st === 'rabo') {
+      if (open) { add(8.4, 0.6, 8.4, 0, 8.3, -0.1, H); add(3.2, 0.5, 3.4, -1.7, 8.8, -1.2, H); add(3.2, 1.4, 0.5, -2.5, 7.5, 4.2, H); add(4.6, 1, 0.5, 1.8, 7.7, 4.2, Hd); }
+      if (st === 'longo') {
+        const top = open ? 8.1 : 6.0, bot = 1.2; add(8.6, top - bot, 0.6, 0, (top + bot) / 2, -4.3, H);
+        add(2.8, 1.3, 0.6, -2.9, 0.55, -4.3, H); add(2.6, 0.8, 0.6, 0, 0.8, -4.3, Hd); add(2.8, 1.7, 0.6, 2.9, 0.35, -4.3, H); // pontas em degrau
+        [-1, 1].forEach(sd => { add(0.5, (open ? 7.8 : 5.6) - 2, 2.8, sd * 4.25, ((open ? 7.8 : 5.6) + 2) / 2, 2.4, H); add(0.5, 1.4, 1.8, sd * 4.25, 1.4, 2.9, Hd); add(0.5, 4, 3.6, sd * 4.25, 4.6, -1.4, H); });
+      } else { // rabo de cavalo afinando, com prendedor
+        add(2.6, 1.6, 1, 0, 5.9, -4.6, M(new THREE.Color(look.accent || '#c0302a').getHex()));
+        add(2.6, 2.4, 2, 0, 4.6, -5.5, H); add(2.1, 2.6, 1.8, 0, 2.6, -6.0, Hd); add(1.5, 2, 1.4, 0, 0.7, -6.0, H); add(0.8, 1, 0.8, 0, -0.7, -5.7, Hd);
+      }
+    }
+    else if (st === 'moicano' && open) [[3.2, 1.4], [1.4, 2.3], [-0.6, 2.8], [-2.6, 2.3], [-4, 1.3]].forEach(([z, h], i) => add(1.6 - (i % 2) * 0.3, h, 1.8, 0, 8 + h / 2, z, i % 2 ? Hd : H));
+    else if (st === 'black power' && open) { // "bola" em degraus em vez de um cubo
+      add(11.6, 1.8, 11.2, 0, 8.7, -0.6, H); add(10.8, 1.4, 10.4, 0, 10.3, -0.6, Hd); add(9, 0.9, 8.8, 0, 11.4, -0.6, H); add(6, 0.5, 6, 0, 12.1, -0.6, Hd);
+      [-1, 1].forEach(sd => { add(1.6, 3.4, 9.4, sd * 5.3, 6.4, -0.9, H); add(1.2, 1.6, 7, sd * 5.5, 4.2, -1.4, Hd); });
+      add(11.2, 5, 1.8, 0, 5.8, -5.2, H); add(9.6, 2.4, 1.4, 0, 2.4, -5.0, Hd); add(9.6, 0.9, 1, 0, 7.6, 4.45, H);
+    }
+  }
+  // ---------- barbas em camadas (afinam no queixo, com bigode e costeletas) ----------
+  buildBeard(look, add, M, glow) {
+    const b = look.beard; if (!b || b === 'nenhuma') return;
+    const C = b === 'mago' ? M(0xf4f4f0) : b === 'gelo' ? M(0xa8e8ff) : M(new THREE.Color(look.hair).getHex());
+    const side = (h, d) => [-1, 1].forEach(sd => add(0.6, h, d, sd * 4.25, 2.0, 2.6, C));
+    const stache = () => { add(4.8, 0.7, 0.6, 0, 2.35, 4.3, C); [-1, 1].forEach(sd => add(1, 1.1, 0.6, sd * 2.6, 1.85, 4.3, C)); };
+    if (b === 'curta') { add(7.4, 0.9, 0.4, 0, 0.45, 4.15, C); [-1, 1].forEach(sd => add(0.35, 2.6, 2.4, sd * 4.12, 1.6, 2.6, C)); }
+    else if (b === 'bigode') { add(3.8, 0.8, 0.5, 0, 2.35, 4.25, C); [-1, 1].forEach(sd => { add(1.2, 0.8, 0.5, sd * 2.4, 2.15, 4.25, C); add(0.6, 0.9, 0.5, sd * 3.1, 2.7, 4.25, C); }); }
+    else if (b === 'cheia' || b === 'gelo') {
+      add(8.4, 1.6, 1, 0, 0.4, 4.35, C); add(6.4, 1.3, 1, 0.2, -0.9, 4.3, C); add(3.6, 1, 0.9, -0.1, -1.9, 4.25, C); side(3.6, 3.2); stache();
+      if (b === 'gelo') [-2.6, -0.9, 0.9, 2.6].forEach((x, i) => add(0.6, 1.2 + (i % 2) * 0.8, 0.6, x, -1.4 - (i % 2) * 0.9, 4.5, glow(0xe6faff))); // pingentes de gelo
+    }
+    else if (b === 'mago') { // longa, afinando em degraus e com um leve zigue-zague
+      add(8.4, 1.8, 1.2, 0, 0.3, 4.4, C);
+      [[7.4, -1.3, 0.2], [6.2, -2.8, -0.2], [4.8, -4.3, 0.25], [3.2, -5.7, -0.15], [1.6, -6.9, 0.1]].forEach(([w, y, x], i) => add(w, 1.6, 1.15 - i * 0.07, x, y, 4.4, C));
+      side(3.6, 3.2); add(5, 0.8, 0.7, 0, 2.35, 4.35, C); [-1, 1].forEach(sd => add(1, 1.8, 0.7, sd * 2.9, 1.5, 4.35, C));
+    }
+  }
+  // ---------- camisas animadas (circuito = chuva de código; diamante = pisca azul/branco) ----------
+  // Uma folha transparente na frente do peito, só onde a estampa aparece (a jaqueta aberta mostra só o meio, o moletom esconde).
+  buildShirtFx(look) {
+    const F = LS.AccFX, S = LS.Skin.PX, mask = F.mask(look.top || 'camiseta'); if (!mask) return;
+    const mat = F.shirtMat(look.pattern, look.top || 'camiseta');
+    const piece = (bone, w, h, y0, v0, v1, z) => {
+      const geo = new THREE.PlaneGeometry(w * S, h * S), uv = geo.attributes.uv;
+      for (let i = 0; i < 4; i++) uv.setY(i, uv.getY(i) > 0.5 ? v1 : v0);
+      const m = new THREE.Mesh(geo, mat); m.position.set(0, (y0 + h / 2) * S, z * S + 0.004); m.renderOrder = 2; bone.add(m); this.shirtFx.push(m);
+    };
+    piece(this.torso, 8 - 0.2, 7, 0, 1 - 7 / 12, 1, (4 - 0.2) / 2);   // peito (tronco de cima)
+    piece(this.hips, 8 - 0.5, 5, 0, 0, 1 - 7 / 12, (4 - 0.5) / 2);     // barriga (tronco de baixo)
   }
   setGun(id) {
     if (this.gunId === id) return;
@@ -428,6 +562,13 @@ LS.CharacterModel = class {
     this.animateBase(s);
     if (LS.Anim) LS.Anim.loco(this, s); // corrida oficial (dash_run_f)
     if (this.anim) this.anim.apply(s.dt || 0, s);
+    this.tickFx(s.dt || 0.016);
+  }
+  // efeitos animados dos acessórios (fogo, auras, glitch, brilhos, rabo) e camisas animadas
+  tickFx(dt) {
+    this.fxT += Math.min(dt, 0.1);
+    for (const f of this.fx) f(this.fxT, Math.min(dt, 0.1));
+    if (this.shirtFx.length) LS.AccFX.frame();
   }
   // s: {speed, running, crouch, air, chute, fall, dive, steer, vy, aimPitch, armed, armedAim, dead, dt, idle,
   //     reload (0..1 ou -1), heal ('medkit'|'bandage'|null)}
@@ -756,4 +897,71 @@ LS.CharacterModel.skinGeometry = function (model) {
   geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
   geo.setIndex(idx);
   return (this._skinGeo = geo);
+};
+
+// ---------- efeitos dos acessórios: peças compartilhadas (materiais, blocos, folhas animadas das camisas) ----------
+LS.AccFX = {
+  mats: {}, last: 0, shirts: {}, masks: {}, smats: {},
+  glow(c) { return this.mats[c] || (this.mats[c] = new THREE.MeshBasicMaterial({ color: c })); },
+  cube() { return this._cube || (this._cube = new THREE.BoxGeometry(1, 1, 1)); },
+  // n bloquinhos de partícula (tamanho = escala, em pixels × S)
+  pool(g, n, init) { const out = []; for (let i = 0; i < n; i++) { const m = new THREE.Mesh(this.cube(), this.glow(0xffffff)); m.scale.setScalar(0.0001); g.add(m); out.push(Object.assign({ m }, init(i))); } return out; },
+  // halo quadrado (4 lados) dentro de um grupo próprio (pra flutuar/tremer)
+  ring(model, g, mat, y, mat2) {
+    const S = LS.Skin.PX, hg = new THREE.Group(); g.add(hg);
+    const seg = (w, d, x, z, m) => { const s = new THREE.Mesh(LS.boxGeo(w * S, 0.6 * S, d * S), m); s.position.set(x * S, y * S, z * S); hg.add(s); };
+    seg(7, 1, 0, 3, mat); seg(7, 1, 0, -3, mat2 || mat); seg(1, 5, 3, 0, mat2 || mat); seg(1, 5, -3, 0, mat);
+    return hg;
+  },
+  onRing(r) { const t = (Math.random() * 2 - 1) * r; switch (Math.floor(Math.random() * 4)) { case 0: return [t, r]; case 1: return [t, -r]; case 2: return [r, t]; default: return [-r, t]; } },
+  // brilhinho em cruz (o grupo é escalado por S)
+  sparkle() {
+    const g = new THREE.Group(), w = this.glow(0xffffff), b = (x, y, z) => { const m = new THREE.Mesh(this.cube(), w); m.scale.set(x, y, z); g.add(m); };
+    b(0.3, 1.7, 0.3); b(1.7, 0.3, 0.3); b(0.6, 0.6, 0.6); g.scale.setScalar(0.0001); return g;
+  },
+  // onde a estampa aparece na frente do peito (8×12), conforme a roupa de cima
+  maskFn: {
+    camiseta: () => true, regata: (x, y) => !(y < 2 && (x < 2 || x > 5)), kimono: () => true,
+    jaqueta: x => x === 3 || x === 4, couro: (x, y) => (x === 3 || x === 4) && y < 9, colete: (x, y) => x === 3 || x === 4 || y === 0 || y >= 10,
+    terno: (x, y) => (x === 3 || x === 4) && y >= 1 && y < 6,
+  },
+  canvasTex(w, h) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+    return { c, x: c.getContext('2d'), t };
+  },
+  mask(top) {
+    const f = this.maskFn[top]; if (!f) return null; // moletom/armadura: a estampa não aparece
+    if (this.masks[top]) return this.masks[top];
+    const T = this.canvasTex(8, 12); T.x.fillStyle = '#000'; T.x.fillRect(0, 0, 8, 12); T.x.fillStyle = '#fff';
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 8; x++) if (f(x, y)) T.x.fillRect(x, y, 1, 1);
+    T.t.needsUpdate = true; return (this.masks[top] = T.t);
+  },
+  shirt(kind) {
+    if (this.shirts[kind]) return this.shirts[kind];
+    const T = this.canvasTex(8, 12), cols = Array.from({ length: 8 }, () => ({ o: Math.random() * 20, v: 6 + Math.random() * 8 }));
+    T.draw = t => {
+      const x = T.x; x.clearRect(0, 0, 8, 12);
+      if (kind === 'circuito') { // chuva de código verde (estilo Matrix)
+        cols.forEach((c, i) => { const head = (t * c.v + c.o) % 20 - 3;
+          for (let k = 0; k < 6; k++) { const y = Math.floor(head) - k; if (y < 0 || y > 11) continue;
+            x.fillStyle = k === 0 ? 'rgba(220,255,230,1)' : 'rgba(61,255,106,' + (0.85 - k * 0.14).toFixed(2) + ')'; x.fillRect(i, y, 1, 1); } });
+      } else { // diamante: a grade pisca de azul pra branco, em ondas com fade
+        for (let yy = 0; yy < 12; yy++) for (let xx = 0; xx < 8; xx++) {
+          const a = (xx + yy) % 4, b = ((xx - yy) % 4 + 4) % 4; if (a !== 0 && b !== 0) continue;
+          const w = 0.5 + 0.5 * Math.sin(t * 2.8 - (xx + yy) * 0.75), cen = a === 0 && b === 0;
+          const r = Math.round(90 + 165 * w), g = Math.round(232 + 23 * w);
+          x.fillStyle = 'rgba(' + r + ',' + g + ',255,' + (cen ? 0.5 + 0.5 * w : 0.15 + 0.75 * w).toFixed(2) + ')'; x.fillRect(xx, yy, 1, 1);
+        }
+      }
+      T.t.needsUpdate = true;
+    };
+    T.draw(0); return (this.shirts[kind] = T);
+  },
+  shirtMat(kind, top) {
+    const k = kind + '|' + top; if (this.smats[k]) return this.smats[k];
+    return (this.smats[k] = new THREE.MeshBasicMaterial({ map: this.shirt(kind).t, alphaMap: this.mask(top), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }));
+  },
+  // redesenha as camisas animadas no máximo 15x por segundo (uma vez pra todo mundo)
+  frame() { const now = performance.now(); if (now - this.last < 66) return; this.last = now; const t = now / 1000; for (const k in this.shirts) this.shirts[k].draw(t); },
 };

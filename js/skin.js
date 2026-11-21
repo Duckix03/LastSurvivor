@@ -175,6 +175,10 @@ LS.Skin = {
         if (x >= 0 && x < r[2] && y >= 0 && y < r[3]) px(r[0] + x, r[1] + y, '#c8ffd8', 0); } });
     else if (look.pattern === 'diamante') B.forEach(r => { for (let y = 0; y < r[3]; y++) for (let x = 0; x < r[2]; x++) { const a = (x + y) % 4, b = ((x - y) % 4 + 4) % 4;
       px(r[0] + x, r[1] + y, a === 0 && b === 0 ? '#ffffff' : a === 0 || b === 0 ? '#5ae8ff' : '#123a5a', 0.05); } });
+    else if (look.pattern === 'escamas') { // dino: escamas verdes e barriga clara listrada
+      B.forEach(r => { for (let y = 0; y < r[3]; y++) for (let x = 0; x < r[2]; x++) px(r[0] + x, r[1] + y, (x + (y % 2) * 1) % 2 === 0 && y % 2 === 0 ? '#2f7a2c' : '#3f9a3a', 0.08); });
+      for (let y = 2; y < 12; y++) for (let x = 2; x < 6; x++) px(front[0] + x, front[1] + y, y % 2 ? '#d8e07a' : '#c6ce62', 0.04);
+    }
     else if (look.pattern === 'raio') { [[4, 0], [3, 1], [3, 2], [2, 3], [2, 4], [3, 4], [4, 4], [5, 4], [4, 5], [4, 6], [3, 7], [3, 8], [2, 9]].forEach(([x, y]) => { px(front[0] + x, front[1] + y, '#ffe14a', 0); if (x + 1 < 8) px(front[0] + x + 1, front[1] + y, '#ffc020', 0); }); }
     else if (look.pattern === 'faixa') { for (let y = 0; y < 11; y++) { const x = Math.floor(y * 8 / 11); px(front[0] + x, front[1] + y, '#f0f0f0'); if (x + 1 < 8) px(front[0] + x + 1, front[1] + y, '#f0f0f0'); } }
     const top = look.top || 'camiseta';

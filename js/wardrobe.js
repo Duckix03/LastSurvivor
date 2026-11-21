@@ -96,8 +96,8 @@ LS.Wardrobe = {
     if (it && !C.owns(it.id)) {
       const pieces = it.slot === 'costume' ? C.pieces(it).filter(p => !C.owns(p.id)).length : 0;
       h += '<div id="wr-buybar" style="--rc:' + R[it.rarity].color + '"><div><span class="wr-rar">' + R[it.rarity].name + '</span><b>' + it.name + '</b><small>Provando' + (pieces ? ' · ' + pieces + ' peças' : '') + ' · você tem ' + (it.dprice ? LS.icon('gem', 'gem-i') + ' ' + C.diamonds().toLocaleString('pt-BR') : LS.icon('coin', 'coin-i') + ' ' + C.coins().toLocaleString('pt-BR')) + '</small><span class="wr-err"></span></div>' +
-        (it.code ? '<button class="btn btn-primary" data-wcode="1">SÓ EM CODIGUIN</button>' : '<button class="btn btn-primary" data-wbuy="1">COMPRAR ' + LS.Shop.priceTag(it) + '</button>') +
-        (it.slot !== 'costume' && !it.code ? '<button class="btn small" data-wroyale="1">GOLD ROYALE</button>' : '') + '</div>';
+        (it.code ? '<button class="btn btn-primary" data-wcode="1">SÓ EM CODIGUIN</button>' : it.piece ? '<button class="btn btn-primary" disabled>VEM NA FANTASIA</button>' : '<button class="btn btn-primary" data-wbuy="1">COMPRAR ' + LS.Shop.priceTag(it) + '</button>') +
+        (it.slot !== 'costume' && !it.code && !it.piece ? '<button class="btn small" data-wroyale="1">GOLD ROYALE</button>' : '') + '</div>';
     }
     const box = document.getElementById('lobby-options');
     box.innerHTML = h;
