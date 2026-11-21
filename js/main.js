@@ -128,6 +128,7 @@ window.addEventListener('load', () => {
   LS.Menu.init();
   document.getElementById('arsenal-list').addEventListener('click', e => { const b = e.target.closest('[data-wpn]'); if (b) { LS.Audio.init(); LS.Audio.click(); LS.Menu.pickLobbyWeapon(b.dataset.wpn); } });
   LS.UI.bindSettings();
+  LS.UIKit.init(); // caixas de seleção, números, sliders e animações próprias (js/uikit.js)
   LS.UI.updateMenuStats();
   document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => LS.UI.onAction(b.dataset.action)));
   window.addEventListener('keydown', e => {

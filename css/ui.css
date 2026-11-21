@@ -1150,3 +1150,114 @@ body.mobile .cg-opts { grid-template-columns: 1fr 1fr 1fr; }
 .pf-modal-box label.cg-amt { display: flex; margin: 0; }
 .pf-modal-box .cg-opts label { margin: 0; }
 .cgp-head .btn, .cg-item .btn { width: auto !important; flex: none; padding: 7px 14px; }
+
+/* =====================================================================
+   KIT DE INTERFACE (js/uikit.js): rolagem, seleção de texto, campos, caixas de seleção,
+   números, sliders, onda nos botões e animações de menus/janelas
+   ===================================================================== */
+/* ---------- barras de rolagem: finas, laranja, crescem ao passar o mouse ---------- */
+* { scrollbar-width: thin; scrollbar-color: #ff9a2e transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; margin: 8px; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #ffb13d, #ff6a1f); border-radius: 9px; border: 3px solid transparent; background-clip: padding-box; min-height: 40px; }
+::-webkit-scrollbar-thumb:hover { border-width: 1.5px; background: linear-gradient(180deg, #ffd060, #ff8a1f); background-clip: padding-box; box-shadow: 0 0 10px rgba(255, 150, 40, 0.6); }
+::-webkit-scrollbar-thumb:active { background: #ffd34d; background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+/* ---------- texto selecionado e cursor ---------- */
+::selection { background: rgba(255, 150, 40, 0.85); color: #1a0d00; text-shadow: none; }
+input, textarea { caret-color: #ffc531; }
+/* ---------- campos de texto: base (sem especificidade, os estilos próprios ganham) e foco animado ---------- */
+:where(input:is([type=text], [type=password], [type=search], [type=email], [type=number], :not([type])), textarea):not(.dc-input input) {
+  transition: border-color 0.2s, box-shadow 0.25s, background-color 0.2s, transform 0.15s; }
+:where(input:is([type=text], [type=password], [type=search], [type=email], [type=number], :not([type])), textarea):not(.dc-input input):focus {
+  outline: none; border-color: #ffc531 !important; background-color: rgba(10, 8, 4, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(255, 197, 49, 0.22), 0 0 18px rgba(255, 150, 40, 0.25), inset 0 1px 6px rgba(0, 0, 0, 0.45) !important; animation: fieldFocus 0.35s ease-out; }
+@keyframes fieldFocus { 0% { box-shadow: 0 0 0 0 rgba(255, 197, 49, 0.55); } }
+:where(input, textarea)::placeholder { color: #6f7a90; transition: opacity 0.2s, transform 0.2s; }
+:where(input, textarea):focus::placeholder { opacity: 0.45; }
+input:disabled, input[readonly] { opacity: 0.8; }
+/* ---------- números: sem setinhas do navegador, com − / + ---------- */
+input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+.xnum { display: inline-flex; align-items: stretch; width: 100%; gap: 4px; }
+.xnum input { flex: 1; min-width: 0; width: auto !important; text-align: center; font-weight: 700; }
+.xnum-b { flex: none; width: 34px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.06); color: #ffd34d;
+  font-family: var(--display); font-size: 20px; line-height: 1; cursor: pointer; user-select: none; touch-action: none; transition: background 0.15s, transform 0.1s, border-color 0.15s; }
+.xnum-b:hover { background: rgba(255, 197, 49, 0.16); border-color: rgba(255, 197, 49, 0.55); }
+.xnum-b:active { transform: scale(0.88); background: rgba(255, 197, 49, 0.3); }
+.cg-amt .xnum { width: 160px; }
+/* ---------- caixa de seleção própria ---------- */
+.xsel-native { position: absolute !important; opacity: 0 !important; pointer-events: none !important; width: 1px !important; height: 1px !important; }
+.xsel { position: relative; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 140px; padding: 9px 12px 9px 14px; border-radius: 12px; cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.15); background: linear-gradient(180deg, rgba(40, 48, 74, 0.7), rgba(12, 16, 30, 0.75)); color: var(--txt); font-weight: 700; font-size: 15px; outline: none; user-select: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.3); transition: border-color 0.2s, box-shadow 0.25s, transform 0.12s; }
+.xsel:hover { border-color: rgba(255, 197, 49, 0.55); }
+.xsel:focus-visible, .xsel.open { border-color: #ffc531; box-shadow: 0 0 0 3px rgba(255, 197, 49, 0.2), 0 6px 18px rgba(0, 0, 0, 0.4); }
+.xsel:active { transform: scale(0.97); }
+.xsel-ch { width: 18px; height: 18px; color: #ffc531; flex: none; transition: transform 0.3s var(--pop); }
+.xsel.open .xsel-ch { transform: rotate(180deg); }
+.xsel.picked .xsel-v { animation: selPick 0.35s var(--pop); }
+@keyframes selPick { 0% { transform: translateY(-6px); opacity: 0; } }
+.xsel-list { position: fixed; z-index: 9999; padding: 6px; border-radius: 14px; max-height: 50vh; overflow-y: auto; transform-origin: top center;
+  background: linear-gradient(170deg, rgba(26, 32, 56, 0.98), rgba(10, 13, 26, 0.98)); border: 2px solid rgba(255, 197, 49, 0.5);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 24px rgba(255, 150, 40, 0.15); backdrop-filter: blur(10px);
+  animation: selOpen 0.24s var(--pop) both; font-family: var(--body); }
+.xsel-list.up { transform-origin: bottom center; }
+.xsel-list.closing { animation: selClose 0.16s ease-in both; }
+@keyframes selOpen { from { opacity: 0; transform: translateY(-8px) scaleY(0.7); } }
+@keyframes selClose { to { opacity: 0; transform: translateY(-6px) scaleY(0.85); } }
+.xsel-o { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; color: #dfe5f2; font-weight: 700;
+  animation: selItem 0.28s ease-out both; animation-delay: calc(var(--i) * 35ms + 40ms); transition: background 0.12s, color 0.12s, padding 0.15s; }
+@keyframes selItem { from { opacity: 0; transform: translateX(-10px); } }
+.xsel-o svg { width: 16px; height: 16px; color: #2a1400; opacity: 0; transform: scale(0.4); transition: opacity 0.15s, transform 0.25s var(--pop); }
+.xsel-o.hi { background: rgba(255, 197, 49, 0.14); color: #fff; padding-left: 16px; }
+.xsel-o.on { background: linear-gradient(90deg, #ffc531, #ff9a1f); color: #2a1400; }
+.xsel-o.on svg { opacity: 1; transform: none; }
+.cg-money .xsel { min-width: 130px; }
+/* ---------- sliders: parte preenchida e bolinha que cresce ---------- */
+input[type=range] { --p: 50%; background: transparent; }
+input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 8px; background: linear-gradient(90deg, #ff8a1f, #ffc531 var(--p), rgba(255, 255, 255, 0.1) var(--p)) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5); }
+input[type=range]::-moz-range-track { height: 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.1); }
+input[type=range]::-moz-range-progress { height: 8px; border-radius: 8px; background: linear-gradient(90deg, #ff8a1f, #ffc531); }
+input[type=range]::-webkit-slider-thumb { transition: transform 0.18s var(--pop), box-shadow 0.2s; }
+input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.18); box-shadow: 0 0 0 6px rgba(255, 197, 49, 0.18), 0 2px 6px rgba(0, 0, 0, 0.5); }
+input[type=range]:active::-webkit-slider-thumb { transform: scale(1.32); box-shadow: 0 0 0 9px rgba(255, 197, 49, 0.22), 0 0 14px rgba(255, 170, 40, 0.6); }
+/* ---------- onda (ripple) nos botões ---------- */
+.rip-h { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; z-index: 0; }
+.rip { position: absolute; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.12) 60%, transparent 70%); transform: scale(0); animation: rip 0.6s ease-out forwards; pointer-events: none; }
+@keyframes rip { to { transform: scale(1); opacity: 0; } }
+/* ---------- botões e abas: levantam no hover, afundam no clique ---------- */
+.btn { transition: transform 0.18s var(--pop), box-shadow 0.2s, background 0.2s, border-color 0.2s, filter 0.2s; }
+.btn:not(:disabled):hover { transform: translateY(-2px); }
+.btn:not(:disabled):active { transform: translateY(1px) scale(0.97); transition-duration: 0.06s; }
+.btn:disabled { opacity: 0.55; cursor: default; }
+.btn:focus-visible, .set-tabs button:focus-visible, .chips button:focus-visible { outline: 2px solid #ffc531; outline-offset: 2px; }
+.set-tabs button, .sh-tabs button, .adm-tabs button, .ct-tabs button, .cgp-tabs button, .sh-views button, .chips button, .pf-tabs button {
+  transition: background 0.25s, color 0.2s, transform 0.18s var(--pop), box-shadow 0.25s, border-color 0.2s; }
+.set-tabs button:active, .sh-tabs button:active, .adm-tabs button:active, .ct-tabs button:active, .cgp-tabs button:active, .chips button:active { transform: scale(0.94); }
+.set-tabs button.on, .adm-tabs button.on, .sh-tabs button.on, .ct-tabs button.on, .chips button.on { animation: tabOn 0.35s var(--pop); }
+@keyframes tabOn { 0% { transform: scale(0.9); } 60% { transform: scale(1.04); } }
+/* ---------- janelas (modais): fundo aparece e a caixa "pula" pra frente ---------- */
+#pf-modal:not(.hidden), #sh-modal:not(.hidden) { animation: modalBg 0.25s ease-out both; }
+#pf-modal:not(.hidden) .pf-modal-box, #sh-modal:not(.hidden) .sh-modal-box { animation: modalIn 0.38s var(--pop) both; }
+@keyframes modalBg { from { opacity: 0; backdrop-filter: blur(0); } }
+@keyframes modalIn { from { opacity: 0; transform: translateY(18px) scale(0.92); } }
+#cg-picker { animation: pickerIn 0.3s var(--pop) both; }
+@keyframes pickerIn { from { opacity: 0; transform: scale(0.96); } }
+/* ---------- menus: itens entram em cascata ---------- */
+.screen.active .set-pane.on > *, .screen.active .modes-grid > *, .screen.active .sh-grid > *, .screen.active .gr-grid > *, .cgp-grid > * { animation: rowIn 0.38s ease-out both; }
+@keyframes rowIn { from { opacity: 0; transform: translateY(10px); } }
+.set-pane.on > :nth-child(1), .sh-grid > :nth-child(1), .cgp-grid > :nth-child(1), .gr-grid > :nth-child(1), .modes-grid > :nth-child(1) { animation-delay: 0.02s; }
+.set-pane.on > :nth-child(2), .sh-grid > :nth-child(2), .cgp-grid > :nth-child(2), .gr-grid > :nth-child(2), .modes-grid > :nth-child(2) { animation-delay: 0.05s; }
+.set-pane.on > :nth-child(3), .sh-grid > :nth-child(3), .cgp-grid > :nth-child(3), .gr-grid > :nth-child(3), .modes-grid > :nth-child(3) { animation-delay: 0.08s; }
+.set-pane.on > :nth-child(4), .sh-grid > :nth-child(4), .cgp-grid > :nth-child(4), .gr-grid > :nth-child(4) { animation-delay: 0.11s; }
+.set-pane.on > :nth-child(5), .sh-grid > :nth-child(5), .cgp-grid > :nth-child(5), .gr-grid > :nth-child(5) { animation-delay: 0.14s; }
+.set-pane.on > :nth-child(6), .sh-grid > :nth-child(6), .cgp-grid > :nth-child(6), .gr-grid > :nth-child(6) { animation-delay: 0.17s; }
+.set-pane.on > :nth-child(7), .sh-grid > :nth-child(7), .cgp-grid > :nth-child(7), .gr-grid > :nth-child(7) { animation-delay: 0.2s; }
+.set-pane.on > :nth-child(8), .sh-grid > :nth-child(8), .cgp-grid > :nth-child(8), .gr-grid > :nth-child(8) { animation-delay: 0.23s; }
+.set-pane.on > :nth-child(n+9), .sh-grid > :nth-child(n+9), .cgp-grid > :nth-child(n+9), .gr-grid > :nth-child(n+9) { animation-delay: 0.26s; }
+/* switches: bolinha com "mola" */
+.switch span::before { transition: transform 0.35s var(--pop), background 0.2s, width 0.2s !important; }
+.switch input:checked + span { box-shadow: 0 0 12px rgba(255, 160, 40, 0.45), inset 0 2px 4px rgba(0, 0, 0, 0.25); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
