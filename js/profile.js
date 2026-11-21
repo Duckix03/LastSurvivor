@@ -155,22 +155,47 @@ LS.Profile = {
     m.innerHTML = '<div class="pf-modal-box">' + html + '</div>'; m.classList.remove('hidden');
   },
   closeModal() { document.getElementById('pf-modal').classList.add('hidden'); },
+  // trocar de nome custa LS.RENAME_COST moedas; o recado é grátis. Grátis também: o 1º nome (saindo de "Jogador"),
+  // mudar só maiúsculas/minúsculas e o nome automático de conta criada pelo Google
+  renameCost(name) {
+    const P = LS.playerProfile, me = LS.Account.logged() ? LS.Account.me : null;
+    if (!name || name === P.name || name.toLowerCase() === P.name.toLowerCase()) return 0;
+    if (P.name === 'Jogador' || (me && me.freeRename)) return 0;
+    return LS.RENAME_COST;
+  },
   openEdit() {
-    const P = LS.playerProfile;
-    this.modal('<h3>EDITAR PERFIL</h3><label>Nome</label><input id="pf-in-name" maxlength="16" spellcheck="false" autocomplete="off" value="' + this.esc(P.name) + '">' +
-      (LS.Account.logged() ? '<p class="pf-hint">Nome da conta: dá pra trocar 1 vez a cada 7 dias, e só por um nome livre.</p>' : '') +
-      '<label>Recado <small id="pf-bio-n"></small></label><textarea id="pf-in-bio" maxlength="80" rows="3">' + this.esc(P.bio || '') + '</textarea>' +
-      '<p id="pf-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn" data-pf="close">CANCELAR</button><button class="btn btn-primary" data-pf="save">SALVAR</button></div>');
+    const P = LS.playerProfile, coins = LS.stats.coins || 0, fmt = n => n.toLocaleString('pt-BR');
+    this.modal('<h3>EDITAR PERFIL</h3><label>Nome <small id="pf-name-cost"></small></label><input id="pf-in-name" maxlength="16" spellcheck="false" autocomplete="off" value="' + this.esc(P.name) + '">' +
+      '<p class="pf-hint pf-rename">Trocar de nome custa <b>🪙 ' + fmt(LS.RENAME_COST) + '</b> · você tem <b>🪙 ' + fmt(coins) + '</b>. O recado é grátis.</p>' +
+      '<label>Recado <small id="pf-bio-n"></small> <small class="pf-free">GRÁTIS</small></label><textarea id="pf-in-bio" maxlength="80" rows="3">' + this.esc(P.bio || '') + '</textarea>' +
+      '<p id="pf-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn" data-pf="close">CANCELAR</button><button class="btn btn-primary" data-pf="save" id="pf-save">SALVAR</button></div>');
     const bio = document.getElementById('pf-in-bio'), n = document.getElementById('pf-bio-n'), upd = () => { n.textContent = bio.value.length + '/80'; };
-    bio.addEventListener('input', upd); upd(); document.getElementById('pf-in-name').focus();
+    const nm = document.getElementById('pf-in-name'), cost = document.getElementById('pf-name-cost'), save = document.getElementById('pf-save');
+    const updName = () => { // mostra quanto vai custar enquanto digita
+      const c = this.renameCost(nm.value.trim());
+      const changed = nm.value.trim() && nm.value.trim() !== P.name;
+      cost.textContent = !changed ? '' : c ? '🪙 ' + fmt(c) : 'GRÁTIS';
+      cost.className = !changed ? '' : c ? (coins < c ? 'pf-cost no' : 'pf-cost') : 'pf-free';
+      save.textContent = changed && c ? 'TROCAR · 🪙 ' + fmt(c) : 'SALVAR';
+    };
+    bio.addEventListener('input', upd); upd(); nm.addEventListener('input', updName); updName(); nm.focus();
   },
   async saveEdit() {
-    const P = LS.playerProfile, name = document.getElementById('pf-in-name').value.trim().slice(0, 16) || 'Jogador';
-    P.bio = document.getElementById('pf-in-bio').value.replace(/\s+/g, ' ').trim().slice(0, 80);
-    if (LS.Account.logged() && name !== P.name) { // conta: o servidor confere se o nome está livre
-      try { await LS.Account.rename(name); } catch (e) { this.modalError(e.message); LS.saveProfile(); return; }
-    } else if (!LS.Account.logged()) P.name = name;
-    LS.saveProfile(); this.closeModal(); this.render(); LS.Menu.render(); this.renderTop();
+    const P = LS.playerProfile, name = document.getElementById('pf-in-name').value.trim().slice(0, 16) || P.name;
+    P.bio = document.getElementById('pf-in-bio').value.replace(/\s+/g, ' ').trim().slice(0, 80); // recado: grátis, salva sempre
+    LS.saveProfile();
+    if (name !== P.name) {
+      const cost = this.renameCost(name), coins = LS.stats.coins || 0;
+      if (cost && coins < cost) return this.modalError('Moedas insuficientes: trocar de nome custa 🪙 ' + cost.toLocaleString('pt-BR') + ' (faltam ' + (cost - coins).toLocaleString('pt-BR') + '). O recado foi salvo.');
+      if (LS.Account.logged()) { // conta: o servidor confere se o nome está livre e cobra as moedas
+        const btn = document.getElementById('pf-save'); btn.disabled = true; btn.textContent = '...';
+        try { await LS.Account.rename(name); } catch (e) { btn.disabled = false; this.modalError(e.message); return; }
+      } else {
+        if (cost) { LS.stats.coins = coins - cost; LS.saveStats(); }
+        P.name = name; LS.saveProfile();
+      }
+    }
+    this.closeModal(); this.render(); LS.Menu.render(); this.renderTop();
     if (LS.Lobby.built) LS.Lobby.syncUI();
   },
   modalError(msg) { const e = document.getElementById('pf-err'); if (e) { e.textContent = msg; e.classList.remove('hidden', 'ok'); } },

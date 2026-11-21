@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '53'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '54'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // versão do ONLINE (crossplay navegador ↔ app). Suba +1 quando mudar algo que quebra a partida online
 // (armas, mapa, protocolo de rede...) e suba junto o MIN_PROTO em server/src/worker.js, depois "npx wrangler deploy".
 // Quem estiver com versão mais velha (ex.: APK antigo) recebe o aviso pra atualizar em vez de entrar com regras diferentes.
@@ -22,6 +22,9 @@ LS.APP_DOWNLOAD_URL = 'https://github.com/Duckix03/LastSurvivor/releases/latest/
     }).catch(() => {});
   } catch (e) { /* sem rede / file:// */ }
 })();
+
+// trocar de nome no perfil custa moedas (o recado é grátis). Escolher o 1º nome (saindo de "Jogador") é grátis.
+LS.RENAME_COST = 10000;
 
 LS.MAP_SIZE = 800;          // tamanho do terreno (metros)
 LS.MAP_SEED = 20261120;     // semente da ilha: todo mundo gera o MESMO mapa (necessário pro online)
