@@ -846,35 +846,35 @@ body.mobile #touch-ui { display: block; position: absolute; inset: 0; pointer-ev
 #touch-ui .tb::before { content: ''; position: absolute; inset: var(--bw); z-index: -1; clip-path: inherit; -webkit-clip-path: inherit; background: var(--bg);
   box-shadow: inset 0 calc(var(--u) * 0.9) 0 rgba(255, 255, 255, 0.16), inset 0 calc(var(--u) * -1.1) 0 rgba(0, 0, 0, 0.38); backdrop-filter: blur(3px); }
 #touch-ui .tb .pix { width: 54%; height: 54%; image-rendering: pixelated; }
-#touch-ui .tb.down { transform: scale(0.9) translateY(calc(var(--u) * 0.4)); opacity: 1; --bg: linear-gradient(180deg, rgba(255, 190, 70, 0.75), rgba(200, 110, 20, 0.75)); }
+#touch-ui .tb.down { transform: scale(0.9) translateY(calc(var(--u) * 0.4)); opacity: 1; --bg: linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(200, 210, 230, 0.3)); }
 #touch-ui .tb.down::before { box-shadow: inset 0 calc(var(--u) * 1.1) 0 rgba(0, 0, 0, 0.3); } /* afunda como bloco apertado */
-#touch-ui .tb.lit { opacity: 1; --bd: #ffe08a; --bg: linear-gradient(180deg, #ffd34d, #e8901a); color: #2a1400; }
+#touch-ui .tb.lit { opacity: 1; --bd: #ffffff; --bg: linear-gradient(180deg, #ffffff, #d6dbe6); color: #1b1e2b; }
+#touch-ui .tb.lit .pix { filter: invert(0.88); } /* aceso: botão branco, ícone escuro */
 #touch-ui .tb.hidden { display: none; }
-/* tiro principal: grande, borda dourada grossa */
+/* tiro principal: grande, borda branca grossa */
 #touch-ui .fire { right: calc(var(--u) * 7); bottom: calc(var(--u) * 17); width: calc(var(--u) * 25); height: calc(var(--u) * 25);
-  --bw: calc(var(--u) * 1.1); --bd: linear-gradient(180deg, #ffe27a, #e89a12); --bg: radial-gradient(circle at 50% 38%, rgba(230, 60, 60, 0.7), rgba(110, 10, 20, 0.72)); }
+  --bw: calc(var(--u) * 1.1); --bd: rgba(255, 255, 255, 0.9); }
 #touch-ui .fire .pix { width: 50%; height: 50%; }
 #touch-ui .fire2 { left: calc(var(--u) * 3); top: calc(var(--u) * 37); width: calc(var(--u) * 14); height: calc(var(--u) * 14);
-  --bw: calc(var(--u) * 0.8); --bd: linear-gradient(180deg, #ffe27a, #e89a12); --bg: radial-gradient(circle at 50% 38%, rgba(220, 55, 55, 0.62), rgba(110, 10, 20, 0.66)); }
+  --bw: calc(var(--u) * 0.8); --bd: rgba(255, 255, 255, 0.85); }
 /* leque em volta do tiro */
 #touch-ui .aim { right: calc(var(--u) * 33); bottom: calc(var(--u) * 33); }
 #touch-ui .reload { right: calc(var(--u) * 34); bottom: calc(var(--u) * 17); width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
 #touch-ui .jump { right: calc(var(--u) * 3); bottom: calc(var(--u) * 2); width: calc(var(--u) * 14); height: calc(var(--u) * 14); }
 #touch-ui .crouch { right: calc(var(--u) * 19); bottom: calc(var(--u) * 1.5); width: calc(var(--u) * 12.5); height: calc(var(--u) * 12.5); }
-/* CORRER: perto do joystick; aceso (verde) = corrida travada */
+/* CORRER: perto do joystick; aceso (branco) = corrida travada */
 #touch-ui .run { left: calc(var(--u) * 40); top: calc(100% - var(--u) * 37); width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
-#touch-ui .run.lit { --bd: #b6ffcb; --bg: linear-gradient(180deg, #4be07a, #1f9a48); color: #fff; }
 /* PEGAR: bloco largo */
 #touch-ui .use { right: calc(var(--u) * 33); bottom: calc(var(--u) * 48); width: auto; height: calc(var(--u) * 10); padding: 0 calc(var(--u) * 3.2); flex-direction: row; gap: calc(var(--u) * 1.2);
-  clip-path: var(--pxr); -webkit-clip-path: var(--pxr); --bd: #ffe9a8; --bg: linear-gradient(180deg, #ffbf45, #e8861a); color: #2a1400; font-size: calc(var(--u) * 3); opacity: 1; }
+  clip-path: var(--pxr); -webkit-clip-path: var(--pxr); --bd: rgba(255, 255, 255, 0.9); color: #fff; font-size: calc(var(--u) * 3); opacity: 1; text-shadow: calc(var(--u) * 0.35) calc(var(--u) * 0.35) 0 rgba(0, 0, 0, 0.55); }
 #touch-ui .use .pix { width: calc(var(--u) * 5.4); height: calc(var(--u) * 5.4); }
-/* cura à esquerda com a quantidade (plaquinha embaixo, dentro do botão) */
+/* cura à esquerda com a quantidade (plaquinha branca embaixo, dentro do botão) */
 #touch-ui .med { left: calc(var(--u) * 20); top: calc(var(--u) * 39); width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
 #touch-ui .band { left: calc(var(--u) * 35); top: calc(var(--u) * 40); width: calc(var(--u) * 11); height: calc(var(--u) * 11); }
 #touch-ui .med .pix, #touch-ui .band .pix { margin-top: calc(var(--u) * -1.4); }
 #touch-ui .med::after, #touch-ui .band::after { content: attr(data-n); position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); min-width: calc(var(--u) * 4.2); height: calc(var(--u) * 3.4);
-  padding: 0 calc(var(--u) * 0.8); box-sizing: border-box; background: #ffc531; color: #2a1400; font-family: var(--display); font-size: calc(var(--u) * 2.7); line-height: calc(var(--u) * 3.4); text-align: center;
-  box-shadow: 0 calc(var(--u) * 0.4) 0 #a86a00; }
+  padding: 0 calc(var(--u) * 0.8); box-sizing: border-box; background: #ffffff; color: #1b1e2b; font-family: var(--display); font-size: calc(var(--u) * 2.7); line-height: calc(var(--u) * 3.4); text-align: center;
+  box-shadow: 0 calc(var(--u) * 0.4) 0 #8a93a6; }
 #touch-ui .tb.empty { opacity: calc(var(--tbo, 0.85) * 0.5); }
 #touch-ui .tb.empty::after { background: #5a6070; color: #fff; box-shadow: 0 calc(var(--u) * 0.4) 0 #333845; }
 /* menu rápido (blocos com cantos em degrau): pausa, mapa, mochila; zoom da luneta */
@@ -883,7 +883,7 @@ body.mobile #touch-ui { display: block; position: absolute; inset: 0; pointer-ev
 #touch-ui .pause { top: calc(var(--u) * 2); right: calc(155px * var(--hz, 1) + 3vh + var(--u) * 11); }
 #touch-ui .map { top: calc(var(--u) * 2); right: calc(155px * var(--hz, 1) + 3vh); }
 #touch-ui .bag { top: calc(155px * var(--hz, 1) + 4vh); right: 2vh; }
-#touch-ui .zoom { right: calc(var(--u) * 47); bottom: calc(var(--u) * 36); width: calc(var(--u) * 11); height: calc(var(--u) * 11); --bd: #ffc531; color: #ffd34d; font-size: calc(var(--u) * 3.6); text-shadow: calc(var(--u) * 0.35) calc(var(--u) * 0.35) 0 rgba(0, 0, 0, 0.6); }
+#touch-ui .zoom { right: calc(var(--u) * 47); bottom: calc(var(--u) * 36); width: calc(var(--u) * 11); height: calc(var(--u) * 11); --bd: rgba(255, 255, 255, 0.85); color: #fff; font-size: calc(var(--u) * 3.6); text-shadow: calc(var(--u) * 0.35) calc(var(--u) * 0.35) 0 rgba(0, 0, 0, 0.6); }
 #touch-ui.air .fire, #touch-ui.air .fire2, #touch-ui.air .aim, #touch-ui.air .crouch, #touch-ui.air .reload, #touch-ui.air .med, #touch-ui.air .band, #touch-ui.air .run { display: none; }
 /* joystick: base em "círculo de pixel" com setinhas, bolinha em bloco; vai pra onde o dedo encostar */
 #joy { position: absolute; left: calc(var(--u) * 22); top: calc(100% - var(--u) * 21); width: calc(var(--u) * 30); height: calc(var(--u) * 30); margin: calc(var(--u) * -15) 0 0 calc(var(--u) * -15);
@@ -893,7 +893,7 @@ body.mobile #touch-ui { display: block; position: absolute; inset: 0; pointer-ev
 #joy.on, #joy.auto { opacity: 1; transition: none; }
 #joy i { position: absolute; left: 50%; top: 50%; width: calc(var(--u) * 12); height: calc(var(--u) * 12); margin: calc(var(--u) * -6) 0 0 calc(var(--u) * -6);
   clip-path: var(--pxc); -webkit-clip-path: var(--pxc); background: linear-gradient(180deg, #ffffff, #c9d0de); box-shadow: inset 0 calc(var(--u) * -1.2) 0 rgba(0, 0, 0, 0.25), inset 0 calc(var(--u) * 0.9) 0 #fff; }
-#joy.auto i { transform: translateY(calc(var(--u) * -9)); background: linear-gradient(180deg, #8ff5b0, #2fbf64); }
+#joy.auto i { transform: translateY(calc(var(--u) * -9)); }
 
 /* ---------- HUD no celular (bem maior que antes; escala --hz) ---------- */
 body.mobile #top-left, body.mobile #zone-info, body.mobile #killfeed, body.mobile #duel-score, body.mobile #heal-progress, body.mobile #prompt, body.mobile #center-msg, body.mobile #duel-count, body.mobile #fps { zoom: var(--hz, 1); }
