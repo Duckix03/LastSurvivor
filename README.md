@@ -14,7 +14,7 @@
 ![Estilo](https://img.shields.io/badge/Estilo-Blocos%203D-4f8a34?style=flat-square&labelColor=1a1226)
 ![Jogadores](https://img.shields.io/badge/Partida-31%20jogadores-ffce3c?style=flat-square&labelColor=1a1226)
 ![Crossplay](https://img.shields.io/badge/Crossplay-Navegador%20%E2%86%94%20Android-a046c8?style=flat-square&labelColor=1a1226)
-![Online](https://img.shields.io/badge/Online-Servidor%20autoritativo-3a6ea5?style=flat-square&labelColor=1a1226)
+![Online](https://img.shields.io/badge/Online-Partidas%20ao%20vivo-3a6ea5?style=flat-square&labelColor=1a1226)
 
 **[🏝️ Partida](#️-a-partida)** · **[🎮 Modos](#-modos-de-jogo)** · **[🔫 Arsenal](#-arsenal)** · **[🛒 Loja](#-loja-gold-royale-e-guarda-roupa)** · **[🌐 Online](#-online-e-contas)** · **[📱 Celular](#-celular-e-android)** · **[⌨️ Controles](#️-controles)**
 
@@ -172,17 +172,13 @@ Os 30 bots jogam de verdade, sempre no nível **normal**:
 ## 🌐 Online e Contas
 
 - **JOGAR** procura jogadores de verdade por até **30 segundos**. Se achar, a partida é online (os bots completam as vagas); se não achar, começa contra bots
-- 🛡️ O **servidor é a autoridade**: vida, dano, tiros, itens e vencedor são decididos nele (editar o jogo no navegador não dá vantagem)
-- 🙈 **Anti-wallhack**: cada jogador só recebe a posição de quem ele poderia ver
 - 🔁 **Crossplay**: navegador e app Android caem na mesma partida
-- ☁️ Servidor grátis na Cloudflare: veja [server/LEIAME.md](server/LEIAME.md) pra publicar
 
 ### 👤 Contas
 
 - **CRIAR CONTA** no perfil: nome **único** com senha. Ninguém mais consegue usar o seu nome (nem no online, onde vira `Convidado1234`)
 - O perfil, o visual e as estatísticas ficam salvos na conta: entre em qualquer aparelho e está tudo lá
 - Sem conta você joga como **convidado** (nome não protegido, sem curtidas e sem selos)
-- Como virar owner e dar selos: veja [server/LEIAME.md](server/LEIAME.md)
 
 ### 🪪 Perfil
 
@@ -193,7 +189,7 @@ No estilo Free Fire (toque no seu nome no topo do lobby):
 - 🆔 **ID** de 10 dígitos (botão de copiar), **nível**, **patente** (Bronze → Desafiante) e estatísticas
 - ❤️ **Curtidas** de verdade, dadas por outros jogadores com conta
 - ✏️ **Recado** (bio) e nome editáveis
-- 🏅 **Selos**: Verificado, Criador de Conteúdo, Dev e Owner (com o "verificado" azul do lado do nome), dados só pelo dono do jogo no **painel ADMIN**
+- 🏅 **Selos**: Verificado, Criador de Conteúdo, Dev e Owner (com o "verificado" azul do lado do nome), dados pela equipe do jogo
 - 🔎 **Buscar jogador pelo ID** e curtir o perfil (1 curtida por conta)
 - 👀 No fim da partida dá pra ver o **perfil do oponente** (duelo) ou de **quem te eliminou**
 
@@ -344,15 +340,12 @@ Seu visual fica salvo para as próximas partidas.
 - 🔩 Ferrolho da sniper, pump da escopeta e recarga própria de cada arma
 - 🐝 Zunido de bala passando perto e som metálico ao acertar colete ou capacete
 
-### 🦴 Esqueleto e Animações Externas
+### 🦴 Esqueleto e Animações
 
 - O personagem tem **15 peças com esqueleto** (estilo R15): tronco de cima e de baixo, cabeça, braço/antebraço/mão e coxa/canela/pé
 - Animações com juntas: pés com IK (pisam no chão sem patinar, joelho dobra ao andar, agachar e aterrissar), mão esquerda segura a arma de verdade (guarda-mão, pente, bomba) e cotovelos naturais em todas as poses
 - Armas num encaixe no corpo com as duas mãos por IK: coronha no ombro e postura de lado na mira, guarda, corrida com a arma no peito, recarga com o pente caindo no chão, ferrolho puxado pela mão
 - Eliminação: o corpo cai, dá um pulinho e encolhe até sumir
-- Aceita animações de fora em **.glb**, **.gltf** e **.fbx** (Mixamo, Quaternius, Kenney…) e converte qualquer esqueleto humanoide para o boneco de blocos
-- Mistura com as animações do jogo, de corpo inteiro ou só da cintura pra cima/baixo
-- Arraste o arquivo para a janela ou use o comando `anim` no console. Veja [anims/LEIAME.md](anims/LEIAME.md)
 
 ### 📊 Interface
 
@@ -377,7 +370,6 @@ Seu visual fica salvo para as próximas partidas.
 
 ![JavaScript](https://img.shields.io/badge/JavaScript-f7df1e?style=for-the-badge&logo=javascript&logoColor=000)
 ![Three.js](https://img.shields.io/badge/Three.js-000000?style=for-the-badge&logo=threedotjs&logoColor=fff)
-![Cloudflare Workers](https://img.shields.io/badge/Cloudflare%20Workers-f38020?style=for-the-badge&logo=cloudflare&logoColor=fff)
 ![Capacitor](https://img.shields.io/badge/Capacitor-119eff?style=for-the-badge&logo=capacitor&logoColor=fff)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088ff?style=for-the-badge&logo=githubactions&logoColor=fff)
 
