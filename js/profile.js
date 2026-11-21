@@ -150,9 +150,9 @@ LS.Profile = {
   penIcon() { return '<svg viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z M14 6l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>'; },
 
   // ---------- janelinhas: editar, foto, capa ----------
-  modal(html) {
+  modal(html, cls) {
     const m = document.getElementById('pf-modal');
-    m.innerHTML = '<div class="pf-modal-box">' + html + '</div>'; m.classList.remove('hidden');
+    m.innerHTML = '<div class="pf-modal-box' + (cls ? ' ' + cls : '') + '">' + html + '</div>'; m.classList.remove('hidden');
   },
   closeModal() { document.getElementById('pf-modal').classList.add('hidden'); },
   // trocar de nome custa LS.RENAME_COST moedas; o recado é grátis. Grátis também: o 1º nome (saindo de "Jogador"),
@@ -278,20 +278,127 @@ LS.Profile = {
       stats: Object.assign({ games: 0, wins: 0, kills: 0, xp: 0, best: 0 }, a.stats || {}) };
   },
   // ---------- painel do owner: dar selos ----------
-  openAdmin() {
+  // ---------- painel ADMIN: abas SELOS e GERADOR DE CODIGUIN ----------
+  openAdmin(tab) {
+    this.admTab = tab = tab || this.admTab || 'badges';
+    const tabs = '<div class="adm-tabs"><button class="' + (tab === 'badges' ? 'on' : '') + '" data-pf="adm-tab" data-v="badges">SELOS</button>' +
+      '<button class="' + (tab === 'codes' ? 'on' : '') + '" data-pf="adm-tab" data-v="codes">GERADOR DE CODIGUIN</button></div>';
+    if (tab === 'codes') return this.openCodes(tabs);
     const on = LS.Console.dev;
-    this.modal('<h3>PAINEL ADMIN</h3><p class="pf-hint">Dê ou tire selos de qualquer conta pelo ID.</p><div class="pf-row"><input id="pf-adm-id" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ID da conta"><button class="btn small" data-pf="adm-find">BUSCAR</button></div>' +
+    this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Dê ou tire selos de qualquer conta pelo ID.</p><div class="pf-row"><input id="pf-adm-id" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ID da conta"><button class="btn small" data-pf="adm-find">BUSCAR</button></div>' +
       '<div id="pf-adm-box"></div><p id="pf-err" class="pf-err hidden"></p>' +
       '<div class="pf-adm-sec"><label class="pf-switch"><input type="checkbox" id="pf-dev-chk"' + (on ? ' checked' : '') + '><span></span></label>' +
       '<div><b>Console de dev</b><small id="pf-dev-st">' + (on ? 'Ligado neste navegador. Abra com a tecla <kbd>\'</kbd> (do lado do 1) ou <kbd>F2</kbd>.' : 'Desligado. Comandos de teste (dar armas, voar, modo deus...). Só funcionam offline.') + '</small></div></div>' +
       '<div id="pf-dev-confirm" class="pf-confirm hidden"><b>Ativar o console de dev?</b><p>Ele tem comandos de trapaça pra testar o jogo (dar itens, voar, invencível, ver todos). Só fica ligado <b>neste navegador</b> e os comandos não funcionam nas partidas online.</p>' +
       '<div class="pf-modal-btns"><button class="btn" data-pf="dev-no">CANCELAR</button><button class="btn btn-primary" data-pf="dev-yes">SIM, ATIVAR</button></div></div>' +
-      '<div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>');
+      '<div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>', 'adm');
     document.getElementById('pf-dev-chk').addEventListener('change', e => {
       if (e.target.checked) { e.target.checked = false; document.getElementById('pf-dev-confirm').classList.remove('hidden'); } // só liga depois de confirmar
       else { LS.Console.setDev(false); this.devStatus(); }
     });
     document.getElementById('pf-adm-id').focus();
+  },
+  // ---------- gerador de codiguin ----------
+  CG_TABS: [
+    { id: 'costume', label: 'FANTASIAS', test: i => i.slot === 'costume' && !i.code }, { id: 'code', label: 'EXCLUSIVOS', test: i => i.code },
+    { id: 'hat', label: 'CHAPÉUS', test: i => i.slot === 'hat' && !i.code }, { id: 'face', label: 'ROSTO', test: i => ['glasses', 'mask', 'hairStyle', 'beard'].includes(i.slot) && !i.code },
+    { id: 'body', label: 'ROUPAS', test: i => (i.slot === 'top' || i.slot === 'pattern') && !i.code }, { id: 'legs', label: 'CALÇAS', test: i => i.slot === 'legs' }
+  ],
+  openCodes(tabs) {
+    const cg = this.cg || (this.cg = { item: null, money: false, kind: 'coins', coins: 1000, diamonds: 100, uses: 100, days: 30 });
+    this.modal('<h3>PAINEL ADMIN</h3>' + tabs +
+      '<div class="cg">' +
+      '<button class="btn cg-pick" data-pf="cg-pick">SELECIONAR ITEM PARA CODIGUINHO</button>' +
+      '<div id="cg-sel" class="cg-sel"></div>' +
+      '<label class="cg-chk"><input type="checkbox" id="cg-money"' + (cg.money ? ' checked' : '') + '><span></span>Dar moedas ou diamantes?</label>' +
+      '<div id="cg-money-box" class="cg-money' + (cg.money ? '' : ' hidden') + '">' +
+      '<select id="cg-kind"><option value="coins">Moedas</option><option value="diamonds">Diamantes</option><option value="both">Os 2</option></select>' +
+      '<label class="cg-amt" data-k="coins">' + LS.icon('coin', 'coin-i') + '<input id="cg-coins" type="number" min="0" max="1000000" value="' + cg.coins + '"></label>' +
+      '<label class="cg-amt" data-k="diamonds">' + LS.icon('gem', 'gem-i') + '<input id="cg-diamonds" type="number" min="0" max="100000" value="' + cg.diamonds + '"></label></div>' +
+      '<div class="cg-opts"><label>Código <small>(vazio = aleatório)</small><input id="cg-code" maxlength="20" spellcheck="false" autocomplete="off" placeholder="EX: NATAL2026"></label>' +
+      '<label>Usos <small>(0 = sem limite)</small><input id="cg-uses" type="number" min="0" value="' + cg.uses + '"></label>' +
+      '<label>Vale por <small>(dias, 0 = sempre)</small><input id="cg-days" type="number" min="0" value="' + cg.days + '"></label></div>' +
+      '<button class="btn btn-primary cg-make" data-pf="cg-make">GERAR CODIGUIN</button>' +
+      '<p id="pf-err" class="pf-err hidden"></p><div id="cg-out"></div>' +
+      '<div class="cg-list-h">CODIGUINS CRIADOS</div><div id="cg-list" class="cg-list"><p class="pf-hint">Carregando…</p></div>' +
+      '</div><div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>', 'adm wide');
+    const kind = document.getElementById('cg-kind'); kind.value = cg.kind;
+    const syncMoney = () => {
+      cg.money = document.getElementById('cg-money').checked; cg.kind = kind.value;
+      document.getElementById('cg-money-box').classList.toggle('hidden', !cg.money);
+      document.querySelectorAll('.cg-amt').forEach(el => el.classList.toggle('hidden', !(cg.kind === 'both' || cg.kind === el.dataset.k)));
+    };
+    document.getElementById('cg-money').addEventListener('change', syncMoney); kind.addEventListener('change', syncMoney); syncMoney();
+    this.cgSel(); this.cgList();
+  },
+  cgSel() {
+    const el = document.getElementById('cg-sel'); if (!el) return;
+    const it = this.cg.item && LS.Cosmetics.byId[this.cg.item];
+    if (!it) { el.innerHTML = '<p class="pf-hint">Nenhum item (dá pra fazer codiguin só de moedas/diamantes).</p>'; return; }
+    const R = LS.Cosmetics.RARITY[it.rarity];
+    el.innerHTML = '<div class="cg-item" style="--rc:' + R.color + '"><img alt="" data-tid="' + it.id + '"><div><span class="cg-rar">' + R.name + '</span><b>' + this.esc(it.name) + '</b><small>' + this.esc(it.id) + '</small></div>' +
+      '<button class="btn small" data-pf="cg-clear">TIRAR</button></div>';
+    LS.Thumbs.into(el.querySelector('img'), it);
+  },
+  cgPicker(tab) {
+    this.cgTab = tab || this.cgTab || 'costume';
+    const C = LS.Cosmetics, T = this.CG_TABS.find(t => t.id === this.cgTab) || this.CG_TABS[0];
+    const items = C.items.filter(i => !i.free && T.test(i)).sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
+    let pk = document.getElementById('cg-picker');
+    if (!pk) { pk = document.createElement('div'); pk.id = 'cg-picker'; document.querySelector('#pf-modal .pf-modal-box').appendChild(pk); }
+    pk.innerHTML = '<div class="cgp-head"><b>ESCOLHA O ITEM</b><button class="btn small" data-pf="cg-pclose">FECHAR</button></div>' +
+      '<div class="cgp-tabs">' + this.CG_TABS.map(t => '<button class="' + (t.id === T.id ? 'on' : '') + '" data-pf="cg-ptab" data-v="' + t.id + '">' + t.label + '</button>').join('') + '</div>' +
+      '<div class="cgp-grid">' + items.map(it => { const R = C.RARITY[it.rarity];
+        return '<button class="wr-card' + (this.cg.item === it.id ? ' on' : '') + '" data-pf="cg-item" data-v="' + it.id + '" style="--rc:' + R.color + '"><div class="wr-img"><img alt="" data-tid="' + it.id + '"></div>' +
+          '<b>' + this.esc(it.name) + '</b><small>' + R.name + '</small></button>'; }).join('') + '</div>';
+    pk.querySelectorAll('img[data-tid]').forEach(img => LS.Thumbs.into(img, C.byId[img.dataset.tid]));
+  },
+  cgSelect(id) { this.cg.item = id; const pk = document.getElementById('cg-picker'); if (pk) pk.remove(); this.cgSel(); },
+  async cgMake() {
+    const cg = this.cg, v = id => document.getElementById(id).value;
+    cg.coins = +v('cg-coins') || 0; cg.diamonds = +v('cg-diamonds') || 0; cg.uses = +v('cg-uses') || 0; cg.days = +v('cg-days') || 0;
+    const o = { code: v('cg-code').trim(), item: cg.item, maxUses: cg.uses, days: cg.days,
+      coins: cg.money && cg.kind !== 'diamonds' ? cg.coins : 0, diamonds: cg.money && cg.kind !== 'coins' ? cg.diamonds : 0 };
+    const btn = document.querySelector('[data-pf="cg-make"]'); btn.disabled = true;
+    try {
+      const c = await LS.Account.adminCreateCode(o);
+      document.getElementById('pf-err').classList.add('hidden');
+      document.getElementById('cg-out').innerHTML = '<div class="cg-out"><small>CODIGUIN CRIADO</small><b>' + c.code + '</b><span>' + this.cgDesc(c) + '</span>' +
+        '<button class="btn btn-primary small" data-pf="cg-copy" data-v="' + c.code + '">COPIAR</button></div>';
+      document.getElementById('cg-code').value = '';
+      this.cgList();
+    } catch (e) { this.modalError(e.message); }
+    btn.disabled = false;
+  },
+  cgDesc(c) {
+    const it = c.item && LS.Cosmetics.byId[c.item], p = [];
+    if (it) p.push(this.esc(it.name)); else if (c.item) p.push(this.esc(c.item));
+    if (c.coins) p.push(LS.icon('coin', 'coin-i') + c.coins.toLocaleString('pt-BR'));
+    if (c.diamonds) p.push(LS.icon('gem', 'gem-i') + c.diamonds.toLocaleString('pt-BR'));
+    return p.join(' + ');
+  },
+  async cgList() {
+    const el = document.getElementById('cg-list'); if (!el) return;
+    try {
+      const list = await LS.Account.adminCodes();
+      el.innerHTML = list.length ? list.map(c => {
+        const exp = c.exp ? (c.exp < Date.now() ? '<em class="cg-dead">vencido</em>' : 'até ' + new Date(c.exp).toLocaleDateString('pt-BR')) : 'sem validade';
+        const full = c.maxUses && c.uses >= c.maxUses;
+        return '<div class="cg-row' + (full || (c.exp && c.exp < Date.now()) ? ' off' : '') + '"><b>' + c.code + '</b><span>' + this.cgDesc(c) + '</span>' +
+          '<small>' + c.uses + '/' + (c.maxUses || '∞') + ' usos · ' + exp + '</small>' +
+          '<button class="btn small" data-pf="cg-copy" data-v="' + c.code + '">COPIAR</button><button class="btn small cg-del" data-pf="cg-del" data-v="' + c.code + '">APAGAR</button></div>';
+      }).join('') : '<p class="pf-hint">Nenhum codiguin ainda.</p>';
+    } catch (e) { el.innerHTML = '<p class="pf-err">' + this.esc(e.message) + '</p>'; }
+  },
+  cgCopy(code) {
+    const done = () => this.modalError('Copiado: ' + code);
+    try { navigator.clipboard.writeText(code).then(done, done); } catch (e) { done(); }
+    setTimeout(() => { const e = document.getElementById('pf-err'); if (e) e.classList.add('ok'); }, 0);
+  },
+  async cgDel(code) {
+    const b = document.querySelector('[data-pf="cg-del"][data-v="' + code + '"]');
+    if (b && !b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'CERTEZA?'; return; } // 2 toques pra apagar
+    try { await LS.Account.adminDeleteCode(code); this.cgList(); } catch (e) { this.modalError(e.message); }
   },
   devStatus() {
     const on = LS.Console.dev, chk = document.getElementById('pf-dev-chk'), st = document.getElementById('pf-dev-st');
@@ -342,6 +449,15 @@ LS.Profile = {
         case 'search': this.openSearch(); break;
         case 'search-go': this.searchGo(); break;
         case 'admin': this.openAdmin(); break;
+        case 'adm-tab': this.openAdmin(el.dataset.v); break;
+        case 'cg-pick': this.cgPicker(); break;
+        case 'cg-ptab': this.cgPicker(el.dataset.v); break;
+        case 'cg-item': this.cgSelect(el.dataset.v); break;
+        case 'cg-pclose': { const pk = document.getElementById('cg-picker'); if (pk) pk.remove(); break; }
+        case 'cg-clear': this.cg.item = null; this.cgSel(); break;
+        case 'cg-make': this.cgMake(); break;
+        case 'cg-copy': this.cgCopy(el.dataset.v); break;
+        case 'cg-del': this.cgDel(el.dataset.v); break;
         case 'adm-find': this.admFind(); break;
         case 'adm-save': this.admSave(); break;
         case 'dev-yes': LS.Console.setDev(true); this.devStatus(); break;

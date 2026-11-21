@@ -27,6 +27,13 @@
 //   POST /api/password {pass}                  cria uma senha (conta que só entrava pelo Google)
 //   POST /api/handoff                          código de uso único (3 min) pra passar a sessão pro app / pro navegador
 //   POST /api/handoff/redeem {code}            troca o código pela sessão
+//   POST /api/redeem {code}                    resgata um codiguin (item, moedas e/ou diamantes; 1 vez por conta)
+//   POST /api/buy {item}                       compra com DIAMANTES (fantasias completas)
+//   POST /api/daily                            recompensa diária (+10 diamantes a cada 20 h)
+//   POST /api/admin/codes/create {code?, item?, coins, diamonds, maxUses, days}   (só owner) cria codiguin
+//   GET  /api/admin/codes                      (só owner) lista os codiguins
+//   POST /api/admin/codes/delete {code}        (só owner) apaga um codiguin
+// DIAMANTES ficam só aqui no servidor (a.diamonds): ninguém dá diamante pra si mesmo mexendo no jogo.
 // Uso interno (só o Matchmaker chama, não fica exposto): /internal/resolve {token, name}
 'use strict';
 
@@ -38,6 +45,17 @@ const NAME_RE = /^[A-Za-z0-9_.\-À-ÿ]{3,16}$/;
 const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top', 'legs'];
 const ITEM_RE = /^[a-zA-Z]{2,10}:[a-zA-Z0-9À-ÿ .\-]{1,24}$/; // itens da loja: "parte:valor" (ex.: hat:coroa)
 const STAT_KEYS = ['games', 'wins', 'kills', 'xp', 'coins', 'dmg', 'best'];
+// preços em diamantes (iguais aos de js/cosmetics.js)
+const DIAMOND_PRICES = { 'costume:rei': 4000, 'costume:cyber': 3500, 'costume:anjo': 2200, 'costume:caveira': 1500, 'costume:gasmask': 1200, 'costume:ninja': 1000 };
+// itens só de codiguin (iguais aos de js/cosmetics.js) e as peças que cada fantasia exclusiva libera
+const EXCLUSIVE_COSTUMES = { 'costume:lenda': ['hat:coroa diamante', 'pattern:diamante'], 'costume:astronauta': ['hat:astronauta'],
+  'costume:pirata': ['hat:pirata', 'beard:mago'], 'costume:hacker': ['glasses:matrix', 'pattern:circuito'] };
+const EXCLUSIVE = new Set(['hat:coroa diamante', 'hat:astronauta', 'hat:pirata', 'hat:halo glitch', 'beard:mago', 'beard:gelo', 'glasses:fogo', 'glasses:matrix',
+  'pattern:glitch', 'pattern:circuito', 'pattern:diamante', ...Object.keys(EXCLUSIVE_COSTUMES)]);
+// esses só entram na conta pelo servidor (compra com diamante ou codiguin): o jogo não consegue se dar eles
+const PROTECTED = it => EXCLUSIVE.has(it) || it in DIAMOND_PRICES;
+const DAILY_DIAMONDS = 10, DAILY_MS = 20 * 3600e3;
+const CODE_RE = /^[A-Z0-9-]{4,20}$/, CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 const H = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Content-Type': 'application/json' };
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: H });
@@ -111,6 +129,15 @@ export class Accounts {
       if (path === '/api/google/unlink') return await this.googleUnlink(me);
       if (path === '/api/password') return await this.setPassword(me, body);
       if (path === '/api/handoff') return await this.handoff(me);
+      if (path === '/api/redeem') return await this.redeemCode(me, body);
+      if (path === '/api/buy') return await this.buyDiamond(me, body);
+      if (path === '/api/daily') return await this.daily(me);
+      if (path.startsWith('/api/admin/codes')) {
+        if (!me.badges.includes('owner')) return fail('Só o owner pode mexer nos codiguins.', 403);
+        if (path === '/api/admin/codes' && req.method === 'GET') return await this.listCodes();
+        if (path === '/api/admin/codes/create') return await this.createCode(me, body);
+        if (path === '/api/admin/codes/delete') { await this.st.delete('c:' + String(body.code || '').toUpperCase()); return await this.listCodes(); }
+      }
       if (path === '/api/friends') return await this.friends(me);
       m = path.match(/^\/api\/friends\/(add|accept|decline|remove)$/);
       if (m) return await this.friendAction(me, m[1], body);
@@ -136,7 +163,7 @@ export class Accounts {
     return tok;
   }
   // o que o dono da conta vê (sem a senha)
-  mine(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, renameAt: a.renameAt || 0, google: a.google ? { email: a.google.email } : null, hasPass: !!a.hash, freeRename: !!a.autoName }; }
+  mine(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, renameAt: a.renameAt || 0, google: a.google ? { email: a.google.email } : null, hasPass: !!a.hash, freeRename: !!a.autoName, diamonds: a.diamonds || 0, dailyAt: a.dailyAt || 0 }; }
   pub(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, created: a.created }; }
 
   cleanProfile(p, old) {
@@ -150,8 +177,14 @@ export class Accounts {
       avatarBg: p.avatarBg != null ? nint(p.avatarBg, 7) : o.avatarBg,
       cover: p.cover != null && /^(br|duel1|duel2|g\d)$/.test(p.cover) ? p.cover : o.cover,
       weapon: p.weapon !== undefined ? (p.weapon && /^[a-z0-9]{2,8}$/.test(p.weapon) ? p.weapon : null) : o.weapon,
-      owned: Array.isArray(p.owned) ? [...new Set(p.owned.filter(x => typeof x === 'string' && ITEM_RE.test(x)))].slice(0, 400) : (o.owned || []),
+      owned: Array.isArray(p.owned) ? this.mergeOwned(p.owned, o.owned || []) : (o.owned || []),
     };
+  }
+  // lista de itens mandada pelo jogo: os protegidos (diamante/codiguin) só ficam se a conta já tinha
+  mergeOwned(list, old) {
+    const keep = old.filter(PROTECTED);
+    const sent = list.filter(x => typeof x === 'string' && ITEM_RE.test(x) && !PROTECTED(x));
+    return [...new Set([...sent, ...keep])].slice(0, 400);
   }
   checkName(name) {
     if (!NAME_RE.test(name)) return 'O nome precisa ter de 3 a 16 letras, números, _ . ou -';
@@ -313,6 +346,64 @@ export class Accounts {
     a.badges = (Array.isArray(b.badges) ? b.badges : []).filter((x, i, l) => BADGES.includes(x) && l.indexOf(x) === i);
     await this.st.put('a:' + a.id, a);
     return json({ profile: this.pub(a) });
+  }
+
+  // ---------- diamantes, codiguins e recompensa diária ----------
+  giveItem(a, item) {
+    a.profile = a.profile || this.cleanProfile({});
+    const owned = a.profile.owned || (a.profile.owned = []);
+    const had = owned.includes(item);
+    for (const x of [item, ...(EXCLUSIVE_COSTUMES[item] || [])]) if (!owned.includes(x)) owned.push(x);
+    return !had;
+  }
+  async buyDiamond(a, b) {
+    const item = String(b.item || ''), price = DIAMOND_PRICES[item];
+    if (!price) return fail('Esse item não é vendido por diamantes.');
+    if ((a.profile && a.profile.owned || []).includes(item)) return fail('Você já tem esse item.');
+    const have = a.diamonds || 0;
+    if (have < price) return fail('Diamantes insuficientes: faltam ' + (price - have).toLocaleString('pt-BR') + '.');
+    a.diamonds = have - price; this.giveItem(a, item);
+    delete a._token; await this.st.put('a:' + a.id, a);
+    return json({ account: this.mine(a) });
+  }
+  async daily(a) {
+    const left = (a.dailyAt || 0) + DAILY_MS - Date.now();
+    if (left > 0) return fail('Volte em ' + Math.ceil(left / 3600e3) + ' h pra pegar a próxima recompensa.', 429);
+    a.diamonds = (a.diamonds || 0) + DAILY_DIAMONDS; a.dailyAt = Date.now();
+    delete a._token; await this.st.put('a:' + a.id, a);
+    return json({ account: this.mine(a), got: DAILY_DIAMONDS });
+  }
+  async createCode(me, b) {
+    const item = b.item ? String(b.item) : null;
+    if (item && !ITEM_RE.test(item)) return fail('Item inválido.');
+    const coins = nint(b.coins, 1e6), diamonds = nint(b.diamonds, 1e5), maxUses = nint(b.maxUses, 1e6), days = nint(b.days, 3650);
+    if (!item && !coins && !diamonds) return fail('Escolha um item ou coloque moedas/diamantes.');
+    let code = String(b.code || '').toUpperCase().replace(/\s+/g, '');
+    if (code && !CODE_RE.test(code)) return fail('O código precisa ter de 4 a 20 letras, números ou -');
+    if (!code) { do { const r = new Uint8Array(10); crypto.getRandomValues(r); code = 'LS' + Array.from(r, x => CODE_ABC[x % CODE_ABC.length]).join(''); } while (await this.st.get('c:' + code)); }
+    else if (await this.st.get('c:' + code)) return fail('Esse código já existe.');
+    const c = { code, item, coins, diamonds, maxUses, uses: 0, exp: days ? Date.now() + days * 864e5 : 0, created: Date.now(), by: me.id };
+    await this.st.put('c:' + code, c);
+    return json({ code: c });
+  }
+  async listCodes() {
+    const m = await this.st.list({ prefix: 'c:' });
+    return json({ codes: [...m.values()].sort((x, y) => y.created - x.created).slice(0, 200) });
+  }
+  async redeemCode(a, b) {
+    const key = 'rc:' + a.id;
+    if (this.locked(key)) return fail('Muitas tentativas. Espere 1 minuto.', 429);
+    const code = String(b.code || '').toUpperCase().replace(/\s+/g, ''), c = CODE_RE.test(code) && await this.st.get('c:' + code);
+    if (!c) { this.failed(key); return fail('Codiguin inválido.'); }
+    if (await this.st.get('r:' + code + ':' + a.id)) return fail('Você já resgatou esse codiguin.');
+    if (c.exp && c.exp < Date.now()) return fail('Esse codiguin já venceu.');
+    if (c.maxUses && c.uses >= c.maxUses) return fail('Esse codiguin já foi resgatado o máximo de vezes.');
+    c.uses++; await this.st.put('c:' + code, c); await this.st.put('r:' + code + ':' + a.id, Date.now());
+    const had = c.item ? !this.giveItem(a, c.item) : false;
+    a.diamonds = (a.diamonds || 0) + (c.diamonds || 0);
+    delete a._token; await this.st.put('a:' + a.id, a);
+    // moedas: o jogo soma (as moedas ficam no aparelho e são salvas na conta pelo /api/stats)
+    return json({ account: this.mine(a), reward: { item: c.item, had, coins: c.coins || 0, diamonds: c.diamonds || 0 } });
   }
 
   // ---------- amizades ----------

@@ -54,6 +54,7 @@ LS.Menu = {
     document.getElementById('lb-level').textContent = lvl;
     document.getElementById('lb-xp').style.width = Math.round(((s.xp || 0) - a) / (b - a) * 100) + '%';
     document.getElementById('lb-coins').textContent = (s.coins || 0).toLocaleString('pt-BR');
+    document.getElementById('lb-gems').textContent = (LS.Cosmetics.diamonds ? LS.Cosmetics.diamonds() : 0).toLocaleString('pt-BR');
     document.getElementById('lb-wins').textContent = s.wins || 0;
     if (LS.Modes) LS.Modes.render();
     document.getElementById('lb-mute').innerHTML = LS.icon(LS.settings.muted ? 'mute' : 'sound');
