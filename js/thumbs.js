@@ -14,13 +14,14 @@ LS.Thumbs = {
   },
   lookFor(item) {
     const L = Object.assign({}, this.BASE);
+    if (item.slot === 'portrait') return Object.assign(L, item.look); // rosto de um jogador (morte / espectador)
     if (item.slot === 'costume') Object.assign(L, item.look);
     else L[item.slot] = item.val;
     if (item.slot === 'beard') L.hair = '#5a3416';
     if (item.slot === 'legs') L.pants = '#3a5aa0'; // calça jeans: o estilo aparece melhor que no cinza
     return L;
   },
-  focusFor(item) { return item.slot === 'costume' ? 'full' : LS.Cosmetics.SLOTS[item.slot].focus; },
+  focusFor(item) { if (item.slot === 'portrait') return 'head'; return item.slot === 'costume' ? 'full' : LS.Cosmetics.SLOTS[item.slot].focus; },
   key(item) { return item.id; },
   // pede a foto: cb(url) na hora (se já tem) ou quando ficar pronta
   get(item, cb) {
@@ -58,6 +59,14 @@ LS.Thumbs = {
     m.animate({ dt: 0.05, speed: 0, aimPitch: 0, armed: false, idle: true });
     this.cam.fov = C.fov; this.cam.position.set(...C.pos); this.cam.lookAt(...C.at);
     return LS.Banners.snap(this.sc, this.cam, 128, 128, { alpha: true, ss: 2 }).toDataURL('image/png');
+  },
+  // rosto de alguém (cartão de morte / espectador)
+  face(look, img) {
+    if (!look) return;
+    const L = Object.assign({}, look); delete L.costume;
+    img.classList.remove('ok'); img.removeAttribute('src'); img.dataset.want = JSON.stringify(L);
+    const want = img.dataset.want;
+    this.get({ id: 'face:' + want, slot: 'portrait', look: L }, url => { if (img.dataset.want === want) { img.src = url; img.classList.add('ok'); } });
   },
   // coloca a foto num <img> (quando ficar pronta)
   into(img, item) {

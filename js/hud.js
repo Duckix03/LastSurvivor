@@ -229,10 +229,11 @@ LS.HUD = {
   },
   // minimapa redondo que gira com a câmera, com bússola na borda
   drawMinimap(G) {
-    const ctx = this.mm, S = ctx.canvas.width, R = S / 2, P = G.player, t = performance.now() / 1000, k = S / 440;
+    const ctx = this.mm, S = ctx.canvas.width, R = S / 2, t = performance.now() / 1000, k = S / 440;
+    const sp = LS.Spectate.focus(), P = sp || G.player; // espectador: o mapa segue quem você assiste
     const c = P.state === 'plane' ? G.plane.mesh.position : P.pos;
     const view = P.state === 'ground' ? 170 : P.state === 'plane' ? 520 : 300;
-    const rot = Math.PI + P.camYaw, rIn = R - 30 * k;
+    const rot = Math.PI + (sp ? LS.Spectate.cy : P.camYaw), rIn = R - 30 * k;
     ctx.clearRect(0, 0, S, S);
     ctx.save(); ctx.beginPath(); ctx.arc(R, R, rIn, 0, Math.PI * 2); ctx.clip();
     this.drawWorld(ctx, S, G, c.x, c.z, view, rot, t);
