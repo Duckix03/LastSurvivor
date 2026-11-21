@@ -11,7 +11,7 @@ LS.Skin = {
   PATTERNS: ['liso', 'listras', 'zíper', 'camuflado', 'faixa'],
   ACCENTS: ['#2a2a2a', '#f0f0f0', '#c0302a', '#2a5ab0', '#3a5a2a', '#e0a020', '#20d0e0', '#a040e0', '#6a4a2a'],
   BEARDS: ['nenhuma', 'curta', 'cheia', 'bigode'],
-  GLASSES: ['nenhum', 'escuros', 'redondos', 'viseira'],
+  GLASSES: ['nenhum', 'escuros', 'estrela', 'viseira'],
   MASKS: ['nenhuma', 'bandana', 'máscara'],
   HATS: ['nenhum', 'gorro', 'chapéu', 'faixa'],
   TOPS: ['camiseta', 'jaqueta', 'moletom', 'regata', 'colete'],
@@ -22,7 +22,7 @@ LS.Skin = {
     'Explorador': { shirt: '#d0b020', pattern: 'liso', top: 'camiseta', accent: '#6a4a2a', pants: '#7a5a3a', hat: 'chapéu', glasses: 'nenhum', mask: 'nenhuma', beard: 'curta' },
     'Neon': { shirt: '#2a2a2a', pattern: 'liso', top: 'moletom', accent: '#a040e0', pants: '#111111', hat: 'nenhum', glasses: 'viseira', mask: 'nenhuma', hairStyle: 'moicano' },
     'Caçador': { shirt: '#b03030', pattern: 'listras', top: 'jaqueta', accent: '#6a4a2a', pants: '#4a3a2a', hat: 'faixa', glasses: 'nenhum', mask: 'bandana' },
-    'Urbano': { shirt: '#e0e0e0', pattern: 'faixa', top: 'regata', accent: '#2a5ab0', pants: '#1f2f6f', hat: 'nenhum', glasses: 'redondos', mask: 'nenhuma', beard: 'bigode' }
+    'Urbano': { shirt: '#e0e0e0', pattern: 'faixa', top: 'regata', accent: '#2a5ab0', pants: '#1f2f6f', hat: 'nenhum', glasses: 'estrela', mask: 'nenhuma', beard: 'bigode' }
   },
   // posição de cada parte no atlas: [x, y, largura, altura, profundidade] em pixels
   PARTS: { head: [0, 0, 8, 8, 8], body: [0, 16, 8, 12, 4], arm: [24, 16, 4, 12, 4], leg: [40, 16, 4, 12, 4] },
@@ -150,7 +150,6 @@ LS.Skin = {
     }
     else if (look.mask === 'máscara') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#3a3d42', 0.08); px(fx + 2, fy + 6, '#1a1a1a', 0); px(fx + 5, fy + 6, '#1a1a1a', 0); }
     if (look.glasses === 'escuros') [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, '#101010', 0)); // o resto é 3D (lentes redondas)
-    else if (look.glasses === 'redondos') { [0, 3, 4, 7].forEach(x => px(fx + x, fy + 4, '#c8a040', 0)); [1, 2, 5, 6].forEach(x => px(fx + x, fy + 3, '#c8a040', 0)); }
     else if (look.glasses === 'cyber') { for (let x = 0; x < 8; x++) px(fx + x, fy + 4, '#20f0ff', 0); [H[0], H[1]].forEach(r => rect(r, '#20f0ff', 0, [4, 5])); }
     else if (look.glasses === 'coração') { [1, 2, 5, 6].forEach(x => px(fx + x, fy + 3, '#ff6aa8', 0)); [0, 1, 2, 5, 6, 7].forEach(x => px(fx + x, fy + 4, '#ff3d8a', 0)); [3, 4].forEach(x => px(fx + x, fy + 4, '#c02060', 0)); [1, 6].forEach(x => px(fx + x, fy + 5, '#ff3d8a', 0)); }
     else if (look.glasses === 'aviador') { for (let x = 0; x < 8; x++) px(fx + x, fy + 3, '#d8b050', 0); [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, '#3a2a10', 0)); }

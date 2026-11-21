@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '62'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '63'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // versão do ONLINE (crossplay navegador ↔ app). Suba +1 quando mudar algo que quebra a partida online
 // (armas, mapa, protocolo de rede...) e suba junto o MIN_PROTO em server/src/worker.js, depois "npx wrangler deploy".
 // Quem estiver com versão mais velha (ex.: APK antigo) recebe o aviso pra atualizar em vez de entrar com regras diferentes.
