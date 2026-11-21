@@ -38,7 +38,7 @@ LS.Lobby = {
     LS.Wardrobe.init(); // guarda-roupa em grade (js/wardrobe.js)
     // o nome é trocado no perfil (custa moedas): tocar no campo abre a edição do perfil
     const name = document.getElementById('lobby-name');
-    name.readOnly = true; name.title = 'Trocar de nome: no perfil (🪙 ' + LS.RENAME_COST.toLocaleString('pt-BR') + ')';
+    name.readOnly = true; name.title = 'Trocar de nome: no perfil (' + LS.RENAME_COST.toLocaleString('pt-BR') + ' moedas)';
     name.addEventListener('click', () => { LS.Audio.init(); LS.Audio.click(); LS.Wardrobe.leave(); LS.Game.quitToMenu(); LS.Profile.open(); LS.UI.openPanel('panel-stats'); LS.Profile.openEdit(); });
   },
   changed() {

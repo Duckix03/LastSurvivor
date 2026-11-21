@@ -32,13 +32,13 @@ LS.Shop = {
     const C = LS.Cosmetics, R = C.RARITY[it.rarity], own = C.owns(it.id);
     return '<button class="sh-card' + (own ? ' own' : '') + (extra || '') + '" data-sh="item" data-v="' + it.id + '" style="--rc:' + R.color + '">' +
       '<div class="sh-img"><img alt="" data-tid="' + it.id + '"></div><span class="sh-rar">' + R.name + '</span>' +
-      '<b>' + it.name + '</b><span class="sh-price">' + (own ? 'ADQUIRIDO ✓' : '🪙 ' + it.price.toLocaleString('pt-BR')) + '</span></button>';
+      '<b>' + it.name + '</b><span class="sh-price">' + (own ? 'ADQUIRIDO ✓' : LS.icon('coin', 'coin-i') + it.price.toLocaleString('pt-BR')) + '</span></button>';
   },
   fillThumbs(root) { root.querySelectorAll('img[data-tid]').forEach(img => LS.Thumbs.into(img, LS.Cosmetics.byId[img.dataset.tid])); },
   render() {
     const C = LS.Cosmetics, shop = this.view === 'shop';
     let h = '<div class="sh-head"><div class="sh-views"><button class="' + (shop ? 'on' : '') + '" data-sh="view" data-v="shop">LOJA</button><button class="royale' + (shop ? '' : ' on') + '" data-sh="view" data-v="royale">GOLD ROYALE</button></div>' +
-      '<div class="sh-coins"><i>🪙</i><b>' + this.coins() + '</b></div></div>';
+      '<div class="sh-coins">' + LS.icon('coin', 'coin-i') + '<b>' + this.coins() + '</b></div></div>';
     if (shop) {
       const tab = this.TABS.find(t => t.id === this.tab) || this.TABS[0];
       const items = C.items.filter(i => !i.free && tab.test(i)).sort((a, b) => b.rarity - a.rarity || b.price - a.price);
@@ -51,8 +51,8 @@ LS.Shop = {
       h += '<div class="gr"><div class="gr-pool"><div class="gr-grid">' + pool.map(i => this.card(i, ' gr-cell')).join('') + '</div>' +
         '<p class="gr-odds">Chances por giro: ' + C.RARITY.map((r, k) => '<span style="color:' + r.color + '">' + r.name + ' ' + Math.round(W[k] / tot * 100) + '%</span>').join(' · ') + ' · Repetido devolve 25% do preço em moedas.</p></div>' +
         '<div class="gr-side"><div class="gr-star"><span>PRÊMIO MÁXIMO</span><div class="sh-img big"><img alt="" data-tid="' + star.id + '"></div><b>' + star.name + '</b></div>' +
-        '<button class="gr-btn" data-sh="spin1"><b>1 GIRO</b><span>🪙 ' + C.ROYALE_COST.toLocaleString('pt-BR') + '</span></button>' +
-        '<button class="gr-btn ten" data-sh="spin10"><b>10 + 1 GIROS</b><span>🪙 ' + C.ROYALE_10.toLocaleString('pt-BR') + '</span></button></div></div>';
+        '<button class="gr-btn" data-sh="spin1"><b>1 GIRO</b><span>' + LS.icon('coin', 'coin-i') + ' ' + C.ROYALE_COST.toLocaleString('pt-BR') + '</span></button>' +
+        '<button class="gr-btn ten" data-sh="spin10"><b>10 + 1 GIROS</b><span>' + LS.icon('coin', 'coin-i') + ' ' + C.ROYALE_10.toLocaleString('pt-BR') + '</span></button></div></div>';
     }
     h += '<div class="panel-buttons"><button class="btn btn-primary" data-sh="back">VOLTAR</button></div><div id="sh-modal" class="hidden"></div>';
     const body = document.getElementById('shop-body');
@@ -65,7 +65,7 @@ LS.Shop = {
     const C = LS.Cosmetics, it = C.byId[id]; if (!it) return;
     const own = C.owns(id), extra = it.slot === 'costume' ? '<p class="sh-sub">Inclui: ' + C.pieces(it).map(p => p.name).join(', ') + '</p>' : '<p class="sh-sub">' + (C.SLOTS[it.slot] ? C.SLOTS[it.slot].label : '') + '</p>';
     this.modal(this.big(it) + extra + '<p id="sh-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn" data-sh="close">FECHAR</button>' +
-      (own ? '<button class="btn btn-primary" data-sh="equip" data-v="' + id + '">EQUIPAR</button>' : '<button class="btn btn-primary" data-sh="buy" data-v="' + id + '">COMPRAR 🪙 ' + it.price.toLocaleString('pt-BR') + '</button>') + '</div>');
+      (own ? '<button class="btn btn-primary" data-sh="equip" data-v="' + id + '">EQUIPAR</button>' : '<button class="btn btn-primary" data-sh="buy" data-v="' + id + '">COMPRAR ' + LS.icon('coin', 'coin-i') + ' ' + it.price.toLocaleString('pt-BR') + '</button>') + '</div>');
   },
   doBuy(id) {
     const err = LS.Cosmetics.buy(id);
@@ -84,7 +84,7 @@ LS.Shop = {
   spin(n) {
     if (this.spinning) return;
     const C = LS.Cosmetics;
-    if (!C.pay(n)) { this.modal('<h3 class="sh-h">MOEDAS INSUFICIENTES</h3><p class="sh-sub">Você precisa de 🪙 ' + (n > 1 ? C.ROYALE_10 : C.ROYALE_COST).toLocaleString('pt-BR') + ' e tem 🪙 ' + this.coins() + '. Jogue partidas pra ganhar mais!</p><div class="pf-modal-btns"><button class="btn btn-primary" data-sh="close">OK</button></div>'); return; }
+    if (!C.pay(n)) { this.modal('<h3 class="sh-h">MOEDAS INSUFICIENTES</h3><p class="sh-sub">Você precisa de ' + LS.icon('coin', 'coin-i') + ' ' + (n > 1 ? C.ROYALE_10 : C.ROYALE_COST).toLocaleString('pt-BR') + ' e tem ' + LS.icon('coin', 'coin-i') + ' ' + this.coins() + '. Jogue partidas pra ganhar mais!</p><div class="pf-modal-btns"><button class="btn btn-primary" data-sh="close">OK</button></div>'); return; }
     const res = []; for (let i = 0; i < n; i++) res.push(C.spin());
     LS.Menu.render();
     document.querySelector('#panel-shop .sh-coins b').textContent = this.coins();
@@ -107,12 +107,12 @@ LS.Shop = {
     let html;
     if (res.length === 1) {
       const r = res[0];
-      html = '<div class="sh-new">' + (r.dup ? 'REPETIDO' : 'NOVO!') + '</div>' + this.big(r.item) + '<p class="sh-sub">' + (r.dup ? 'Você já tinha: +🪙 ' + r.refund.toLocaleString('pt-BR') + ' de volta.' : 'Já está no seu guarda-roupa.') + '</p>' +
+      html = '<div class="sh-new">' + (r.dup ? 'REPETIDO' : 'NOVO!') + '</div>' + this.big(r.item) + '<p class="sh-sub">' + (r.dup ? 'Você já tinha: +' + LS.icon('coin', 'coin-i') + ' ' + r.refund.toLocaleString('pt-BR') + ' de volta.' : 'Já está no seu guarda-roupa.') + '</p>' +
         '<div class="pf-modal-btns"><button class="btn" data-sh="close">OK</button>' + (r.dup ? '' : '<button class="btn btn-primary" data-sh="equip" data-v="' + r.item.id + '">EQUIPAR</button>') + '</div>';
     } else {
       const refund = res.reduce((s, r) => s + r.refund, 0);
-      html = '<h3 class="sh-h">10 + 1 GIROS</h3><div class="gr-results">' + res.map(r => '<div class="gr-res' + (r.dup ? ' dup' : '') + '" style="--rc:' + C.RARITY[r.item.rarity].color + '"><div class="sh-img"><img alt="" data-tid="' + r.item.id + '"></div><b>' + r.item.name + '</b><small>' + (r.dup ? '+🪙 ' + r.refund : 'NOVO') + '</small></div>').join('') + '</div>' +
-        (refund ? '<p class="sh-sub">Repetidos devolveram 🪙 ' + refund.toLocaleString('pt-BR') + '.</p>' : '') + '<div class="pf-modal-btns"><button class="btn btn-primary" data-sh="close">OK</button></div>';
+      html = '<h3 class="sh-h">10 + 1 GIROS</h3><div class="gr-results">' + res.map(r => '<div class="gr-res' + (r.dup ? ' dup' : '') + '" style="--rc:' + C.RARITY[r.item.rarity].color + '"><div class="sh-img"><img alt="" data-tid="' + r.item.id + '"></div><b>' + r.item.name + '</b><small>' + (r.dup ? '+' + LS.icon('coin', 'coin-i') + ' ' + r.refund : 'NOVO') + '</small></div>').join('') + '</div>' +
+        (refund ? '<p class="sh-sub">Repetidos devolveram ' + LS.icon('coin', 'coin-i') + ' ' + refund.toLocaleString('pt-BR') + '.</p>' : '') + '<div class="pf-modal-btns"><button class="btn btn-primary" data-sh="close">OK</button></div>';
     }
     this.render(); this.modal(html); // redesenha a grade (itens novos ficam "ADQUIRIDO") e mostra o prêmio
   }

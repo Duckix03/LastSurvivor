@@ -22,7 +22,7 @@ LS.Profile = {
     const P = LS.playerProfile;
     if (!P.id) P.id = String(1000000000 + Math.floor(Math.random() * 8999999999)); // ID de 10 dígitos, fixo pra sempre
     if (typeof P.likes !== 'number') P.likes = 0;
-    if (typeof P.bio !== 'string') P.bio = 'Bora sobreviver! 🪂';
+    if (typeof P.bio !== 'string' || P.bio === 'Bora sobreviver! 🪂') P.bio = 'Bora sobreviver!'; // (o 🪂 não aparece em todo computador)
     if (!Array.isArray(P.badges)) P.badges = [];
     if (!P.avatar || P.avatar.type !== '3d') P.avatar = { type: '3d', bg: (P.avatar && P.avatar.bg) || 0 }; // (imagem enviada não existe mais)
     if (!P.cover) P.cover = 'br';
@@ -166,7 +166,7 @@ LS.Profile = {
   openEdit() {
     const P = LS.playerProfile, coins = LS.stats.coins || 0, fmt = n => n.toLocaleString('pt-BR');
     this.modal('<h3>EDITAR PERFIL</h3><label>Nome <small id="pf-name-cost"></small></label><input id="pf-in-name" maxlength="16" spellcheck="false" autocomplete="off" value="' + this.esc(P.name) + '">' +
-      '<p class="pf-hint pf-rename">Trocar de nome custa <b>🪙 ' + fmt(LS.RENAME_COST) + '</b> · você tem <b>🪙 ' + fmt(coins) + '</b>. O recado é grátis.</p>' +
+      '<p class="pf-hint pf-rename">Trocar de nome custa <b>' + LS.icon('coin', 'coin-i') + fmt(LS.RENAME_COST) + '</b> · você tem <b>' + LS.icon('coin', 'coin-i') + fmt(coins) + '</b>. O recado é grátis.</p>' +
       '<label>Recado <small id="pf-bio-n"></small> <small class="pf-free">GRÁTIS</small></label><textarea id="pf-in-bio" maxlength="80" rows="3">' + this.esc(P.bio || '') + '</textarea>' +
       '<p id="pf-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn" data-pf="close">CANCELAR</button><button class="btn btn-primary" data-pf="save" id="pf-save">SALVAR</button></div>');
     const bio = document.getElementById('pf-in-bio'), n = document.getElementById('pf-bio-n'), upd = () => { n.textContent = bio.value.length + '/80'; };
@@ -174,9 +174,9 @@ LS.Profile = {
     const updName = () => { // mostra quanto vai custar enquanto digita
       const c = this.renameCost(nm.value.trim());
       const changed = nm.value.trim() && nm.value.trim() !== P.name;
-      cost.textContent = !changed ? '' : c ? '🪙 ' + fmt(c) : 'GRÁTIS';
+      cost.innerHTML = !changed ? '' : c ? LS.icon('coin', 'coin-i') + fmt(c) : 'GRÁTIS';
       cost.className = !changed ? '' : c ? (coins < c ? 'pf-cost no' : 'pf-cost') : 'pf-free';
-      save.textContent = changed && c ? 'TROCAR · 🪙 ' + fmt(c) : 'SALVAR';
+      save.innerHTML = changed && c ? 'TROCAR · ' + LS.icon('coin', 'coin-i') + fmt(c) : 'SALVAR';
     };
     bio.addEventListener('input', upd); upd(); nm.addEventListener('input', updName); updName(); nm.focus();
   },
@@ -186,7 +186,7 @@ LS.Profile = {
     LS.saveProfile();
     if (name !== P.name) {
       const cost = this.renameCost(name), coins = LS.stats.coins || 0;
-      if (cost && coins < cost) return this.modalError('Moedas insuficientes: trocar de nome custa 🪙 ' + cost.toLocaleString('pt-BR') + ' (faltam ' + (cost - coins).toLocaleString('pt-BR') + '). O recado foi salvo.');
+      if (cost && coins < cost) return this.modalError('Moedas insuficientes: trocar de nome custa ' + cost.toLocaleString('pt-BR') + ' moedas (faltam ' + (cost - coins).toLocaleString('pt-BR') + '). O recado foi salvo.');
       if (LS.Account.logged()) { // conta: o servidor confere se o nome está livre e cobra as moedas
         const btn = document.getElementById('pf-save'); btn.disabled = true; btn.textContent = '...';
         try { await LS.Account.rename(name); } catch (e) { btn.disabled = false; this.modalError(e.message); return; }
