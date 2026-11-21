@@ -38,28 +38,20 @@ LS.Touch = {
     const ins = window.__lsInsets; // vem do app Android (MainActivity)
     if (ins) { st.setProperty('--cut-l', (ins.l || 0) + 'px'); st.setProperty('--cut-r', (ins.r || 0) + 'px'); }
   },
-  btn(id, label, icon, cls) { return '<button class="tb ' + (cls || '') + '" data-tb="' + id + '">' + (icon ? '<svg viewBox="0 0 24 24">' + icon + '</svg>' : '') + (label ? '<span>' + label + '</span>' : '') + '</button>'; },
+  // botão: ícone em pixel art (js/pixicons.js) + texto opcional
+  btn(id, label, icon, cls) { return '<button class="tb ' + (cls || '') + '" data-tb="' + id + '">' + (icon ? LS.PixIcons.svg(icon) : '') + (label ? '<span>' + label + '</span>' : '') + '</button>'; },
   build() {
-    const ICON = {
-      fire: '<circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5" stroke="currentColor" stroke-width="2"/>',
-      aim: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 6v4M12 14v4M6 12h4M14 12h4" stroke="currentColor" stroke-width="2"/>',
-      jump: '<path d="M12 4l7 8h-4v7H9v-7H5z" fill="currentColor"/>',
-      crouch: '<path d="M5 18h14M8 14l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
-      reload: '<path d="M19 12a7 7 0 1 1-2-5M19 4v4h-4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
-      bag: '<path d="M5 8h14l-1 12H6z M9 8V6a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="2"/>',
-      map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z M9 4v14M15 6v14" fill="none" stroke="currentColor" stroke-width="2"/>',
-      pause: '<path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
-      med: '<rect x="4" y="6" width="16" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 9v7M8.5 12.5h7" stroke="#ff4d6d" stroke-width="2.6"/>',
-      band: '<rect x="3" y="9" width="18" height="6" rx="3" fill="none" stroke="currentColor" stroke-width="2" transform="rotate(-30 12 12)"/>',
-      hand: '<path d="M8 13V6a1.5 1.5 0 0 1 3 0v5M11 11V5a1.5 1.5 0 0 1 3 0v6M14 11V6a1.5 1.5 0 0 1 3 0v8c0 4-2 6-5 6s-5-2-6-5l-1-3a1.5 1.5 0 0 1 3-1z" fill="none" stroke="currentColor" stroke-width="2"/>'
-    };
     const area = document.createElement('div'); area.id = 'touch-area'; // pega o joystick e o arrastar da câmera
     const ui = document.createElement('div'); ui.id = 'touch-ui';
-    ui.innerHTML = '<div id="joy"><i></i></div>' +
-      this.btn('fire', '', ICON.fire, 'fire') + this.btn('fire2', '', ICON.fire, 'fire2') + this.btn('aim', '', ICON.aim, 'aim') +
-      this.btn('jump', '', ICON.jump, 'jump') + this.btn('crouch', '', ICON.crouch, 'crouch') + this.btn('reload', '', ICON.reload, 'reload') +
-      this.btn('med', '', ICON.med, 'med') + this.btn('band', '', ICON.band, 'band') + this.btn('use', 'PEGAR', ICON.hand, 'use hidden') + this.btn('zoom', '8x', '', 'zoom hidden') +
-      this.btn('bag', '', ICON.bag, 'bag') + this.btn('map', '', ICON.map, 'map') + this.btn('pause', '', ICON.pause, 'pause');
+    // joystick com setinhas em pixel
+    const arrows = '<svg class="joy-arrows" viewBox="0 0 32 32" shape-rendering="crispEdges">' +
+      '<path d="M15 2h2v1h1v1h1v1h-6v-1h1v-1h1z M15 30h2v-1h1v-1h1v-1h-6v1h1v1h1z M2 15v2h1v1h1v1h1v-6h-1v1h-1v1z M30 15v2h-1v1h-1v1h-1v-6h1v1h1v1z" fill="#fff"/></svg>';
+    ui.innerHTML = '<div id="joy">' + arrows + '<i></i></div>' +
+      this.btn('fire', '', 'fire', 'fire') + this.btn('fire2', '', 'fire', 'fire2') + this.btn('aim', '', 'aim', 'aim') +
+      this.btn('jump', '', 'jump', 'jump') + this.btn('crouch', '', 'crouch', 'crouch') + this.btn('reload', '', 'reload', 'reload') +
+      this.btn('med', '', 'med', 'med') + this.btn('band', '', 'band', 'band') + this.btn('use', 'PEGAR', 'use', 'use hidden') + this.btn('zoom', '8x', '', 'zoom hidden') +
+      this.btn('run', '', 'run', 'run') +
+      this.btn('bag', '', 'bag', 'bag') + this.btn('map', '', 'map', 'map') + this.btn('pause', '', 'pause', 'pause');
     const hud = document.getElementById('hud');
     hud.insertBefore(area, hud.firstChild); hud.appendChild(ui); // dentro da HUD: some junto quando a HUD some (menus)
     const rot = document.createElement('div'); rot.id = 'rotate-msg';
@@ -84,7 +76,7 @@ LS.Touch = {
       const W = window.innerWidth, H = window.innerHeight;
       const joyBusy = [...this.roles.values()].some(r => r.role === 'joy');
       if (!joyBusy && t.clientX < W * 0.42 && t.clientY > H * 0.3) {
-        this.roles.set(t.identifier, { role: 'joy', x0: t.clientX, y0: t.clientY });
+        this.roles.set(t.identifier, { role: 'joy', x0: t.clientX, y0: t.clientY }); this.joyEl.classList.remove('auto');
         const o = this.joyEl.parentNode.getBoundingClientRect();
         this.joyEl.style.left = (t.clientX - o.left) + 'px'; this.joyEl.style.top = (t.clientY - o.top) + 'px'; this.joyEl.classList.add('on');
       } else this.roles.set(t.identifier, { role: 'look', x: t.clientX, y: t.clientY });
@@ -100,9 +92,10 @@ LS.Touch = {
     if (!this.playing() && a !== 'bag') return this.release(b);
     switch (a) {
       case 'fire': case 'fire2': I.mouse.left = true; I.mouse.leftPressed = true; hold.role = 'fire'; break; // segurando atira; arrastar mira
-      case 'aim': I.mouse.right = !I.mouse.right; b.classList.toggle('lit', I.mouse.right); break;
+      case 'aim': I.mouse.right = !I.mouse.right; b.classList.toggle('lit', I.mouse.right); if (I.mouse.right) this.setSprint(false); break;
       case 'jump': I.pressed.Space = true; I.keys.Space = true; hold.key = 'Space'; break;
-      case 'crouch': I.pressed.KeyC = true; break;
+      case 'crouch': I.pressed.KeyC = true; this.setSprint(false); break;
+      case 'run': this.setSprint(!this.sprint); break; // trava a corrida (sem mexer no joystick, corre pra frente sozinho)
       case 'reload': I.pressed.KeyR = true; break;
       case 'med': I.pressed.KeyH = true; break;
       case 'band': I.pressed.KeyG = true; break;
@@ -116,6 +109,19 @@ LS.Touch = {
       }
     }
     this.roles.set(t.identifier, hold);
+  },
+  // ---------- corrida travada (botão CORRER) ----------
+  setSprint(on) {
+    const I = LS.Input, b = document.querySelector('#touch-ui [data-tb=run]');
+    this.sprint = !!on; if (b) b.classList.toggle('lit', this.sprint);
+    const joyBusy = [...this.roles.values()].some(r => r.role === 'joy');
+    if (joyBusy) { I.keys.ShiftLeft = this.sprint; return; } // o joystick continua mandando a direção
+    if (this.sprint) this.autoRun();
+    else { I.axis.x = I.axis.y = 0; I.keys.KeyW = I.keys.ShiftLeft = false; this.knob.style.transform = ''; this.joyEl.classList.remove('auto'); }
+  },
+  autoRun() {
+    const I = LS.Input; I.axis.x = 0; I.axis.y = -1; I.keys.KeyW = true; I.keys.ShiftLeft = true;
+    this.joyEl.classList.add('auto'); // bolinha do joystick lá em cima mostrando que está correndo sozinho
   },
   release(b) { setTimeout(() => b.classList.remove('down'), 120); },
   move(e) {
@@ -132,7 +138,7 @@ LS.Touch = {
         I.axis.x = dx; I.axis.y = dy;
         this.knob.style.transform = 'translate(' + (dx * R * 0.9).toFixed(0) + 'px,' + (dy * R * 0.9).toFixed(0) + 'px)';
         I.keys.KeyW = dy < -0.35; I.keys.KeyS = dy > 0.35; I.keys.KeyA = dx < -0.35; I.keys.KeyD = dx > 0.35;
-        I.keys.ShiftLeft = Math.min(1, m) > 0.92 && dy < -0.45; // empurrou até a borda pra frente: corre
+        I.keys.ShiftLeft = this.sprint || (Math.min(1, m) > 0.92 && dy < -0.45); // trava de corrida ou empurrou até a borda pra frente
       } else if (r.role === 'look' || r.role === 'fire') {
         I.mouse.dx += (t.clientX - r.x) * k; I.mouse.dy += (t.clientY - r.y) * k;
         r.x = t.clientX; r.y = t.clientY;
@@ -148,6 +154,7 @@ LS.Touch = {
       if (r.role === 'joy') {
         I.axis.x = I.axis.y = 0; I.keys.KeyW = I.keys.KeyS = I.keys.KeyA = I.keys.KeyD = I.keys.ShiftLeft = false;
         this.knob.style.transform = ''; this.joyEl.classList.remove('on'); this.joyEl.style.left = ''; this.joyEl.style.top = '';
+        if (this.sprint) this.autoRun(); // soltou o joystick com a corrida travada: continua correndo pra frente
       } else if (r.role === 'fire') { if (![...this.roles.values()].some(x => x.role === 'fire')) I.mouse.left = false; this.release(r.el); }
       else if (r.role === 'btn') { if (r.key) I.keys[r.key] = false; this.release(r.el); }
     }
@@ -165,6 +172,7 @@ LS.Touch = {
     const use = ui.querySelector('[data-tb=use]');
     use.classList.toggle('hidden', !(P && P.prompt && /\bE\b|<b>E<\/b>/.test(P.prompt)));
     if (P && (!P.alive || P.state !== 'ground' || !P.weapon()) && LS.Input.mouse.right) { LS.Input.mouse.right = false; ui.querySelector('[data-tb=aim]').classList.remove('lit'); }
+    if (this.sprint && (G.state !== 'playing' || !P || !P.alive || P.state !== 'ground' || P.healType)) this.setSprint(false);
     if (G.state !== 'playing' && this.roles.size) { this.roles.clear(); const I = LS.Input; I.mouse.left = false; I.axis.x = I.axis.y = 0; I.keys = {}; this.joyEl.classList.remove('on'); this.knob.style.transform = ''; }
   },
   // celular: ao apertar JOGAR, tenta tela cheia deitada
