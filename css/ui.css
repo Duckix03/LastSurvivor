@@ -1265,3 +1265,6 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(1.32); box-sha
 /* grades de cartas: a linha nunca encolhe menos que a carta (o card tem overflow hidden, e aí o grid achava que podia esmagar) */
 .cgp-grid, .wr-grid, .sh-grid, .gr-grid { grid-auto-rows: max-content; }
 .wr-card { padding-bottom: 8px; }
+/* itens que só saem no Gold Royale */
+.sh-price.royale { color: #ffd34d; letter-spacing: 0.5px; }
+.wr-card.locked small { white-space: normal; }

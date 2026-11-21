@@ -64,7 +64,8 @@ LS.Cosmetics = {
       const S = this.SLOTS[slot], list = S.list ? K[S.list] : ['lisa'];
       list.forEach(v => this.items.push({ id: slot + ':' + v, slot, val: v, name: this.cap(v), rarity: 0, price: 0, free: true }));
     }
-    this.PREMIUM.forEach(([slot, val, name, rarity, price]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity, price, free: false }));
+    // acessórios da loja: só saem no GOLD ROYALE (o preço vira o valor de referência: repetido devolve 25%)
+    this.PREMIUM.forEach(([slot, val, name, rarity, price]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity, price, free: false, royale: true }));
     this.COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: c.rarity, price: c.price, dprice: c.dprice, free: false, look: c.look }));
     this.COSTUME_PIECES.forEach(([slot, val, name, rarity]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity, price: 0, free: false, piece: true }));
     this.EXCLUSIVE.forEach(([slot, val, name]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity: 4, price: 0, free: false, code: true }));
@@ -116,6 +117,7 @@ LS.Cosmetics = {
     if (this.owns(id)) return 'Você já tem esse item.';
     if (it.code) return 'Esse item só sai em codiguin.';
     if (it.piece) return 'Essa peça vem junto com a fantasia.';
+    if (it.royale) return 'Esse item só sai no Gold Royale.';
     if (it.dprice) return 'Esse item é comprado com diamantes.';
     if (this.coins() < it.price) return 'Moedas insuficientes: faltam ' + (it.price - this.coins()).toLocaleString('pt-BR') + '.';
     LS.stats.coins -= it.price; LS.saveStats();
