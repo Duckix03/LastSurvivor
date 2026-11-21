@@ -149,7 +149,7 @@ LS.Skin = {
       [[1, 5], [6, 5], [2, 6], [3, 6], [4, 6], [5, 6]].forEach(([x, y]) => px(fx + x, fy + y, '#20f0ff', 0));
     }
     else if (look.mask === 'máscara') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#3a3d42', 0.08); px(fx + 2, fy + 6, '#1a1a1a', 0); px(fx + 5, fy + 6, '#1a1a1a', 0); }
-    if (look.glasses === 'escuros') { [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, '#101010', 0)); [3, 4].forEach(x => px(fx + x, fy + 4, '#202020', 0)); }
+    if (look.glasses === 'escuros') [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, '#101010', 0)); // o resto é 3D (lentes redondas)
     else if (look.glasses === 'redondos') { [0, 3, 4, 7].forEach(x => px(fx + x, fy + 4, '#c8a040', 0)); [1, 2, 5, 6].forEach(x => px(fx + x, fy + 3, '#c8a040', 0)); }
     else if (look.glasses === 'cyber') { for (let x = 0; x < 8; x++) px(fx + x, fy + 4, '#20f0ff', 0); [H[0], H[1]].forEach(r => rect(r, '#20f0ff', 0, [4, 5])); }
     else if (look.glasses === 'coração') { [1, 2, 5, 6].forEach(x => px(fx + x, fy + 3, '#ff6aa8', 0)); [0, 1, 2, 5, 6, 7].forEach(x => px(fx + x, fy + 4, '#ff3d8a', 0)); [3, 4].forEach(x => px(fx + x, fy + 4, '#c02060', 0)); [1, 6].forEach(x => px(fx + x, fy + 5, '#ff3d8a', 0)); }

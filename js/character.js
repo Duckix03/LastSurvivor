@@ -79,6 +79,25 @@ LS.CharacterModel = class {
     this.brim.visible = look.hairStyle === 'boné' && (!look.hat || look.hat === 'nenhum');
     if (this.brim.visible) this.brim.material = LS.lambert(new THREE.Color(look.shirt).multiplyScalar(0.55).getHex());
   }
+  // óculos escuros redondos (estilo lennon): lente preta brilhante em círculo de bloquinhos + armação fina metálica
+  buildRoundShades(add) {
+    const LM = LS._lensMat || (LS._lensMat = new THREE.MeshPhongMaterial({ color: 0x08080a, specular: 0x8a8f99, shininess: 90 }));
+    const FM = LS._frameMat || (LS._frameMat = new THREE.MeshPhongMaterial({ color: 0x55585e, specular: 0xcfd3da, shininess: 60 }));
+    const HL = LS._lensHL || (LS._lensHL = new THREE.MeshBasicMaterial({ color: 0x5a5f6a }));
+    const cy = 3.6, lensW = [1.6, 2.6, 3.0, 3.0, 2.6, 1.6], frameW = [1.9, 3.0, 3.4, 3.5, 3.5, 3.4, 3.0, 1.9];
+    [-1, 1].forEach(sd => {
+      const cx = sd * 2.05;
+      // cada linha não se sobrepõe (sem z-fight): lente na frente, armação um pouco maior atrás
+      lensW.forEach((w, i) => add(w, 0.5, 0.2, cx, cy + 1.25 - i * 0.5, 4.5, LM));
+      frameW.forEach((w, i) => add(w, 0.4375, 0.3, cx, cy + 1.53 - i * 0.4375, 4.35, FM));
+      add(0.45, 0.3, 0.05, cx - 0.75, cy + 0.85, 4.625, HL); // reflexo
+      add(0.25, 0.25, 0.05, cx - 1.05, cy + 0.45, 4.625, HL);
+      add(0.7, 0.3, 0.3, sd * 3.85, cy + 0.9, 4.35, FM); // dobradiça
+      add(0.25, 0.3, 4.2, sd * 4.15, cy + 0.9, 2.35, FM); // haste
+    });
+    add(0.9, 0.22, 0.25, 0, cy + 1.05, 4.38, FM); // ponte de cima
+    add(0.7, 0.2, 0.25, 0, cy + 0.45, 4.42, FM); // ponte de baixo
+  }
   // acessórios 3D da cabeça: chapéus, óculos e barba cheia
   buildAccessories(look) {
     const S = LS.Skin.PX, g = this.accG, F = LS.AccFX;
@@ -194,7 +213,7 @@ LS.CharacterModel = class {
     if (look.glasses === 'cyber') add(8.8, 1.3, 0.9, 0, 3.6, 4.35, glow(0x20f0ff));
     else if (look.glasses === 'aviador') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x3a2a10));
     if (look.mask === 'gás') { add(4.2, 3, 2, 0, 1.6, 4.9, M(0x2a2d32)); [-1, 1].forEach(s => add(1.8, 1.8, 1.8, s * 2.6, 1.2, 5.3, M(0x50555c))); }
-    if (look.glasses === 'escuros') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x111111));
+    if (look.glasses === 'escuros') this.buildRoundShades(add);
     else if (look.glasses === 'viseira') add(8.6, 1.2, 0.8, 0, 3.6, 4.3, new THREE.MeshBasicMaterial({ color: acc }));
     this.buildBeard(look, add, M, glow);
     if (look.glasses === 'fogo') { // fogo queimando em bloquinhos que sobem dos olhos
