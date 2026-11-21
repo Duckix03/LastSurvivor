@@ -827,54 +827,73 @@ body.mobile #menu-main, body.mobile #lobby { left: var(--sl); right: var(--sr); 
 body.mobile #menu-main .menu-bg { left: calc(-1 * var(--sl)); right: calc(-1 * var(--sr)); }
 body.mobile .screen.panel-screen, body.mobile #pause, body.mobile #endscreen, body.mobile #loading { padding-left: var(--sl); padding-right: var(--sr); box-sizing: border-box; }
 
-/* ---------- botões de toque (inspirados no Free Fire: tiro grande com anel dourado, ações em leque à direita, cura à esquerda) ---------- */
+/* ---------- botões de toque: moderno + blocos (pixel art) ----------
+   Forma: "círculo de pixel" (cantos em degrau) ou bloco com cantos em degrau. Borda clara + preenchimento de vidro escuro
+   com o chanfro do Minecraft (luz em cima, sombra embaixo). Ícones em pixel art (js/pixicons.js). */
 body.mobile #touch-area { display: block; position: absolute; inset: 0; z-index: 0; pointer-events: auto; touch-action: none; }
-body.mobile #touch-ui { display: block; position: absolute; inset: 0; pointer-events: none; z-index: 30; --u: calc(1vh * var(--tbs, 1)); }
-#touch-ui .tb { position: absolute; pointer-events: auto; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  width: calc(var(--u) * 13); height: calc(var(--u) * 13); border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(12, 16, 28, 0.42); color: #fff; padding: 0;
-  font-family: var(--display); font-size: calc(var(--u) * 2.2); letter-spacing: 0.5px; transition: transform 0.08s, background 0.08s; backdrop-filter: blur(3px);
-  opacity: var(--tbo, 0.85); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(0, 0, 0, 0.25); }
-#touch-ui .tb svg { width: 52%; height: 52%; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5)); }
-#touch-ui .tb.down { transform: scale(0.9); background: rgba(255, 170, 40, 0.55); opacity: 1; }
-#touch-ui .tb.lit { background: rgba(255, 197, 49, 0.65); border-color: #ffd34d; color: #2a1400; opacity: 1; }
+body.mobile #touch-ui { display: block; position: absolute; inset: 0; pointer-events: none; z-index: 30; --u: calc(1vh * var(--tbs, 1));
+  --pxc: polygon(32% 0, 68% 0, 68% 4%, 80% 4%, 80% 8%, 88% 8%, 88% 12%, 92% 12%, 92% 20%, 96% 20%, 96% 32%, 100% 32%, 100% 68%, 96% 68%, 96% 80%, 92% 80%, 92% 88%, 88% 88%, 88% 92%, 80% 92%, 80% 96%, 68% 96%, 68% 100%, 32% 100%, 32% 96%, 20% 96%, 20% 92%, 12% 92%, 12% 88%, 8% 88%, 8% 80%, 4% 80%, 4% 68%, 0 68%, 0 32%, 4% 32%, 4% 20%, 8% 20%, 8% 12%, 12% 12%, 12% 8%, 20% 8%, 20% 4%, 32% 4%);
+  --st: calc(var(--u) * 1.1);
+  --pxr: polygon(calc(var(--st) * 2) 0, calc(100% - var(--st) * 2) 0, calc(100% - var(--st) * 2) var(--st), calc(100% - var(--st)) var(--st), calc(100% - var(--st)) calc(var(--st) * 2), 100% calc(var(--st) * 2),
+    100% calc(100% - var(--st) * 2), calc(100% - var(--st)) calc(100% - var(--st) * 2), calc(100% - var(--st)) calc(100% - var(--st)), calc(100% - var(--st) * 2) calc(100% - var(--st)), calc(100% - var(--st) * 2) 100%,
+    calc(var(--st) * 2) 100%, calc(var(--st) * 2) calc(100% - var(--st)), var(--st) calc(100% - var(--st)), var(--st) calc(100% - var(--st) * 2), 0 calc(100% - var(--st) * 2),
+    0 calc(var(--st) * 2), var(--st) calc(var(--st) * 2), var(--st) var(--st), calc(var(--st) * 2) var(--st)); }
+#touch-ui .tb { position: absolute; pointer-events: auto; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; border: none; isolation: isolate;
+  width: calc(var(--u) * 13); height: calc(var(--u) * 13); clip-path: var(--pxc); -webkit-clip-path: var(--pxc);
+  --bw: calc(var(--u) * 0.55); --bd: rgba(255, 255, 255, 0.55); --bg: linear-gradient(180deg, rgba(46, 56, 82, 0.62), rgba(10, 14, 26, 0.7));
+  background: var(--bd); color: #fff; font-family: var(--display); font-size: calc(var(--u) * 2.4); letter-spacing: 0.5px; opacity: var(--tbo, 0.85);
+  transition: transform 0.08s steps(2), opacity 0.1s; }
+#touch-ui .tb::before { content: ''; position: absolute; inset: var(--bw); z-index: -1; clip-path: inherit; -webkit-clip-path: inherit; background: var(--bg);
+  box-shadow: inset 0 calc(var(--u) * 0.9) 0 rgba(255, 255, 255, 0.16), inset 0 calc(var(--u) * -1.1) 0 rgba(0, 0, 0, 0.38); backdrop-filter: blur(3px); }
+#touch-ui .tb .pix { width: 54%; height: 54%; image-rendering: pixelated; }
+#touch-ui .tb.down { transform: scale(0.9) translateY(calc(var(--u) * 0.4)); opacity: 1; --bg: linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(200, 210, 230, 0.3)); }
+#touch-ui .tb.down::before { box-shadow: inset 0 calc(var(--u) * 1.1) 0 rgba(0, 0, 0, 0.3); } /* afunda como bloco apertado */
+#touch-ui .tb.lit { opacity: 1; --bd: #ffffff; --bg: linear-gradient(180deg, #ffffff, #d6dbe6); color: #1b1e2b; }
+#touch-ui .tb.lit .pix { filter: invert(0.88); } /* aceso: botão branco, ícone escuro */
 #touch-ui .tb.hidden { display: none; }
-/* tiro principal: grande, embaixo à direita, com o anel dourado */
+/* tiro principal: grande, borda branca grossa */
 #touch-ui .fire { right: calc(var(--u) * 7); bottom: calc(var(--u) * 17); width: calc(var(--u) * 25); height: calc(var(--u) * 25);
-  border: calc(var(--u) * 0.7) solid #ffc531; background: radial-gradient(circle, rgba(200, 40, 40, 0.5), rgba(120, 10, 20, 0.45));
-  box-shadow: 0 0 0 calc(var(--u) * 0.6) rgba(0, 0, 0, 0.35), 0 0 calc(var(--u) * 3) rgba(255, 197, 49, 0.45); }
-#touch-ui .fire svg { width: 46%; height: 46%; }
-#touch-ui .fire2 { left: calc(var(--u) * 3); top: calc(var(--u) * 37); width: calc(var(--u) * 14); height: calc(var(--u) * 14); border: calc(var(--u) * 0.5) solid #ffc531; background: rgba(160, 30, 40, 0.42); }
+  --bw: calc(var(--u) * 1.1); --bd: rgba(255, 255, 255, 0.9); }
+#touch-ui .fire .pix { width: 50%; height: 50%; }
+#touch-ui .fire2 { left: calc(var(--u) * 3); top: calc(var(--u) * 37); width: calc(var(--u) * 14); height: calc(var(--u) * 14);
+  --bw: calc(var(--u) * 0.8); --bd: rgba(255, 255, 255, 0.85); }
 /* leque em volta do tiro */
 #touch-ui .aim { right: calc(var(--u) * 33); bottom: calc(var(--u) * 33); }
 #touch-ui .reload { right: calc(var(--u) * 34); bottom: calc(var(--u) * 17); width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
 #touch-ui .jump { right: calc(var(--u) * 3); bottom: calc(var(--u) * 2); width: calc(var(--u) * 14); height: calc(var(--u) * 14); }
 #touch-ui .crouch { right: calc(var(--u) * 19); bottom: calc(var(--u) * 1.5); width: calc(var(--u) * 12.5); height: calc(var(--u) * 12.5); }
-#touch-ui .use { right: calc(var(--u) * 33); bottom: calc(var(--u) * 48); width: auto; height: calc(var(--u) * 10); padding: 0 calc(var(--u) * 3); border-radius: calc(var(--u) * 5); flex-direction: row; gap: calc(var(--u) * 1.2);
-  background: rgba(255, 170, 40, 0.85); border-color: #ffe09a; color: #2a1400; font-size: calc(var(--u) * 3); opacity: 1; }
-#touch-ui .use svg { width: calc(var(--u) * 5); height: calc(var(--u) * 5); }
-/* cura à esquerda (como o kit médico do FF), com a quantidade */
+/* CORRER: perto do joystick; aceso (branco) = corrida travada */
+#touch-ui .run { left: calc(var(--u) * 40); top: calc(100% - var(--u) * 37); width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
+/* PEGAR: bloco largo */
+#touch-ui .use { right: calc(var(--u) * 33); bottom: calc(var(--u) * 48); width: auto; height: calc(var(--u) * 10); padding: 0 calc(var(--u) * 3.2); flex-direction: row; gap: calc(var(--u) * 1.2);
+  clip-path: var(--pxr); -webkit-clip-path: var(--pxr); --bd: rgba(255, 255, 255, 0.9); color: #fff; font-size: calc(var(--u) * 3); opacity: 1; text-shadow: calc(var(--u) * 0.35) calc(var(--u) * 0.35) 0 rgba(0, 0, 0, 0.55); }
+#touch-ui .use .pix { width: calc(var(--u) * 5.4); height: calc(var(--u) * 5.4); }
+/* cura à esquerda com a quantidade (plaquinha branca embaixo, dentro do botão) */
 #touch-ui .med { left: calc(var(--u) * 20); top: calc(var(--u) * 39); width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
 #touch-ui .band { left: calc(var(--u) * 35); top: calc(var(--u) * 40); width: calc(var(--u) * 11); height: calc(var(--u) * 11); }
-#touch-ui .med::after, #touch-ui .band::after { content: attr(data-n); position: absolute; right: -2px; bottom: -2px; min-width: calc(var(--u) * 4.4); height: calc(var(--u) * 4.4); padding: 0 4px; box-sizing: border-box;
-  border-radius: calc(var(--u) * 2.2); background: #ffc531; color: #2a1400; font-family: var(--display); font-size: calc(var(--u) * 2.8); line-height: calc(var(--u) * 4.4); text-align: center; }
+#touch-ui .med .pix, #touch-ui .band .pix { margin-top: calc(var(--u) * -1.4); }
+#touch-ui .med::after, #touch-ui .band::after { content: attr(data-n); position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); min-width: calc(var(--u) * 4.2); height: calc(var(--u) * 3.4);
+  padding: 0 calc(var(--u) * 0.8); box-sizing: border-box; background: #ffffff; color: #1b1e2b; font-family: var(--display); font-size: calc(var(--u) * 2.7); line-height: calc(var(--u) * 3.4); text-align: center;
+  box-shadow: 0 calc(var(--u) * 0.4) 0 #8a93a6; }
 #touch-ui .tb.empty { opacity: calc(var(--tbo, 0.85) * 0.5); }
-#touch-ui .tb.empty::after { background: #5a6070; color: #fff; }
-/* menu rápido em cima à direita: pausa, mapa, mochila (quadrados arredondados) */
-#touch-ui .bag, #touch-ui .map, #touch-ui .pause { width: calc(var(--u) * 10); height: calc(var(--u) * 10); border-radius: calc(var(--u) * 3); }
+#touch-ui .tb.empty::after { background: #5a6070; color: #fff; box-shadow: 0 calc(var(--u) * 0.4) 0 #333845; }
+/* menu rápido (blocos com cantos em degrau): pausa, mapa, mochila; zoom da luneta */
+#touch-ui .bag, #touch-ui .map, #touch-ui .pause, #touch-ui .zoom { width: calc(var(--u) * 10); height: calc(var(--u) * 10); clip-path: var(--pxr); -webkit-clip-path: var(--pxr); }
+#touch-ui .bag .pix, #touch-ui .map .pix, #touch-ui .pause .pix { width: 66%; height: 66%; }
 #touch-ui .pause { top: calc(var(--u) * 2); right: calc(155px * var(--hz, 1) + 3vh + var(--u) * 11); }
 #touch-ui .map { top: calc(var(--u) * 2); right: calc(155px * var(--hz, 1) + 3vh); }
 #touch-ui .bag { top: calc(155px * var(--hz, 1) + 4vh); right: 2vh; }
-#touch-ui.air .fire, #touch-ui.air .fire2, #touch-ui.air .aim, #touch-ui.air .crouch, #touch-ui.air .reload, #touch-ui.air .med, #touch-ui.air .band { display: none; }
-/* joystick: base sempre visível embaixo à esquerda, com setinhas; vai pra onde o dedo encostar */
+#touch-ui .zoom { right: calc(var(--u) * 47); bottom: calc(var(--u) * 36); width: calc(var(--u) * 11); height: calc(var(--u) * 11); --bd: rgba(255, 255, 255, 0.85); color: #fff; font-size: calc(var(--u) * 3.6); text-shadow: calc(var(--u) * 0.35) calc(var(--u) * 0.35) 0 rgba(0, 0, 0, 0.6); }
+#touch-ui.air .fire, #touch-ui.air .fire2, #touch-ui.air .aim, #touch-ui.air .crouch, #touch-ui.air .reload, #touch-ui.air .med, #touch-ui.air .band, #touch-ui.air .run { display: none; }
+/* joystick: base em "círculo de pixel" com setinhas, bolinha em bloco; vai pra onde o dedo encostar */
 #joy { position: absolute; left: calc(var(--u) * 22); top: calc(100% - var(--u) * 21); width: calc(var(--u) * 30); height: calc(var(--u) * 30); margin: calc(var(--u) * -15) 0 0 calc(var(--u) * -15);
-  border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4); background: radial-gradient(circle, rgba(12, 16, 28, 0.15), rgba(12, 16, 28, 0.4)); opacity: calc(var(--tbo, 0.85) * 0.7);
-  pointer-events: none; transition: opacity 0.15s; }
-#joy::before { content: ''; position: absolute; inset: 8%; border-radius: 50%;
-  background: conic-gradient(from -8deg, rgba(255, 255, 255, 0.6) 0 16deg, transparent 16deg 90deg, rgba(255, 255, 255, 0.6) 90deg 106deg, transparent 106deg 180deg, rgba(255, 255, 255, 0.6) 180deg 196deg, transparent 196deg 270deg, rgba(255, 255, 255, 0.6) 270deg 286deg, transparent 286deg);
-  -webkit-mask: radial-gradient(circle, transparent 86%, #000 88%); mask: radial-gradient(circle, transparent 86%, #000 88%); }
-#joy.on { opacity: 1; transition: none; }
-#joy i { position: absolute; left: 50%; top: 50%; width: calc(var(--u) * 12); height: calc(var(--u) * 12); margin: calc(var(--u) * -6) 0 0 calc(var(--u) * -6); border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #fff, #d8dde8); box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45); }
+  clip-path: var(--pxc); -webkit-clip-path: var(--pxc); background: rgba(255, 255, 255, 0.4); opacity: calc(var(--tbo, 0.85) * 0.75); pointer-events: none; transition: opacity 0.15s; isolation: isolate; }
+#joy::before { content: ''; position: absolute; inset: calc(var(--u) * 0.5); z-index: -1; clip-path: var(--pxc); -webkit-clip-path: var(--pxc); background: radial-gradient(circle, rgba(12, 16, 28, 0.25), rgba(12, 16, 28, 0.55)); }
+#joy .joy-arrows { position: absolute; inset: 4%; width: 92%; height: 92%; opacity: 0.75; filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.5)); }
+#joy.on, #joy.auto { opacity: 1; transition: none; }
+#joy i { position: absolute; left: 50%; top: 50%; width: calc(var(--u) * 12); height: calc(var(--u) * 12); margin: calc(var(--u) * -6) 0 0 calc(var(--u) * -6);
+  clip-path: var(--pxc); -webkit-clip-path: var(--pxc); background: linear-gradient(180deg, #ffffff, #c9d0de); box-shadow: inset 0 calc(var(--u) * -1.2) 0 rgba(0, 0, 0, 0.25), inset 0 calc(var(--u) * 0.9) 0 #fff; }
+#joy.auto i { transform: translateY(calc(var(--u) * -9)); }
 
 /* ---------- HUD no celular (bem maior que antes; escala --hz) ---------- */
 body.mobile #top-left, body.mobile #zone-info, body.mobile #killfeed, body.mobile #duel-score, body.mobile #heal-progress, body.mobile #prompt, body.mobile #center-msg, body.mobile #duel-count, body.mobile #fps { zoom: var(--hz, 1); }
@@ -936,8 +955,6 @@ body.mobile.short #menu-main .menu-player { bottom: 20px; }
 body.mobile .modes-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); max-height: none; overflow: visible; }
 body.mobile .arsenal-grid { max-height: none; overflow: visible; }
 body.mobile .sh-grid, body.mobile .gr-grid { max-height: calc(94vh / var(--uiz, 1) - 265px); }
-/* celular: troca o zoom da luneta (aparece só com a luneta) */
-#touch-ui .zoom { right: calc(var(--u) * 47); bottom: calc(var(--u) * 36); width: calc(var(--u) * 11); height: calc(var(--u) * 11); border-color: #ffc531; color: #ffc531; font-size: calc(var(--u) * 3.4); }
 
 /* =================== CONFIGURAÇÕES (abas) =================== */
 .set-panel { width: min(780px, 94vw); max-width: 780px !important; display: flex; flex-direction: column; max-height: 92vh; }
