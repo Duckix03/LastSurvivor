@@ -84,47 +84,50 @@ LS.CharacterModel = class {
     const LM = LS._lensMat || (LS._lensMat = new THREE.MeshPhongMaterial({ color: 0x08080a, specular: 0x8a8f99, shininess: 90 }));
     const FM = LS._frameMat || (LS._frameMat = new THREE.MeshPhongMaterial({ color: 0x55585e, specular: 0xcfd3da, shininess: 60 }));
     const HL = LS._lensHL || (LS._lensHL = new THREE.MeshBasicMaterial({ color: 0x5a5f6a }));
-    const cy = 3.6, lensW = [1.6, 2.6, 3.0, 3.0, 2.6, 1.6], frameW = [1.9, 3.0, 3.4, 3.5, 3.5, 3.4, 3.0, 1.9];
+    // profundidades escolhidas pra frente das peças nunca cair no mesmo plano da barba/bigode (sem z-fight)
+    const cy = 3.85, lensW = [1.4, 2.3, 2.6, 2.3, 1.4], frameW = [1.6, 2.7, 3.0, 3.0, 2.7, 1.6];
     [-1, 1].forEach(sd => {
-      const cx = sd * 2.05;
-      // cada linha não se sobrepõe (sem z-fight): lente na frente, armação um pouco maior atrás
-      lensW.forEach((w, i) => add(w, 0.5, 0.2, cx, cy + 1.25 - i * 0.5, 4.5, LM));
-      frameW.forEach((w, i) => add(w, 0.4375, 0.3, cx, cy + 1.53 - i * 0.4375, 4.35, FM));
-      add(0.45, 0.3, 0.05, cx - 0.75, cy + 0.85, 4.625, HL); // reflexo
-      add(0.25, 0.25, 0.05, cx - 1.05, cy + 0.45, 4.625, HL);
-      add(0.7, 0.3, 0.3, sd * 3.85, cy + 0.9, 4.35, FM); // dobradiça
-      add(0.25, 0.3, 4.2, sd * 4.15, cy + 0.9, 2.35, FM); // haste
+      const cx = sd * 2.0;
+      lensW.forEach((w, i) => add(w, 0.52, 0.2, cx, cy + 1.04 - i * 0.52, 4.56, LM)); // lente (frente 4.66)
+      frameW.forEach((w, i) => add(w, 0.5, 0.3, cx, cy + 1.25 - i * 0.5, 4.4, FM)); // armação atrás (frente 4.55)
+      add(0.4, 0.26, 0.05, cx - 0.6, cy + 0.7, 4.69, HL); // reflexo
+      add(0.22, 0.22, 0.05, cx - 0.9, cy + 0.35, 4.69, HL);
+      add(0.75, 0.28, 0.3, sd * 3.75, cy + 0.75, 4.4, FM); // dobradiça
+      add(0.25, 0.28, 4.2, sd * 4.15, cy + 0.75, 2.35, FM); // haste
     });
-    add(0.9, 0.22, 0.25, 0, cy + 1.05, 4.38, FM); // ponte de cima
-    add(0.7, 0.2, 0.25, 0, cy + 0.45, 4.42, FM); // ponte de baixo
+    add(1.2, 0.2, 0.25, 0, cy + 0.85, 4.41, FM); // ponte de cima
+    add(0.9, 0.18, 0.25, 0, cy + 0.35, 4.43, FM); // ponte de baixo
   }
-  // óculos de estrela: duas estrelas vazadas pretas com glitter que pisca (bloquinhos)
+  // óculos de estrela: duas estrelas pretas com lente escura e glitter que pisca (bloquinhos)
   buildStarShades(add) {
     const BM = LS._starMat || (LS._starMat = new THREE.MeshPhongMaterial({ color: 0x0c0c10, specular: 0x9aa0ad, shininess: 80 }));
+    const LM = LS._starLens || (LS._starLens = new THREE.MeshPhongMaterial({ color: 0x1a1030, specular: 0xb0a8ff, shininess: 110 }));
     const SP = LS._sparkMat || (LS._sparkMat = new THREE.MeshBasicMaterial({ color: 0xffffff }));
     const SP2 = LS._sparkMat2 || (LS._sparkMat2 = new THREE.MeshBasicMaterial({ color: 0x9fb4ff }));
-    if (!LS._starCells) { // grade 15x15: estrela cheia menos a estrela de dentro (furo)
+    if (!LS._starCells) { // grade 15x15: 1 = armação, 2 = lente (furo da estrela)
       const N = 15, inStar = (x, y, R) => { const P = []; for (let k = 0; k < 10; k++) { const a = Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? R * 0.47 : R; P.push([Math.cos(a) * r, Math.sin(a) * r]); }
         let c = false; for (let i = 0, j = 9; i < 10; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
       const rows = [];
-      for (let j = 0; j < N; j++) { const y = (N - 1) / 2 - j + 1.0, row = []; for (let i = 0; i < N; i++) { const x = i - (N - 1) / 2; row.push(inStar(x, y, 7.5) && !inStar(x, y - 0.4, 3.4)); } rows.push(row); }
+      for (let j = 0; j < N; j++) { const y = (N - 1) / 2 - j + 1.0, row = []; for (let i = 0; i < N; i++) { const x = i - (N - 1) / 2; row.push(!inStar(x, y, 7.5) ? 0 : inStar(x, y - 0.4, 3.6) ? 2 : 1); } rows.push(row); }
       LS._starCells = rows;
     }
-    const c = 0.34, rows = LS._starCells, N = rows.length, cy = 3.7, z = 4.45, spots = [];
+    const c = 0.25, rows = LS._starCells, N = rows.length, cy = 3.85, spots = [];
     [-1, 1].forEach(sd => {
-      const cx = sd * 2.5;
-      rows.forEach((row, j) => { // junta células seguidas da linha numa caixa só
-        for (let i = 0; i < N;) { if (!row[i]) { i++; continue; } let k = i; while (k < N && row[k]) k++;
+      const cx = sd * 1.95;
+      rows.forEach((row, j) => { // junta células seguidas do mesmo tipo numa caixa só
+        for (let i = 0; i < N;) { const v = row[i]; if (!v) { i++; continue; } let k = i; while (k < N && row[k] === v) k++;
           const y = cy + ((N - 1) / 2 - j) * c, x0 = cx + (i - (N - 1) / 2) * c, x1 = cx + (k - 1 - (N - 1) / 2) * c;
-          add((k - i) * c, c, 0.3, (x0 + x1) / 2, y, z, BM);
-          for (let q = i; q < k; q++) if (((q * 7 + j * 13 + (sd > 0 ? 5 : 0)) % 6) === 0) spots.push([cx + (q - (N - 1) / 2) * c, y]);
+          if (v === 1) { add((k - i) * c, c, 0.3, (x0 + x1) / 2, y, 4.5, BM); // armação (frente 4.65)
+            for (let q = i; q < k; q++) if (((q * 7 + j * 13 + (sd > 0 ? 5 : 0)) % 5) === 0) spots.push([cx + (q - (N - 1) / 2) * c, y]); }
+          else add((k - i) * c, c, 0.2, (x0 + x1) / 2, y, 4.44, LM); // lente um pouco pra dentro (frente 4.54)
           i = k; }
       });
-      add(0.25, 0.28, 4.1, sd * 4.18, cy + 0.6, 2.25, BM); // haste (sai de trás da estrela)
+      add(0.55, 0.25, 0.25, sd * 3.9, cy + 0.35, 4.42, BM); // dobradiça
+      add(0.25, 0.25, 4.1, sd * 4.16, cy + 0.35, 2.3, BM); // haste
     });
-    add(0.9, 0.3, 0.25, 0, cy + 0.55, 4.38, BM); // ponte
+    add(0.5, 0.25, 0.2, 0, cy + 0.33, 4.46, BM); // ponte
     // glitter: pontinhos brancos/azulados que piscam com fade
-    const sp = spots.map((p, n) => { const m = add(0.16, 0.16, 0.04, p[0], p[1], z + 0.17, n % 3 ? SP : SP2); m.castShadow = false; return { m, ph: n * 1.7, sp: 2.2 + (n % 5) * 0.6 }; });
+    const sp = spots.map((p, n) => { const m = add(0.13, 0.13, 0.04, p[0], p[1], 4.67, n % 3 ? SP : SP2); m.castShadow = false; return { m, ph: n * 1.7, sp: 2.2 + (n % 5) * 0.6 }; });
     this.fx.push(t => { for (const s of sp) { const k = Math.max(0, Math.sin(t * s.sp + s.ph)); s.m.scale.setScalar(0.15 + k * k * 1.1); } });
   }
   // acessórios 3D da cabeça: chapéus, óculos e barba cheia
