@@ -33,6 +33,10 @@
 //   POST /api/admin/codes/create {code?, item?, coins, diamonds, maxUses, days}   (só owner) cria codiguin
 //   GET  /api/admin/codes                      (só owner) lista os codiguins
 //   POST /api/admin/codes/delete {code}        (só owner) apaga um codiguin
+//   GET  /api/admin/cc-limits · POST /api/admin/cc-limits {...}   (só owner) limites dos codiguins dos criadores
+//   GET  /api/cc/codes                         (criador de conteúdo) seus codiguins + limites + quantos ainda pode criar
+//   POST /api/cc/codes/create {code?, item?, coins, diamonds, maxUses, days}   (criador) cria dentro dos limites
+//   POST /api/cc/codes/delete {code}           (criador) apaga um codiguin SEU (não devolve a cota da semana)
 // DIAMANTES ficam só aqui no servidor (a.diamonds): ninguém dá diamante pra si mesmo mexendo no jogo.
 // Uso interno (só os Durable Objects chamam, não fica exposto): /internal/resolve {token, name} · /internal/friends {id}
 'use strict';
@@ -59,6 +63,10 @@ const PIECE_SET = new Set(Object.values(DIAMOND_PIECES).flat());
 const PROTECTED = it => EXCLUSIVE.has(it) || it in DIAMOND_PRICES || PIECE_SET.has(it);
 const DAILY_DIAMONDS = 10, DAILY_MS = 20 * 3600e3;
 const CODE_RE = /^[A-Z0-9-]{4,20}$/, CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+// codiguins dos criadores de conteúdo: o owner muda esses limites no painel ADMIN → CRIADORES
+const CC_DEFAULT = { perWeek: 5, maxUses: 100, maxCoins: 5000, maxDiamonds: 0, maxDays: 30, items: true, legend: false }, WEEK_MS = 7 * 864e5;
+// lendários do Gold Royale (iguais aos de raridade 3 em js/cosmetics.js): criador só dá se o owner liberar
+const ROYALE_LEGEND = new Set(['hat:coroa', 'hat:auréola', 'top:armadura', 'pattern:galáxia']);
 
 const H = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Content-Type': 'application/json' };
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: H });
@@ -146,6 +154,17 @@ export class Accounts {
       if (path === '/api/redeem') return await this.redeemCode(me, body);
       if (path === '/api/buy') return await this.buyDiamond(me, body);
       if (path === '/api/daily') return await this.daily(me);
+      if (path.startsWith('/api/cc/')) {
+        if (!me.badges.includes('cc') && !me.badges.includes('owner')) return fail('Só criadores de conteúdo podem usar esse painel.', 403);
+        if (path === '/api/cc/codes' && req.method === 'GET') return json(await this.ccState(me));
+        if (path === '/api/cc/codes/create') return await this.ccCreate(me, body);
+        if (path === '/api/cc/codes/delete') return await this.ccDelete(me, body);
+      }
+      if (path === '/api/admin/cc-limits') {
+        if (!me.badges.includes('owner')) return fail('Só o owner pode mudar os limites.', 403);
+        if (req.method === 'POST') await this.st.put('cfg:cc', this.ccClean(body));
+        return json({ limits: await this.ccLimits() });
+      }
       if (path.startsWith('/api/admin/codes')) {
         if (!me.badges.includes('owner')) return fail('Só o owner pode mexer nos codiguins.', 403);
         if (path === '/api/admin/codes' && req.method === 'GET') return await this.listCodes();
@@ -399,6 +418,44 @@ export class Accounts {
     const c = { code, item, coins, diamonds, maxUses, uses: 0, exp: days ? Date.now() + days * 864e5 : 0, created: Date.now(), by: me.id };
     await this.st.put('c:' + code, c);
     return json({ code: c });
+  }
+  // ---------- codiguins dos criadores ----------
+  ccClean(b) { return { perWeek: nint(b.perWeek, 100), maxUses: nint(b.maxUses, 100000), maxCoins: nint(b.maxCoins, 1e6), maxDiamonds: nint(b.maxDiamonds, 1e5), maxDays: Math.max(1, nint(b.maxDays, 365)), items: !!b.items, legend: !!b.legend }; }
+  async ccLimits() { return Object.assign({}, CC_DEFAULT, (await this.st.get('cfg:cc')) || {}); }
+  async ccState(a) {
+    const L = await this.ccLimits(), now = Date.now(), made = (a.ccMade || []).filter(t => now - t < WEEK_MS);
+    const keys = (a.ccCodes || []).map(c => 'c:' + c), got = keys.length ? await this.st.get(keys) : new Map();
+    const codes = keys.map(k => got.get(k)).filter(Boolean).sort((x, y) => y.created - x.created);
+    return { limits: L, left: Math.max(0, L.perWeek - made.length), next: made.length ? Math.min(...made) + WEEK_MS : 0, codes, total: codes.reduce((s, c) => s + (c.uses || 0), 0) };
+  }
+  async ccCreate(a, b) {
+    const L = await this.ccLimits(), now = Date.now(), made = (a.ccMade || []).filter(t => now - t < WEEK_MS);
+    if (made.length >= L.perWeek) return fail(L.perWeek ? 'Você já criou ' + L.perWeek + ' codiguins essa semana. Volte em ' + Math.ceil((Math.min(...made) + WEEK_MS - now) / 864e5) + ' dia(s).' : 'Os codiguins de criador estão desligados no momento.', 429);
+    const item = b.item ? String(b.item) : null;
+    if (item && (!L.items || !ITEM_RE.test(item) || PROTECTED(item))) return fail(L.items ? 'Esse item não pode ir em codiguin de criador.' : 'Itens em codiguin de criador estão desligados.');
+    if (item && !L.legend && ROYALE_LEGEND.has(item)) return fail('Itens lendários não estão liberados pra criadores.');
+    const coins = nint(b.coins, 1e6), diamonds = nint(b.diamonds, 1e5), maxUses = nint(b.maxUses, 1e6), days = nint(b.days, 3650);
+    if (coins > L.maxCoins) return fail('Máximo de ' + L.maxCoins.toLocaleString('pt-BR') + ' moedas por codiguin.');
+    if (diamonds > L.maxDiamonds) return fail(L.maxDiamonds ? 'Máximo de ' + L.maxDiamonds + ' diamantes por codiguin.' : 'Diamantes não estão liberados pra criadores.');
+    if (!maxUses || maxUses > L.maxUses) return fail('Escolha de 1 a ' + L.maxUses + ' usos.');
+    if (!days || days > L.maxDays) return fail('Escolha de 1 a ' + L.maxDays + ' dias de validade.');
+    if (!item && !coins && !diamonds) return fail('Escolha um item ou coloque moedas/diamantes.');
+    let code = String(b.code || '').toUpperCase().replace(/\s+/g, '');
+    if (code && !CODE_RE.test(code)) return fail('O código precisa ter de 4 a 20 letras, números ou -');
+    if (!code) { do { const r = new Uint8Array(8); crypto.getRandomValues(r); code = 'CC' + Array.from(r, x => CODE_ABC[x % CODE_ABC.length]).join(''); } while (await this.st.get('c:' + code)); }
+    else if (await this.st.get('c:' + code)) return fail('Esse código já existe.');
+    const c = { code, item, coins, diamonds, maxUses, uses: 0, exp: now + days * 864e5, created: now, by: a.id, byName: a.name, cc: true };
+    await this.st.put('c:' + code, c);
+    a.ccMade = made.concat(now); a.ccCodes = [code].concat(a.ccCodes || []).slice(0, 60);
+    delete a._token; await this.st.put('a:' + a.id, a);
+    return json(Object.assign({ code: c }, await this.ccState(a)));
+  }
+  async ccDelete(a, b) {
+    const code = String(b.code || '').toUpperCase(), c = await this.st.get('c:' + code);
+    if (!c || c.by !== a.id || !c.cc) return fail('Esse codiguin não é seu.', 403);
+    await this.st.delete('c:' + code);
+    a.ccCodes = (a.ccCodes || []).filter(x => x !== code); delete a._token; await this.st.put('a:' + a.id, a);
+    return json(await this.ccState(a));
   }
   async listCodes() {
     const m = await this.st.list({ prefix: 'c:' });
