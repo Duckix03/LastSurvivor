@@ -179,7 +179,9 @@ LS.Maint = {
   sync() {
     const G = LS.Game, idle = !G || G.state === 'menu' || G.state === 'lobby', staff = this.staff();
     document.body.classList.toggle('ls-maint-staff', this.on && staff);
-    const show = this.on && !staff && idle && !(LS.UI && LS.UI.current === 'panel-settings'); // configurações abertas = entrando na conta
+    const show = this.on && !staff && idle;
+    // entrando na conta: as configurações abrem POR CIMA da tela de manutenção (ela é opaca: nada do jogo novo aparece atrás)
+    document.body.classList.toggle('ls-maint-login', show && LS.UI && LS.UI.current === 'panel-settings');
     let el = document.getElementById('maint');
     if (!show) { if (el) el.remove(); return; }
     if (LS.Lobby && LS.Lobby.searching) LS.Lobby.cancelSearch();
@@ -187,12 +189,15 @@ LS.Maint = {
       el = document.createElement('div'); el.id = 'maint';
       el.innerHTML = '<div class="mt-box"><div class="mt-icon"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" fill="currentColor"/></svg></div>' +
         '<h1>Estamos atualizando o jogo!</h1><p>O Last Survivor está em manutenção rapidinho pra receber novidades. Volte daqui a pouquinho!</p><div class="mt-msg hidden"></div>' +
-        '<div class="mt-btns"><button class="btn btn-primary mt-retry">TENTAR DE NOVO</button><button class="btn mt-dev">SOU DEV · ENTRAR</button></div><small class="mt-who"></small></div>';
+        '<div class="mt-warn"></div><div class="mt-btns"><button class="btn btn-primary mt-retry">TENTAR DE NOVO</button><button class="btn mt-dev"></button></div></div>';
       document.body.appendChild(el);
       el.querySelector('.mt-retry').addEventListener('click', e => { const b = e.currentTarget; b.disabled = true; b.textContent = 'CONFERINDO…'; this.recheck(); setTimeout(() => { b.disabled = false; b.textContent = 'TENTAR DE NOVO'; }, 1500); });
       el.querySelector('.mt-dev').addEventListener('click', () => { LS.UI.onAction('settings'); LS.UI.setTab('conta'); this.sync(); });
     }
     const m = el.querySelector('.mt-msg'); m.textContent = this.msg; m.classList.toggle('hidden', !this.msg);
-    const a = LS.Account; el.querySelector('.mt-who').textContent = a && a.logged() && a.me ? 'Você entrou como ' + a.me.name + ' (sem selo DEV).' : '';
+    // confere a conta: sem conta → "não está logado"; com conta sem selo → "não tem a tag"
+    const a = LS.Account, logged = !!(a && a.logged() && a.me), w = el.querySelector('.mt-warn');
+    w.innerHTML = logged ? '<b>Você não tem a tag!</b><span>Apenas DEV e OWNER podem entrar agora. (conta: ' + LS.Profile.esc(a.me.name) + ')</span>' : '<b>Você não está logado!</b><span>Se você é DEV ou OWNER, entre na sua conta pra jogar.</span>';
+    el.querySelector('.mt-dev').textContent = logged ? 'TROCAR DE CONTA' : 'ENTRAR NA CONTA';
   }
 };
