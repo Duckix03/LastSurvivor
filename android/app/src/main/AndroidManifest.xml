@@ -42,6 +42,4 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- atualizar o app pelo próprio jogo (abre o instalador do Android com o APK novo) -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

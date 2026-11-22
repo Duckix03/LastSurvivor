@@ -30,11 +30,10 @@ versões instalam **por cima**, sem perder nada.
 
 ## 🔄 Atualização dentro do app
 
-Quando sai versão nova, o app mostra **"Ei! Seu jogo está desatualizado."** e o botão **Atualizar** faz tudo sozinho:
-confere se o APK novo já foi publicado em Releases, pede (só na 1ª vez) a permissão de "instalar apps desconhecidos",
-baixa com barra de progresso e abre o instalador do Android por cima do jogo. Código: `ApkUpdaterPlugin.java` (nativo)
-e `LS.AppUpdate` em `js/config.js`. Se algo falhar, oferece baixar pelo navegador.
-(Quem ainda está com um APK de antes disso atualiza uma última vez pelo navegador.)
+Quando sai versão nova, o app mostra **"Ei! Seu jogo está desatualizado."** e o botão **Atualizar** confere se o APK
+novo já foi publicado em Releases e abre o link no navegador do celular, que baixa sozinho (`LS.AppUpdate` em `js/config.js`).
+⚠️ O app **não** instala APK por conta própria: a permissão `REQUEST_INSTALL_PACKAGES` + código que baixa APK faz o
+Google Play Protect marcar o jogo como **"App nocivo"** (padrão de vírus "dropper"). Não coloque de volta.
 
 ## 🛠️ Compilar no seu computador (opcional)
 
