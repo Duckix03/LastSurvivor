@@ -823,6 +823,9 @@ body.mobile { touch-action: none; -webkit-user-select: none; user-select: none; 
   --sb: env(safe-area-inset-bottom, 0px); }
 /* tudo que é interface fica fora do entalhe; o fundo (cena 3D, desfoque) continua de ponta a ponta */
 body.mobile #hud { left: var(--sl); right: var(--sr); }
+/* mira e o que é centralizado nela: no centro da TELA (onde a bala vai), não do HUD — o entalhe fica só de um lado */
+body.mobile #crosshair, body.mobile #hitmarker, body.mobile #dmg-indicators { left: calc(50% + (var(--sr) - var(--sl)) / 2); }
+body.mobile #scope { left: calc(-1 * var(--sl)); right: calc(-1 * var(--sr)); }
 body.mobile #menu-main, body.mobile #lobby { left: var(--sl); right: var(--sr); }
 body.mobile #menu-main .menu-bg { left: calc(-1 * var(--sl)); right: calc(-1 * var(--sr)); }
 body.mobile .screen.panel-screen, body.mobile #pause, body.mobile #endscreen, body.mobile #loading { padding-left: var(--sl); padding-right: var(--sr); box-sizing: border-box; }

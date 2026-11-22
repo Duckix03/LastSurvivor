@@ -388,6 +388,8 @@ LS.CharacterModel = class {
   }
   punch() { this.punchT = 1; this.punchSide = -(this.punchSide || -1); }
   hit() { this.hitT = 1; this.hitSide = Math.random() < 0.5 ? -1 : 1; }
+  // centro da cabeça no mundo (pra hitbox seguir a animação: correndo o corpo inclina pra frente, agachado também)
+  headCenter(out) { return this.headG.localToWorld(out.set(0, 4 * LS.Skin.PX, 0)); }
   muzzleWorld(target) {
     if (this.gun) return this.gun.userData.muzzle.getWorldPosition(target);
     return this.headG.getWorldPosition(target);
