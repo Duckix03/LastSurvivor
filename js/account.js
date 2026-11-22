@@ -191,6 +191,32 @@ LS.Maint = {
   staff() { const a = LS.Account, b = a && a.logged() && a.me ? a.me.badges || [] : []; return b.includes('owner') || b.includes('dev'); },
   set(on, msg) { this.on = !!on; this.msg = msg || ''; this.sync(); },
   recheck() { LS.Presence.ping(); },
+  // engrenagem de verdade (dentes trapezoidais + furo), desenhada por conta: n dentes, raio de fora/de dentro/do furo
+  gear(n, ro, ri, rh, cx, cy) {
+    const a = Math.PI * 2 / n, P = [], f = v => v.toFixed(2);
+    for (let i = 0; i < n; i++) { const b = i * a;
+      for (const [t, r] of [[b - a * 0.5, ri], [b - a * 0.24, ri], [b - a * 0.15, ro], [b + a * 0.15, ro], [b + a * 0.24, ri]]) P.push(f(cx + Math.cos(t) * r) + ',' + f(cy + Math.sin(t) * r)); }
+    return 'M' + P.join('L') + 'Z' + (rh ? 'M' + f(cx + rh) + ',' + f(cy) + 'a' + rh + ',' + rh + ' 0 1,0 ' + f(-2 * rh) + ',0a' + rh + ',' + rh + ' 0 1,0 ' + f(2 * rh) + ',0Z' : '');
+  },
+  // ícone: engrenagem grande + pequena encaixadas (giram ao contrário, na proporção dos dentes) e a chave inglesa apertando
+  icon() {
+    return '<svg class="mt-gears" viewBox="0 0 120 120"><defs><linearGradient id="mtG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd25a"/><stop offset="1" stop-color="#ff8a1f"/></linearGradient>' +
+      '<linearGradient id="mtG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8fa4c8"/><stop offset="1" stop-color="#4a5878"/></linearGradient>' +
+      '<linearGradient id="mtW" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f4f7ff"/><stop offset="1" stop-color="#b8c2d8"/></linearGradient></defs>' +
+      '<g class="mt-g1"><path d="' + this.gear(12, 40, 32, 11, 52, 54) + '" fill="url(#mtG1)" fill-rule="evenodd"/><circle cx="52" cy="54" r="22" fill="none" stroke="rgba(120,50,0,.35)" stroke-width="2.5"/></g>' +
+      '<g class="mt-g2"><path d="' + this.gear(8, 21, 15.5, 5.5, 96, 23) + '" fill="url(#mtG2)" fill-rule="evenodd"/></g>' +
+      '<g transform="translate(71,73) rotate(-45)"><g class="mt-wr"><rect x="-5.5" y="6" width="11" height="44" rx="5.5" fill="url(#mtW)" stroke="#1a2236" stroke-width="2.5"/>' +
+      '<rect x="-2" y="20" width="4" height="22" rx="2" fill="rgba(26,34,54,.25)"/>' +
+      '<path d="M-4.5,-12.2L-4.5,-2.5L4.5,-2.5L4.5,-12.2A13,13 0 1,1 -4.5,-12.2Z" fill="url(#mtW)" stroke="#1a2236" stroke-width="2.5" stroke-linejoin="round"/></g></g></svg>';
+  },
+  // fundo: engrenagens enormes girando devagar, faixas de obra com o texto correndo e barras de luz passando (tudo opaco)
+  bg() {
+    const tape = d => '<div class="mt-tape ' + d + '"><div class="mt-tape-in">' + '<span>EM MANUTENÇÃO</span><i></i><span>VOLTAMOS JÁ</span><i></i>'.repeat(8) + '</div></div>';
+    return '<div class="mt-bg"><svg class="mt-bgg a" viewBox="0 0 200 200"><path d="' + this.gear(16, 96, 82, 34, 100, 100) + '" fill-rule="evenodd"/></svg>' +
+      '<svg class="mt-bgg b" viewBox="0 0 200 200"><path d="' + this.gear(10, 96, 78, 30, 100, 100) + '" fill-rule="evenodd"/></svg>' +
+      '<svg class="mt-bgg c" viewBox="0 0 200 200"><path d="' + this.gear(14, 96, 82, 40, 100, 100) + '" fill-rule="evenodd"/></svg>' +
+      '<div class="mt-scan"><i></i><i></i><i></i></div>' + tape('t1') + tape('t2') + '<div class="mt-vig"></div></div>';
+  },
   sync() {
     const G = LS.Game, idle = !G || G.state === 'menu' || G.state === 'lobby', staff = this.staff();
     document.body.classList.toggle('ls-maint-staff', this.on && staff);
@@ -202,7 +228,7 @@ LS.Maint = {
     if (LS.Lobby && LS.Lobby.searching) LS.Lobby.cancelSearch();
     if (!el) {
       el = document.createElement('div'); el.id = 'maint';
-      el.innerHTML = '<div class="mt-box"><div class="mt-icon"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" fill="currentColor"/></svg></div>' +
+      el.innerHTML = this.bg() + '<div class="mt-box"><div class="mt-icon">' + this.icon() + '</div>' +
         '<h1>Estamos atualizando o jogo!</h1><p>O Last Survivor está em manutenção rapidinho pra receber novidades. Volte daqui a pouquinho!</p><div class="mt-msg hidden"></div>' +
         '<div class="mt-warn"></div><div class="mt-btns"><button class="btn btn-primary mt-retry">TENTAR DE NOVO</button><button class="btn mt-dev"></button></div></div>';
       document.body.appendChild(el);
