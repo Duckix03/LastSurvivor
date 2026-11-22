@@ -242,7 +242,13 @@ LS.Combat = {
       const dx = f.pos.x - o.x, dz = f.pos.z - o.z;
       if (dx * dx + dz * dz > (maxT + 3) * (maxT + 3)) continue;
       const k = f.crouch ? 0.7 : 1, p = f.pos;
-      let t = this.raySphere(o, d, p.x, p.y + f.headY(), p.z, 0.24);
+      // cabeça: onde ela está desenhada (inclinada correndo/agachado); se a animação estiver estranha, volta pro ponto padrão
+      let hx = p.x, hy = p.y + f.headY(), hz = p.z;
+      if (f.model && f.model.root.visible && f.model.root.parent && f.state === 'ground') {
+        const c = f.model.headCenter(this._hc || (this._hc = new THREE.Vector3()));
+        if (Math.abs(c.x - hx) + Math.abs(c.y - hy) + Math.abs(c.z - hz) < 0.8) { hx = c.x; hy = c.y; hz = c.z; }
+      }
+      let t = this.raySphere(o, d, hx, hy, hz, 0.24);
       if (t >= 0 && t < bt) { bt = t; best = f; head = true; }
       for (const hy of [0.35, 0.8, 1.25]) {
         t = this.raySphere(o, d, p.x, p.y + hy * k, p.z, 0.36);
