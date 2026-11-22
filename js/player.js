@@ -143,11 +143,12 @@ LS.Player = class extends LS.Fighter {
       this.steer = fx; this.dive = !!k.KeyW;
       this.yaw = this.camYaw;
     } else {
-      if (I.wasPressed('KeyC')) this.crouch = !this.crouch;
-      const w = this.weapon();
+      if (I.wasPressed('KeyC')) this.crouch = !this.crouch; // agachar funciona correndo também: para a corrida na hora
+      const w = this.weapon(), shiftNow = !!k.ShiftLeft;
+      if (shiftNow && !this._shiftPrev && this.crouch) this.crouch = false; // apertou pra correr de novo: levanta
+      this._shiftPrev = shiftNow;
       this.aiming = I.mouse.right && !!w && !LS.Game.inventoryOpen;
-      this.running = k.ShiftLeft && fz > 0 && !this.aiming && !this.healType;
-      if (this.running) this.crouch = false;
+      this.running = shiftNow && fz > 0 && !this.aiming && !this.healType && !this.crouch;
       let speed = (this.crouch ? 2.3 : this.running ? 7.6 : 4.6) * LS.Console.speedMul;
       if (this.aiming) speed *= 0.6;
       if (this.healType) speed *= 0.45;

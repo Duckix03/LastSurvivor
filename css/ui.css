@@ -157,7 +157,7 @@ kbd { font-family: var(--display); font-weight: 400; letter-spacing: 0.5px; bord
 #menu-main.active .lb-news { animation: slideL 0.55s 0.08s var(--pop) both, gradMove 8s ease infinite; }
 @keyframes gradMove { 50% { background-position: 100% 50%; } }
 .lb-news::after { content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%; transform: skewX(-20deg); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent); animation: shine 4s ease-in-out infinite; }
-@keyframes shine { 0%, 60% { left: -40%; } 100% { left: 140%; } }
+@keyframes shine { 0%, 60% { transform: translateX(0) skewX(-20deg); } 100% { transform: translateX(600%) skewX(-20deg); } } /* transform (antes 'left': recalculava o layout todo quadro) */
 .lb-news-tag { font-family: var(--display); font-weight: 400; letter-spacing: 2px; border-radius: 6px; padding: 3px 9px; background: rgba(0, 0, 0, 0.3); }
 .lb-news-title { font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: 0.3px; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }
 .lb-news:hover { transform: translateY(-3px) scale(1.01); }
@@ -1476,18 +1476,42 @@ body.mobile #cs-shop .cs-box { zoom: var(--hz, 1); }
 .cu-panel input:focus { border-color: var(--accent2); }
 .cu-set label input { padding: 6px 10px !important; font-size: 13px !important; }
 .cu-join .btn { width: auto; }
-.cu-panel { max-height: 94vh; overflow-y: auto; padding: 18px 22px !important; }
+.cu-panel { padding: 18px 22px !important; }
 .cu-panel h2 { margin-bottom: 10px; }
 .cu-thumb.big { aspect-ratio: 2 / 1; }
 #hud.custom .ds-name { max-width: 130px; }
 #hud.custom #top-left .pill:nth-child(3) { display: none; }
-.cu-btns { position: sticky; bottom: -18px; margin: 10px -22px -18px; padding: 10px 22px 14px; background: linear-gradient(0deg, rgba(10, 14, 22, 0.98) 70%, rgba(10, 14, 22, 0)); z-index: 2; }
-.cu-list + .panel-buttons { position: sticky; bottom: -18px; }
+.cu-btns:empty { display: none; }
 #hud.custom .ds-name { max-width: 150px; }
 .cu-row .btn { flex: none !important; width: auto !important; min-width: 96px; }
 
-/* painéis compridos (Novidades, Perfil...): rolam por dentro e o VOLTAR fica sempre visível embaixo */
-.panel-screen > .panel:not(.set-panel):not(.cu-panel) { max-height: 92vh; overflow-y: auto; overscroll-behavior: contain; }
-.panel-screen > .panel:not(.cu-panel) > .panel-buttons { position: sticky; bottom: 0; z-index: 3; padding-top: 12px; margin-top: 10px;
-  background: linear-gradient(0deg, rgba(10, 14, 22, 0.97) 60%, rgba(10, 14, 22, 0)); box-shadow: 0 34px 0 rgba(10, 14, 22, 0.97); } /* a sombra cobre o espaço de baixo do painel */
-body.mobile .panel-screen > .panel:not(.set-panel):not(.cu-panel) { max-height: calc(94vh / var(--uiz, 1)); }
+/* painéis compridos (Novidades, Perfil...): o painel fica parado (borda e listras no lugar) e só o conteúdo rola por dentro;
+   o VOLTAR fica sempre embaixo, sem faixa escura por cima do conteúdo */
+.panel-screen > .panel.wrapped { display: flex; flex-direction: column; max-height: 92vh; overflow: hidden; }
+.panel.wrapped > h2, .panel.wrapped > .panel-buttons { flex: none; }
+.panel.wrapped > .panel-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; margin-right: -8px; padding-right: 8px; }
+.panel.wrapped > .panel-buttons { margin-top: 12px; }
+body.mobile .panel-screen > .panel.wrapped { max-height: calc(94vh / var(--uiz, 1)); overflow: hidden; }
+.cu-panel.wrapped { overflow: hidden !important; }
+
+/* menu do celular: AMIGOS já tem o ícone no topo (com a bolinha de pedido), então sai da lista pra caber tudo (o SALA ficava cortado) */
+body.mobile .lb-menu .lb-item[data-action="friends"] { display: none; }
+body.mobile.short .lb-menu { gap: 4px; }
+body.mobile.short .lb-item { padding: 6px 14px; }
+
+/* celular: sem desfoque de fundo (backdrop-filter pesa muito na GPU do celular); os fundos já são escuros */
+body.mobile *, body.mobile *::before, body.mobile *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+body.mobile .panel-screen { background: radial-gradient(ellipse at center, rgba(16, 14, 36, 0.78), rgba(4, 6, 14, 0.93)); }
+/* celular: brilhos e pulsos infinitos do menu desligados (redesenhavam por cima do 3D o tempo todo) */
+body.mobile .lb-play-btn { animation: none; } body.mobile #menu-main.active .lb-news { animation: slideL 0.55s 0.08s var(--pop) both; }
+body.mobile .lb-news::after, body.mobile .lb-play-btn::after { animation: none; display: none; }
+
+/* app desatualizado: tela por cima de tudo */
+#outdated { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: radial-gradient(ellipse at center, #1a1f3a, #05070e); font-family: var(--body); color: var(--txt); text-align: center; }
+#outdated .od-box { max-width: 520px; padding: 28px 30px 22px; border-radius: 20px; background: rgba(14, 18, 34, 0.95); border: 2px solid rgba(255, 197, 49, 0.5); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); animation: duDrop 0.5s var(--pop) both; }
+#outdated .od-icon { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 16px; display: grid; place-items: center; font: 400 44px var(--display); color: #2a1400; background: var(--grad); }
+#outdated h1 { font: 400 30px var(--display); letter-spacing: 1px; line-height: 1.15; }
+#outdated p { margin: 10px 0 18px; color: var(--mut); font-size: 16px; }
+#outdated .od-btn { min-width: 220px; font-size: 20px; }
+#outdated small { display: block; margin-top: 12px; font-size: 11px; color: rgba(255, 255, 255, 0.35); }

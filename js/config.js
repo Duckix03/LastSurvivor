@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '71'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '72'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // versão do ONLINE (crossplay navegador ↔ app). Suba +1 quando mudar algo que quebra a partida online
 // (armas, mapa, protocolo de rede...) e suba junto o MIN_PROTO em server/src/worker.js, depois "npx wrangler deploy".
 // Quem estiver com versão mais velha (ex.: APK antigo) recebe o aviso pra atualizar em vez de entrar com regras diferentes.
@@ -22,6 +22,32 @@ LS.APP_DOWNLOAD_URL = 'https://github.com/Duckix03/LastSurvivor/releases/latest/
     }).catch(() => {});
   } catch (e) { /* sem rede / file:// */ }
 })();
+
+// APP (APK): o jogo vai dentro do app, então ele não se atualiza sozinho. Confere a versão publicada no site;
+// se o app estiver velho, mostra a tela "Seu jogo está desatualizado" com o botão Atualizar (abre a página oficial fora do app).
+LS.checkAppVersion = function () {
+  if (!LS.IS_APP) return;
+  const urls = [LS.WEB_URL + 'version.json', 'https://raw.githubusercontent.com/Duckix03/LastSurvivor/main/version.json'];
+  const tryUrl = i => {
+    if (i >= urls.length) return;
+    fetch(urls[i] + '?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()).then(j => {
+      if (j && j.v && +j.v > +LS.VERSION) LS.showOutdated(j.v);
+    }).catch(() => tryUrl(i + 1)); // sem rede ou bloqueado: tenta o outro endereço; sem nenhum, deixa jogar
+  };
+  tryUrl(0);
+};
+LS.showOutdated = function (v) {
+  if (document.getElementById('outdated')) return;
+  const d = document.createElement('div'); d.id = 'outdated';
+  d.innerHTML = '<div class="od-box"><div class="od-icon">!</div><h1>Ei! Seu jogo está desatualizado.</h1>' +
+    '<p>Não se preocupe, aqui está a página oficial do jogo!</p>' +
+    '<button class="btn btn-primary od-btn">Atualizar</button><small>versão do app: ' + LS.VERSION + ' · nova: ' + v + '</small></div>';
+  document.body.appendChild(d);
+  d.querySelector('.od-btn').addEventListener('click', () => {
+    const u = LS.WEB_URL;
+    location.href = u; // no app, endereço de fora do jogo o Capacitor abre no navegador do celular (igual ao link do APK)
+  });
+};
 
 // trocar de nome no perfil custa moedas (o recado é grátis). Escolher o 1º nome (saindo de "Jogador") é grátis.
 LS.RENAME_COST = 10000;

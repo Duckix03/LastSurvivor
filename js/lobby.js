@@ -20,14 +20,15 @@ LS.Lobby = {
       sc.add(m.root); this.extras.push(m);
     });
     // rotação com o mouse
-    document.getElementById('lobby').addEventListener('mousedown', e => {
+    // pointer (mouse e dedo): no celular o arrastar pra girar não funcionava (só tinha mouse)
+    document.getElementById('lobby').addEventListener('pointerdown', e => {
       if (LS.Game.state === 'lobby' && (e.target.id === 'lobby' || e.target.classList.contains('lobby-hint'))) { this.dragging = true; this.lastX = e.clientX; }
     });
-    document.getElementById('menu-main').addEventListener('mousedown', e => {
+    document.getElementById('menu-main').addEventListener('pointerdown', e => {
       if (LS.Game.state === 'menu' && !e.target.closest('button')) { this.dragging = true; this.lastX = e.clientX; }
     });
-    window.addEventListener('mouseup', () => { this.dragging = false; });
-    window.addEventListener('mousemove', e => { if (this.dragging) { this.rotY += (e.clientX - this.lastX) * 0.01; this.lastX = e.clientX; } });
+    window.addEventListener('pointerup', () => { this.dragging = false; }); window.addEventListener('pointercancel', () => { this.dragging = false; });
+    window.addEventListener('pointermove', e => { if (this.dragging) { this.rotY += (e.clientX - this.lastX) * 0.01; this.lastX = e.clientX; } });
     window.addEventListener('resize', () => { this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix(); });
     document.body.appendChild(document.getElementById('lobby-mm'));
     this.buildUI();

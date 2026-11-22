@@ -91,10 +91,10 @@ LS.Touch = {
     if (a === 'pause') { if (G.state === 'playing') G.pause(); return this.release(b); }
     if (!this.playing() && a !== 'bag') return this.release(b);
     switch (a) {
-      case 'fire': case 'fire2': I.mouse.left = true; I.mouse.leftPressed = true; hold.role = 'fire'; break; // segurando atira; arrastar mira
-      case 'aim': I.mouse.right = !I.mouse.right; b.classList.toggle('lit', I.mouse.right); if (I.mouse.right) this.setSprint(false); break;
+      case 'fire': case 'fire2': I.mouse.left = true; I.mouse.leftPressed = true; hold.role = 'fire'; if (this.sprint) this.setSprint(false); break; // segurando atira; arrastar mira · atirar desliga a corrida travada (pra andar atirando: joystick + tiro)
+      case 'aim': I.mouse.right = !I.mouse.right; b.classList.toggle('lit', I.mouse.right); if (I.mouse.right && this.sprint) this.setSprint(false); break;
       case 'jump': I.pressed.Space = true; I.keys.Space = true; hold.key = 'Space'; break;
-      case 'crouch': I.pressed.KeyC = true; this.setSprint(false); break;
+      case 'crouch': I.pressed.KeyC = true; if (this.sprint) this.setSprint(false); break; // correndo: agacha e para na hora
       case 'run': this.setSprint(!this.sprint); break; // trava a corrida (sem mexer no joystick, corre pra frente sozinho)
       case 'reload': I.pressed.KeyR = true; break;
       case 'med': I.pressed.KeyH = true; break;
