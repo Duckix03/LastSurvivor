@@ -354,7 +354,7 @@ LS.Profile = {
   },
   cgPicker(tab) {
     const C = LS.Cosmetics, cc = this.cgMode === 'cc'; // criador: sem exclusivos de codiguin, de diamante, do Gold Royale nem peças de fantasia
-    const L = cc && this.ccData.limits, ok = i => !i.free && !(cc && (i.code || i.dprice || i.piece || (i.rarity >= 3 && !L.legend))); // criador: Gold Royale até Épico (lendário só se liberado)
+    const L = cc && this.ccData.limits, ok = i => !i.free && !(cc && ((i.code && !L.excl) || i.dprice || i.piece || (i.rarity === 3 && !L.legend))); // criador: Gold Royale até Épico (lendário só se liberado)
     const TABS = this.CG_TABS.filter(t => C.items.some(i => ok(i) && t.test(i))); // abas vazias somem
     this.cgTab = tab || this.cgTab || 'costume';
     const T = TABS.find(t => t.id === this.cgTab) || TABS[0]; this.cgTab = T.id;
@@ -432,12 +432,12 @@ LS.Profile = {
     el.innerHTML = '<div class="cc-stats"><div><b>' + D.left + '<small>/' + L.perWeek + '</small></b><span>PODE CRIAR<br>ESSA SEMANA</span></div>' +
       '<div><b>' + D.codes.length + '</b><span>CODIGUINS<br>ATIVOS</span></div><div><b>' + D.total.toLocaleString('pt-BR') + '</b><span>RESGATES<br>NO TOTAL</span></div></div>' +
       '<p class="pf-hint cc-rules">Seus limites: até <b>' + L.maxUses + '</b> usos · até ' + LS.icon('coin', 'coin-i') + '<b>' + L.maxCoins.toLocaleString('pt-BR') + '</b>' +
-      (L.maxDiamonds ? ' · até ' + LS.icon('gem', 'gem-i') + '<b>' + L.maxDiamonds + '</b>' : ' · sem diamantes') + ' · vale até <b>' + L.maxDays + '</b> dias' + (L.items ? ' · itens do Gold Royale ' + (L.legend ? '(até Lendário)' : '(até Épico)') : '') + nx + '</p>';
+      (L.maxDiamonds ? ' · até ' + LS.icon('gem', 'gem-i') + '<b>' + L.maxDiamonds + '</b>' : ' · sem diamantes') + ' · vale até <b>' + L.maxDays + '</b> dias' + (L.items ? ' · itens do Gold Royale ' + (L.legend ? '(até Lendário)' : '(até Épico)') + (L.excl ? ' · skins exclusivas' : '') : '') + nx + '</p>';
     const mk = document.querySelector('[data-pf="cg-make"]'); if (mk) mk.disabled = !D.left;
   },
   // ADMIN → CRIADORES: limites dos codiguins dos criadores
   async openCcLimits(tabs) {
-    this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Quem tem o selo <b>CRIADOR DE CONTEÚDO</b> ganha o botão CODIGUINS no perfil e cria os próprios codiguins (pra sortear em live) dentro destes limites. Itens exclusivos de codiguin e fantasias de diamante nunca entram.</p>' +
+    this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Quem tem o selo <b>CRIADOR DE CONTEÚDO</b> ganha o botão CODIGUINS no perfil e cria os próprios codiguins (pra sortear em live) dentro destes limites. Fantasias de diamante nunca entram. O criador não consegue resgatar os próprios codiguins.</p>' +
       '<div id="cc-lim" class="cc-lim"><p class="pf-hint">Carregando…</p></div><p id="pf-err" class="pf-err hidden"></p>' +
       '<div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>', 'adm');
     try {
@@ -446,13 +446,14 @@ LS.Profile = {
         f('ccl-days', 'Validade máx. (dias)', L.maxDays) + f('ccl-coins', 'Moedas máx.', L.maxCoins) + f('ccl-dia', 'Diamantes máx.', L.maxDiamonds, '(0 = não pode)') + '</div>' +
         '<label class="cg-chk"><input type="checkbox" id="ccl-items"' + (L.items ? ' checked' : '') + '><span></span>Pode dar itens do Gold Royale (até Épico)</label>' +
         '<label class="cg-chk"><input type="checkbox" id="ccl-legend"' + (L.legend ? ' checked' : '') + '><span></span>Pode dar também os LENDÁRIOS (Coroa Real, Auréola, Armadura, Galáxia)</label>' +
+        '<label class="cg-chk"><input type="checkbox" id="ccl-excl"' + (L.excl ? ' checked' : '') + '><span></span>Pode dar as SKINS EXCLUSIVAS de codiguin (Lenda dos Códigos, Astronauta, Pirata, Hacker...)</label>' +
         '<button class="btn btn-primary cg-make" data-pf="ccl-save">SALVAR LIMITES</button>';
     } catch (e) { this.modalError(e.message); }
   },
   async ccLimSave() {
     const v = id => +document.getElementById(id).value || 0;
     try {
-      await LS.Account.ccLimits({ perWeek: v('ccl-week'), maxUses: v('ccl-uses'), maxDays: v('ccl-days'), maxCoins: v('ccl-coins'), maxDiamonds: v('ccl-dia'), items: document.getElementById('ccl-items').checked, legend: document.getElementById('ccl-legend').checked });
+      await LS.Account.ccLimits({ perWeek: v('ccl-week'), maxUses: v('ccl-uses'), maxDays: v('ccl-days'), maxCoins: v('ccl-coins'), maxDiamonds: v('ccl-dia'), items: document.getElementById('ccl-items').checked, legend: document.getElementById('ccl-legend').checked, excl: document.getElementById('ccl-excl').checked });
       this.modalError('Limites salvos!'); document.getElementById('pf-err').classList.add('ok');
     } catch (e) { this.modalError(e.message); }
   },

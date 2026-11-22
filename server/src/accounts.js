@@ -64,7 +64,7 @@ const PROTECTED = it => EXCLUSIVE.has(it) || it in DIAMOND_PRICES || PIECE_SET.h
 const DAILY_DIAMONDS = 10, DAILY_MS = 20 * 3600e3;
 const CODE_RE = /^[A-Z0-9-]{4,20}$/, CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 // codiguins dos criadores de conteúdo: o owner muda esses limites no painel ADMIN → CRIADORES
-const CC_DEFAULT = { perWeek: 5, maxUses: 100, maxCoins: 5000, maxDiamonds: 0, maxDays: 30, items: true, legend: false }, WEEK_MS = 7 * 864e5;
+const CC_DEFAULT = { perWeek: 5, maxUses: 100, maxCoins: 5000, maxDiamonds: 0, maxDays: 30, items: true, legend: false, excl: false }, WEEK_MS = 7 * 864e5;
 // lendários do Gold Royale (iguais aos de raridade 3 em js/cosmetics.js): criador só dá se o owner liberar
 const ROYALE_LEGEND = new Set(['hat:coroa', 'hat:auréola', 'top:armadura', 'pattern:galáxia']);
 
@@ -420,7 +420,7 @@ export class Accounts {
     return json({ code: c });
   }
   // ---------- codiguins dos criadores ----------
-  ccClean(b) { return { perWeek: nint(b.perWeek, 100), maxUses: nint(b.maxUses, 100000), maxCoins: nint(b.maxCoins, 1e6), maxDiamonds: nint(b.maxDiamonds, 1e5), maxDays: Math.max(1, nint(b.maxDays, 365)), items: !!b.items, legend: !!b.legend }; }
+  ccClean(b) { return { perWeek: nint(b.perWeek, 100), maxUses: nint(b.maxUses, 100000), maxCoins: nint(b.maxCoins, 1e6), maxDiamonds: nint(b.maxDiamonds, 1e5), maxDays: Math.max(1, nint(b.maxDays, 365)), items: !!b.items, legend: !!b.legend, excl: !!b.excl }; }
   async ccLimits() { return Object.assign({}, CC_DEFAULT, (await this.st.get('cfg:cc')) || {}); }
   async ccState(a) {
     const L = await this.ccLimits(), now = Date.now(), made = (a.ccMade || []).filter(t => now - t < WEEK_MS);
@@ -432,7 +432,8 @@ export class Accounts {
     const L = await this.ccLimits(), now = Date.now(), made = (a.ccMade || []).filter(t => now - t < WEEK_MS);
     if (made.length >= L.perWeek) return fail(L.perWeek ? 'Você já criou ' + L.perWeek + ' codiguins essa semana. Volte em ' + Math.ceil((Math.min(...made) + WEEK_MS - now) / 864e5) + ' dia(s).' : 'Os codiguins de criador estão desligados no momento.', 429);
     const item = b.item ? String(b.item) : null;
-    if (item && (!L.items || !ITEM_RE.test(item) || PROTECTED(item))) return fail(L.items ? 'Esse item não pode ir em codiguin de criador.' : 'Itens em codiguin de criador estão desligados.');
+    // exclusivos de codiguin só se o owner liberar; fantasias e peças de diamante nunca
+    if (item && (!L.items || !ITEM_RE.test(item) || (PROTECTED(item) && !(L.excl && EXCLUSIVE.has(item))))) return fail(L.items ? 'Esse item não pode ir em codiguin de criador.' : 'Itens em codiguin de criador estão desligados.');
     if (item && !L.legend && ROYALE_LEGEND.has(item)) return fail('Itens lendários não estão liberados pra criadores.');
     const coins = nint(b.coins, 1e6), diamonds = nint(b.diamonds, 1e5), maxUses = nint(b.maxUses, 1e6), days = nint(b.days, 3650);
     if (coins > L.maxCoins) return fail('Máximo de ' + L.maxCoins.toLocaleString('pt-BR') + ' moedas por codiguin.');
@@ -469,6 +470,7 @@ export class Accounts {
     if (await this.st.get('r:' + code + ':' + a.id)) return fail('Você já resgatou esse codiguin.');
     if (c.exp && c.exp < Date.now()) return fail('Esse codiguin já venceu.');
     if (c.maxUses && c.uses >= c.maxUses) return fail('Esse codiguin já foi resgatado o máximo de vezes.');
+    if (c.cc && c.by === a.id) return fail('Você não pode resgatar o seu próprio codiguin. Ele é pros seus seguidores!');
     c.uses++; await this.st.put('c:' + code, c); await this.st.put('r:' + code + ':' + a.id, Date.now());
     const had = c.item ? !this.giveItem(a, c.item) : false;
     a.diamonds = (a.diamonds || 0) + (c.diamonds || 0);
