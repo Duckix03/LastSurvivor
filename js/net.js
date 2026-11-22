@@ -75,6 +75,7 @@ LS.Net = {
       if (m.t === 'queue') cb.onQueue(m.n, m.left);
       else if (m.t === 'nomatch') { clearTimeout(to); fail('nomatch'); }
       else if (m.t === 'outdated') { clearTimeout(to); fail('outdated'); }
+      else if (m.t === 'maint') { clearTimeout(to); fail('maint'); LS.Maint && LS.Maint.recheck(); }
       else if (m.t === 'match') { clearTimeout(to); this._matching = true; this.joinMatch(m, cb, () => { done = true; }, fail); }
     };
   },

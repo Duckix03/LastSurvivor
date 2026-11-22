@@ -403,7 +403,7 @@ LS.Game = {
     this.lastDt = dt;
     // música do lobby e ambiente do reverb (galpão no duelo), conferidos poucas vezes por segundo
     const nowMs = performance.now();
-    if (!(nowMs < this._sndT)) { this._sndT = nowMs + 400; if (LS.Music) LS.Music.sync(); if (LS.Audio.ctx) LS.Audio.setEnv(this.mode === 'duel' && this.state !== 'menu' && this.state !== 'lobby' ? 'hall' : 'open'); }
+    if (!(nowMs < this._sndT)) { this._sndT = nowMs + 400; if (LS.Music) LS.Music.sync(); if ((this.state === 'menu' || this.state === 'lobby') && LS.Lobby.built) LS.Lobby.applyTheme(); if (LS.Maint && LS.Maint.on) LS.Maint.sync(); if (LS.Audio.ctx) LS.Audio.setEnv(this.mode === 'duel' && this.state !== 'menu' && this.state !== 'lobby' ? 'hall' : 'open'); }
     this.fpsAcc += dt; this.fpsFrames++;
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
     // atrás de um painel (loja, perfil, configurações...) ou da pausa/fim, a cena 3D fica parada: não redesenha à toa (pesava muito no celular)

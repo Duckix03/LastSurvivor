@@ -9,12 +9,41 @@
 <meta name="theme-color" content="#0b0f1c">
 <title>LAST SURVIVOR</title>
 <link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=80">
-<link rel="stylesheet" href="css/ui.css?v=80">
+<link rel="stylesheet" href="css/style.css?v=82">
+<link rel="stylesheet" href="css/ui.css?v=82">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
+<style>
+/* tela de carregamento (fica aqui no HTML pra aparecer na hora, antes de baixar o resto) */
+@font-face { font-family: 'LilitaBoot'; src: url(fonts/lilita-one-latin-400-normal.woff2) format('woff2'); font-display: swap; }
+#boot { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: #fff; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 120%, #ff8a5c 0%, #5a2a6e 38%, #1a1236 75%, #0b0f1c 100%); font-family: system-ui, sans-serif; transition: opacity .45s ease, transform .45s ease; }
+#boot.out { opacity: 0; transform: scale(1.04); pointer-events: none; }
+#boot .bt-logo { font-family: 'LilitaBoot', 'Arial Black', sans-serif; font-size: clamp(38px, 8vw, 76px); letter-spacing: 2px; transform: skewX(-6deg); text-shadow: 0 5px 0 rgba(0,0,0,.35); animation: btPop .7s cubic-bezier(.2,1.6,.4,1) both; }
+#boot .bt-logo span { margin-left: .25em; color: #ffb52a; text-shadow: 0 5px 0 rgba(120,50,0,.55); }
+#boot .bt-bar { width: min(420px, 70vw); height: 14px; border-radius: 10px; background: rgba(0,0,0,.35); border: 2px solid rgba(255,255,255,.18); overflow: hidden; }
+#boot .bt-bar i { display: block; height: 100%; width: 0; border-radius: 8px; background: linear-gradient(90deg, #ffc531, #ff8a1f); box-shadow: 0 0 12px rgba(255,170,40,.7); transition: width .25s ease; }
+#boot .bt-txt { font-family: 'LilitaBoot', 'Arial Black', sans-serif; font-size: 16px; letter-spacing: 1px; color: #ffe0b0; }
+#boot .bt-tip { position: absolute; bottom: 7%; max-width: 80vw; text-align: center; font-size: 13px; color: rgba(255,255,255,.65); }
+#boot .bt-sky { position: absolute; left: 0; right: 0; bottom: 0; height: 22%; pointer-events: none; opacity: .55; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 60' preserveAspectRatio='none'%3E%3Cpath d='M0 60V34h18V22h14v14h10V12h16v20h12V26h20v-8h12v18h16V8h14v28h10V20h18v16h14V14h12v22h20V24h12v10h16V16h14v20h12V6h16v30h10V22h20v14h14V18h12v18h18V28h14v32z' fill='%23140a28'/%3E%3C/svg%3E") bottom/100% 100% no-repeat; }
+@keyframes btPop { from { opacity: 0; transform: skewX(-6deg) scale(.6); } }
+</style>
 </head>
 <body>
+<div id="boot"><div class="bt-sky"></div><div class="bt-logo">LAST<span>SURVIVOR</span></div><div class="bt-bar"><i id="bt-fill"></i></div><div class="bt-txt" id="bt-txt">CARREGANDO…</div><div class="bt-tip" id="bt-tip"></div></div>
+<script>
+// barra da tela de carregamento: anda sozinha devagar (até 90%) e pula nas etapas de verdade (main.js chama __bootP)
+(function () {
+  var tips = ['Dica: agachar diminui o recuo da arma.', 'Dica: tiro na cabeça faz PANELA!', 'Dica: a bolinha de neve vira uma parede de gelo.', 'Dica: pegue colete e capacete logo no começo.', 'Dica: a zona fecha devagar, fique de olho no mapa.', 'Dica: no duelo, vença 5 rounds pra ganhar.'];
+  document.getElementById('bt-tip').textContent = tips[Math.floor(Math.random() * tips.length)];
+  var p = 0, real = 0, t0 = Date.now(), fill = document.getElementById('bt-fill'), txt = document.getElementById('bt-txt');
+  window.__bootP = function (v, label) { real = Math.max(real, v); if (label) txt.textContent = label; if (v >= 1) done(); };
+  function done() { fill.style.width = '100%'; setTimeout(function () { var b = document.getElementById('boot'); if (!b) return; b.classList.add('out'); setTimeout(function () { b.remove(); }, 500); }, 250); }
+  (function tick() { var s = (Date.now() - t0) / 1000, fake = 0.9 * (1 - Math.exp(-s / 3.5)); p = Math.max(p, Math.min(0.97, Math.max(fake, real))); fill.style.width = (p * 100).toFixed(1) + '%'; if (real < 1 && document.getElementById('boot')) requestAnimationFrame(tick); })();
+  document.addEventListener('DOMContentLoaded', function () { window.__bootP(0.45, 'CARREGANDO O JOGO…'); });
+  setTimeout(function () { if (document.getElementById('boot')) window.__bootP(1); }, 30000); // nunca fica preso
+})();
+</script>
 <div id="game-container"></div>
 
 <!-- MENU PRINCIPAL (LOBBY) -->
@@ -466,60 +495,61 @@
 </div>
 
 <script src="js/vendor/three.min.js"></script>
-<script src="js/config.js?v=80"></script>
-<script src="js/icons.js?v=80"></script>
-<script src="js/post.js?v=80"></script>
-<script src="js/console.js?v=80"></script>
-<script src="js/audio.js?v=80"></script>
-<script src="js/gunsound.js?v=80"></script>
-<script src="js/music.js?v=80"></script>
-<script src="js/input.js?v=80"></script>
-<script src="js/pixicons.js?v=80"></script>
-<script src="js/touch.js?v=80"></script>
-<script src="js/world.js?v=80"></script>
-<script src="js/sky.js?v=80"></script>
-<script src="js/worldbuild.js?v=80"></script>
-<script src="js/housekit.js?v=80"></script>
-<script src="js/houses.js?v=80"></script>
-<script src="js/skin.js?v=80"></script>
-<script src="js/character.js?v=80"></script>
-<script src="js/animlib.js?v=80"></script>
-<script src="js/itemmodels.js?v=80"></script>
-<script src="js/itemicons.js?v=80"></script>
-<script src="js/textures.js?v=80"></script>
-<script src="js/flora.js?v=80"></script>
-<script src="js/effects.js?v=80"></script>
-<script src="js/gelwall.js?v=80"></script>
-<script src="js/loot.js?v=80"></script>
-<script src="js/combat.js?v=80"></script>
-<script src="js/player.js?v=80"></script>
-<script src="js/bot.js?v=80"></script>
-<script src="js/zone.js?v=80"></script>
-<script src="js/plane.js?v=80"></script>
-<script src="js/net.js?v=80"></script>
-<script src="js/duel.js?v=80"></script>
-<script src="js/custommap.js?v=80"></script>
-<script src="js/hud.js?v=80"></script>
-<script src="js/victory.js?v=80"></script>
-<script src="js/esp.js?v=80"></script>
-<script src="js/lobbyscene.js?v=80"></script>
-<script src="js/lobby.js?v=80"></script>
-<script src="js/banners.js?v=80"></script>
-<script src="js/account.js?v=80"></script>
-<script src="js/cosmetics.js?v=80"></script>
-<script src="js/thumbs.js?v=80"></script>
-<script src="js/wardrobe.js?v=80"></script>
-<script src="js/shop.js?v=80"></script>
-<script src="js/friends.js?v=80"></script>
-<script src="js/profile.js?v=80"></script>
-<script src="js/conta.js?v=80"></script>
-<script src="js/modes.js?v=80"></script>
-<script src="js/menu.js?v=80"></script>
-<script src="js/spectate.js?v=80"></script>
-<script src="js/custom.js?v=80"></script>
-<script src="js/game.js?v=80"></script>
-<script src="js/app.js?v=80"></script>
-<script src="js/uikit.js?v=80"></script>
-<script src="js/main.js?v=80"></script>
+<script src="js/config.js?v=82"></script>
+<script src="js/icons.js?v=82"></script>
+<script src="js/post.js?v=82"></script>
+<script src="js/console.js?v=82"></script>
+<script src="js/audio.js?v=82"></script>
+<script src="js/gunsound.js?v=82"></script>
+<script src="js/music.js?v=82"></script>
+<script src="js/input.js?v=82"></script>
+<script src="js/pixicons.js?v=82"></script>
+<script src="js/touch.js?v=82"></script>
+<script src="js/world.js?v=82"></script>
+<script src="js/sky.js?v=82"></script>
+<script src="js/worldbuild.js?v=82"></script>
+<script src="js/housekit.js?v=82"></script>
+<script src="js/houses.js?v=82"></script>
+<script src="js/skin.js?v=82"></script>
+<script src="js/character.js?v=82"></script>
+<script src="js/animlib.js?v=82"></script>
+<script src="js/itemmodels.js?v=82"></script>
+<script src="js/itemicons.js?v=82"></script>
+<script src="js/textures.js?v=82"></script>
+<script src="js/flora.js?v=82"></script>
+<script src="js/effects.js?v=82"></script>
+<script src="js/gelwall.js?v=82"></script>
+<script src="js/loot.js?v=82"></script>
+<script src="js/combat.js?v=82"></script>
+<script src="js/player.js?v=82"></script>
+<script src="js/bot.js?v=82"></script>
+<script src="js/zone.js?v=82"></script>
+<script src="js/plane.js?v=82"></script>
+<script src="js/net.js?v=82"></script>
+<script src="js/duel.js?v=82"></script>
+<script src="js/custommap.js?v=82"></script>
+<script src="js/hud.js?v=82"></script>
+<script src="js/victory.js?v=82"></script>
+<script src="js/esp.js?v=82"></script>
+<script src="js/lobbyscene.js?v=82"></script>
+<script src="js/lobbythemes.js?v=82"></script>
+<script src="js/lobby.js?v=82"></script>
+<script src="js/banners.js?v=82"></script>
+<script src="js/account.js?v=82"></script>
+<script src="js/cosmetics.js?v=82"></script>
+<script src="js/thumbs.js?v=82"></script>
+<script src="js/wardrobe.js?v=82"></script>
+<script src="js/shop.js?v=82"></script>
+<script src="js/friends.js?v=82"></script>
+<script src="js/profile.js?v=82"></script>
+<script src="js/conta.js?v=82"></script>
+<script src="js/modes.js?v=82"></script>
+<script src="js/menu.js?v=82"></script>
+<script src="js/spectate.js?v=82"></script>
+<script src="js/custom.js?v=82"></script>
+<script src="js/game.js?v=82"></script>
+<script src="js/app.js?v=82"></script>
+<script src="js/uikit.js?v=82"></script>
+<script src="js/main.js?v=82"></script>
 </body>
 </html>
