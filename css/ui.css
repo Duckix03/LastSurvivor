@@ -1276,6 +1276,7 @@ body.ls-dead #center-msg, body.ls-dead #scope, body.ls-dead #shot-ind { display:
 body.ls-dead:not(.ls-spec) #minimap-wrap, body.ls-dead:not(.ls-spec) #zone-info, body.ls-dead:not(.ls-spec) #top-left { opacity: 0; transition: opacity 0.4s; }
 #spec-root { position: fixed; inset: 0; pointer-events: none; z-index: 30; font-family: var(--body); color: var(--txt); }
 #spec-root button { pointer-events: auto; }
+.sp-top, .sp-dock { pointer-events: none; }
 #spec-root kbd { font: 800 10px/1 var(--body); letter-spacing: 1px; padding: 3px 6px; border-radius: 5px; color: #fff; -webkit-text-fill-color: #fff; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.25); margin-left: 8px; vertical-align: 1px; text-shadow: none; }
 #spec-root .btn-primary kbd { color: #2a1a04; -webkit-text-fill-color: #2a1a04; background: rgba(255, 255, 255, 0.35); border-color: rgba(0, 0, 0, 0.2); }
 /* faixas de cinema + vinheta vermelha */
@@ -1333,12 +1334,12 @@ body.ls-dead:not(.ls-spec) #minimap-wrap, body.ls-dead:not(.ls-spec) #zone-info,
 /* ---- espectador ---- */
 #spec-ui { position: absolute; inset: 0; }
 #spec-ui.hidden { display: none; }
-.sp-top { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; animation: duDrop 0.4s var(--ease) both; }
+.sp-top { position: absolute; top: 74px; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; animation: duDrop 0.4s var(--ease) both; }
 .sp-top > span { display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 2px; background: rgba(10, 12, 22, 0.78); border: 1px solid rgba(255, 255, 255, 0.14); }
 .sp-live i { width: 9px; height: 9px; border-radius: 50%; background: #ff3b5c; box-shadow: 0 0 0 0 rgba(255, 59, 92, 0.7); animation: spLive 1.4s infinite; }
 @keyframes spLive { 0% { box-shadow: 0 0 0 0 rgba(255, 59, 92, 0.7); } 70% { box-shadow: 0 0 0 8px rgba(255, 59, 92, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 59, 92, 0); } }
 .sp-alive b { color: #ffc531; font-size: 14px; }
-.sp-dock { position: absolute; left: 50%; bottom: calc(18px + var(--sb, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; animation: duUp 0.45s var(--ease) both; }
+.sp-dock { position: absolute; left: 0; right: 0; bottom: calc(18px + var(--sb, 0px)); display: flex; justify-content: center; align-items: center; gap: 10px; animation: duUp 0.45s var(--ease) both; }
 .sp-nav { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; cursor: pointer; color: #fff; background: rgba(10, 12, 22, 0.78); border: 2px solid rgba(255, 255, 255, 0.18); transition: transform 0.15s, background 0.15s; }
 .sp-nav svg { width: 24px; height: 24px; } .sp-nav:hover { background: rgba(255, 138, 31, 0.9); transform: scale(1.06); } .sp-nav:active { transform: scale(0.94); }
 .sp-card { display: flex; align-items: center; gap: 12px; width: 340px; padding: 9px 14px 9px 9px; border-radius: 16px; background: linear-gradient(100deg, rgba(22, 28, 50, 0.9), rgba(10, 12, 22, 0.9));
@@ -1374,3 +1375,16 @@ body.mobile .sp-hint, body.mobile #spec-root kbd { display: none; }
 body.mobile #death-ui { zoom: var(--hz, 1); padding-top: calc(9vh + 8px); padding-left: calc(20px + var(--sl, 0px)); padding-right: calc(20px + var(--sr, 0px)); }
 body.mobile #spec-ui .sp-dock, body.mobile #spec-ui .sp-top, body.mobile .sp-leave { zoom: var(--hz, 1); }
 body.short .du-title { font-size: 44px; } body.short .du-face { width: 58px; height: 58px; } body.short .du-stats b { font-size: 20px; }
+/* duelo: cartão compacto embaixo (o placar do topo continua visível), sem botões nem faixas de cinema */
+#spec-root.duel .sp-bar { display: none; }
+#death-ui .du-rib { display: none; }
+#death-ui.duel { justify-content: flex-end; padding-bottom: calc(22px + var(--sb, 0px)); }
+#death-ui.duel .du-head, #death-ui.duel .du-stats, #death-ui.duel .du-btns { display: none; }
+#death-ui.duel .du-bottom { width: min(620px, 100%); gap: 0; }
+#death-ui.duel .du-rib { display: flex; align-items: baseline; gap: 10px; align-self: flex-start; margin-left: 14px; padding: 4px 14px 6px; border-radius: 10px 10px 0 0;
+  background: linear-gradient(90deg, #ff2d55, #c8143c); transform: skewX(-8deg); }
+#death-ui.duel .du-rib b { font: 400 22px var(--display); letter-spacing: 2px; color: #fff; }
+#death-ui.duel .du-rib span { font-size: 11px; font-weight: 800; letter-spacing: 1px; color: rgba(255, 255, 255, 0.85); }
+#spec-ui.duel .sp-leave, #spec-ui.duel .sp-hint, #spec-ui.solo .sp-nav { display: none; }
+#spec-ui.duel .sp-top { top: 132px; }
+#spec-ui.duel .sp-msgs { top: 170px; }

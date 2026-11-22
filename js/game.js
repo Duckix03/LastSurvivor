@@ -207,7 +207,11 @@ LS.Game = {
     victim.placement = this.aliveCount() + 1;
     const mine = killer === this.player || victim === this.player;
     LS.HUD.killFeed(killer && killer !== victim ? killer.name : '', victim.name, weapon || '?', head, mine);
-    if (this.mode === 'duel') { if (killer === this.player && victim !== this.player) LS.Audio.kill(); LS.Duel.onKill(victim, killer); return; }
+    if (this.mode === 'duel') {
+      if (killer === this.player && victim !== this.player) LS.Audio.kill();
+      if (victim === this.player) LS.Spectate.start(killer, weapon, head); else LS.Spectate.onKill(victim, killer); // killcam também no duelo
+      LS.Duel.onKill(victim, killer); return;
+    }
     if (killer === this.player && victim !== this.player) {
       LS.Audio.kill();
       LS.HUD.centerMsg('ELIMINOU ' + victim.name.toUpperCase(), (head ? 'Tiro na cabeça! · ' : '') + this.player.kills + ' abate(s)', 1.8);
@@ -269,6 +273,7 @@ LS.Game = {
   finish(win) { if (win) this.celebrate(); else this.endMatch(false); },
   celebrate() {
     if (this.state === 'victory') return;
+    LS.Spectate.stop();
     this.state = 'victory'; this.victoryT = 0; this.frozen = false;
     LS.Input.enabled = false; LS.Input.unlock(); this.setInventory(false);
     LS.HUD.show(false); LS.HUD.clearShots();

@@ -121,6 +121,8 @@ LS.Duel = {
   // ---------- rounds ----------
   startRound() {
     const G = LS.Game;
+    const wasDead = LS.Spectate.active;
+    if (wasDead) { LS.Spectate.stop(); LS.Input.enabled = true; } // renasceu: some a killcam/espectador
     this.round++;
     this.mapIdx = this.order[(this.round - 1) % this.order.length];
     this.buildMap(this.mapIdx);
@@ -139,7 +141,7 @@ LS.Duel = {
     G.frozen = true;
     this.renderScore();
     if (!this.loadout || (this.round - 1) % this.SHOP_EVERY === 0) this.openShop(); // loja nos rounds 1, 3, 5...
-    else this.beginCountdown();
+    else { this.beginCountdown(); if (wasDead) LS.Input.lock(); }
   },
   beginCountdown() {
     this.phase = 'countdown'; this.t = this.COUNTDOWN + 0.6; this.lastShown = null;
