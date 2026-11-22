@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '83'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '84'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // versão do ONLINE (crossplay navegador ↔ app). Suba +1 quando mudar algo que quebra a partida online
 // (armas, mapa, protocolo de rede...) e suba junto o MIN_PROTO em server/src/worker.js, depois "npx wrangler deploy".
 // Quem estiver com versão mais velha (ex.: APK antigo) recebe o aviso pra atualizar em vez de entrar com regras diferentes.
@@ -46,10 +46,10 @@ LS.showOutdated = function (v) {
   document.body.appendChild(d);
   d.querySelector('.od-btn').addEventListener('click', () => LS.AppUpdate.start(v));
 };
-// ATUALIZAR no app: confere se o APK novo já saiu, pede a permissão de instalar (1ª vez), baixa com barra e abre o instalador.
-// Sem o plugin nativo (APK antigo) ou se der erro: abre o link do APK no navegador do celular.
+// ATUALIZAR no app: confere se o APK novo já saiu e abre o link no navegador do celular, que baixa sozinho.
+// (O app NÃO instala nada sozinho: a permissão de instalar apps + baixar APK fazia o Google Play Protect
+//  marcar o jogo como "app nocivo". Quem instala é o navegador/gerenciador de arquivos, como antes.)
 LS.AppUpdate = {
-  plugin() { const P = window.Capacitor && window.Capacitor.Plugins; return P && P.ApkUpdater ? P.ApkUpdater : null; },
   ui(text, pct, btns) {
     const d = document.getElementById('outdated'); if (!d) return;
     d.querySelector('.od-p').textContent = text;
@@ -60,38 +60,16 @@ LS.AppUpdate = {
   },
   browser() { location.href = LS.APP_DOWNLOAD_URL; }, // o Capacitor abre endereço de fora no navegador do celular
   async start(v) {
-    const P = this.plugin();
-    if (!P) return this.browser();
     if (this.busy) return; this.busy = true;
-    try {
-      // 1) o APK novo já foi publicado? (o GitHub leva uns 3 min pra montar depois da atualização)
-      this.ui('Conferindo a versão nova…', -1);
-      try {
-        const r = await fetch('https://api.github.com/repos/Duckix03/LastSurvivor/releases/tags/app-latest', { cache: 'no-store' }), j = await r.json();
-        const m = /jogo v(\d+)/.exec((j && j.name) || ''), need = +v || +LS.VERSION + 1;
-        if (m && +m[1] < need) { this.busy = false; return this.ui('O app novo ainda está sendo preparado (leva uns 3 minutos depois de cada atualização). Tente de novo já já!', null, [['Tentar de novo', () => this.start(v), true]]); }
-      } catch (e) { /* sem acesso à API: tenta baixar mesmo assim */ }
-      // 2) permissão de instalar apps (Android pede uma vez)
-      const c = await P.canInstall();
-      if (!c.allowed) {
-        this.busy = false;
-        this.ui('Falta só uma coisa: permita o Last Survivor instalar a atualização (ative a opção e volte pro jogo).', null, [['Permitir', () => P.openInstallSettings(), true], ['Baixar pelo navegador', () => this.browser()]]);
-        const back = () => { document.removeEventListener('visibilitychange', onVis); setTimeout(() => this.start(v), 400); };
-        const onVis = () => { if (!document.hidden) back(); };
-        document.addEventListener('visibilitychange', onVis);
-        return;
-      }
-      // 3) baixa com barra de progresso
-      const mb = n => (n / 1048576).toFixed(1).replace('.', ',');
-      const h = await P.addListener('progress', e => this.ui('Baixando a atualização… ' + (e.total > 0 ? mb(e.loaded) + ' de ' + mb(e.total) + ' MB' : mb(e.loaded) + ' MB'), e.pct));
-      try { await P.download({ url: LS.APP_DOWNLOAD_URL }); } finally { if (h && h.remove) h.remove(); }
-      // 4) instalador do Android por cima do jogo
-      this.ui('Pronto! Toque em ATUALIZAR na tela do Android pra terminar.', 100, [['Instalar', () => P.install().catch(() => {}), true]]);
-      await P.install();
-    } catch (e) {
-      this.ui('Não deu pra atualizar por aqui (' + ((e && e.message) || 'erro') + ').', null, [['Tentar de novo', () => this.start(v), true], ['Baixar pelo navegador', () => this.browser()]]);
-    }
+    this.ui('Conferindo a versão nova…', -1);
+    try { // o APK novo já foi publicado? (o GitHub leva uns 3 min pra montar depois de cada atualização)
+      const r = await fetch('https://api.github.com/repos/Duckix03/LastSurvivor/releases/tags/app-latest', { cache: 'no-store' }), j = await r.json();
+      const m = /jogo v(\d+)/.exec((j && j.name) || ''), need = +v || +LS.VERSION + 1;
+      if (m && +m[1] < need) { this.busy = false; return this.ui('O app novo ainda está sendo preparado (leva uns 3 minutos depois de cada atualização). Tente de novo já já!', null, [['Tentar de novo', () => this.start(v), true]]); }
+    } catch (e) { /* sem acesso à API: baixa mesmo assim */ }
     this.busy = false;
+    this.ui('Baixando pelo navegador… Quando terminar, toque no arquivo LastSurvivor.apk e em ATUALIZAR. Seu progresso não se perde!', null, [['Baixar de novo', () => this.browser(), true]]);
+    this.browser();
   }
 };
 
