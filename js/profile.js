@@ -144,7 +144,7 @@ LS.Profile = {
     document.getElementById('stats-body').innerHTML = body;
     const isOwner = own && LS.Account.logged() && (p.badges || []).includes('owner');
     document.getElementById('pf-buttons').innerHTML = own
-      ? '<button class="btn" data-pf="edit">EDITAR</button><button class="btn" data-pf="photo">FOTO</button><button class="btn" data-pf="cover">CAPA</button><button class="btn" data-pf="search">BUSCAR ID</button>' +
+      ? '<button class="btn" data-pf="edit">EDITAR</button><button class="btn" data-pf="photo">FOTO</button><button class="btn" data-pf="cover">CAPA</button>' +
         (LS.Account.logged() ? '<button class="btn" data-pf="account">CONTA</button>' : '') + ((p.badges || []).includes('cc') && LS.Account.logged() ? '<button class="btn btn-cc" data-pf="cc">CODIGUINS</button>' : '') + (isOwner ? '<button class="btn btn-admin" data-pf="admin">ADMIN</button>' : '') + '<button class="btn btn-primary" data-pf="back">VOLTAR</button>'
       : (p.real ? '' : '<span class="pf-botnote">Perfil de bot</span>') + '<button class="btn' + (liked ? '' : ' btn-like') + '" data-pf="like">' + (liked ? 'CURTIDO ♥' : 'CURTIR ♥') + '</button><button class="btn btn-primary" data-pf="back">VOLTAR</button>';
     document.querySelector('#panel-stats h2').textContent = own ? 'MEU PERFIL' : 'PERFIL DO JOGADOR';
