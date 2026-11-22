@@ -145,7 +145,7 @@ LS.Profile = {
     const isOwner = own && LS.Account.logged() && (p.badges || []).includes('owner');
     document.getElementById('pf-buttons').innerHTML = own
       ? '<button class="btn" data-pf="edit">EDITAR</button><button class="btn" data-pf="photo">FOTO</button><button class="btn" data-pf="cover">CAPA</button><button class="btn" data-pf="search">BUSCAR ID</button>' +
-        (LS.Account.logged() ? '<button class="btn" data-pf="account">CONTA</button>' : '') + (isOwner ? '<button class="btn btn-admin" data-pf="admin">ADMIN</button>' : '') + '<button class="btn btn-primary" data-pf="back">VOLTAR</button>'
+        (LS.Account.logged() ? '<button class="btn" data-pf="account">CONTA</button>' : '') + ((p.badges || []).includes('cc') && LS.Account.logged() ? '<button class="btn btn-cc" data-pf="cc">CODIGUINS</button>' : '') + (isOwner ? '<button class="btn btn-admin" data-pf="admin">ADMIN</button>' : '') + '<button class="btn btn-primary" data-pf="back">VOLTAR</button>'
       : (p.real ? '' : '<span class="pf-botnote">Perfil de bot</span>') + '<button class="btn' + (liked ? '' : ' btn-like') + '" data-pf="like">' + (liked ? 'CURTIDO ♥' : 'CURTIR ♥') + '</button><button class="btn btn-primary" data-pf="back">VOLTAR</button>';
     document.querySelector('#panel-stats h2').textContent = own ? 'MEU PERFIL' : 'PERFIL DO JOGADOR';
   },
@@ -285,8 +285,10 @@ LS.Profile = {
   openAdmin(tab) {
     this.admTab = tab = tab || this.admTab || 'badges';
     const tabs = '<div class="adm-tabs"><button class="' + (tab === 'badges' ? 'on' : '') + '" data-pf="adm-tab" data-v="badges">SELOS</button>' +
-      '<button class="' + (tab === 'codes' ? 'on' : '') + '" data-pf="adm-tab" data-v="codes">GERADOR DE CODIGUIN</button></div>';
-    if (tab === 'codes') return this.openCodes(tabs);
+      '<button class="' + (tab === 'codes' ? 'on' : '') + '" data-pf="adm-tab" data-v="codes">GERADOR DE CODIGUIN</button>' +
+      '<button class="' + (tab === 'cc' ? 'on' : '') + '" data-pf="adm-tab" data-v="cc">CRIADORES</button></div>';
+    if (tab === 'codes') { this.cgMode = 'admin'; return this.openCodes(tabs); }
+    if (tab === 'cc') return this.openCcLimits(tabs);
     const on = LS.Console.dev;
     this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Dê ou tire selos de qualquer conta pelo ID.</p><div class="pf-row"><input id="pf-adm-id" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ID da conta"><button class="btn small" data-pf="adm-find">BUSCAR</button></div>' +
       '<div id="pf-adm-box"></div><p id="pf-err" class="pf-err hidden"></p>' +
@@ -308,35 +310,42 @@ LS.Profile = {
     { id: 'body', label: 'ROUPAS', test: i => (i.slot === 'top' || i.slot === 'pattern') && !i.code }, { id: 'legs', label: 'CALÇAS', test: i => i.slot === 'legs' }
   ],
   openCodes(tabs) {
-    const cg = this.cg || (this.cg = { item: null, money: false, kind: 'coins', coins: 1000, diamonds: 100, uses: 100, days: 30 });
-    this.modal('<h3>PAINEL ADMIN</h3>' + tabs +
+    const cc = this.cgMode === 'cc', L = cc ? this.ccData.limits : null;
+    const cg = cc ? (this.ccg || (this.ccg = { item: null, money: false, kind: 'coins', coins: Math.min(1000, L.maxCoins), diamonds: Math.min(10, L.maxDiamonds), uses: Math.min(50, L.maxUses), days: Math.min(7, L.maxDays) }))
+      : (this.cg || (this.cg = { item: null, money: false, kind: 'coins', coins: 1000, diamonds: 100, uses: 100, days: 30 }));
+    this.cgCur = cg;
+    if (cc) { cg.coins = Math.min(cg.coins, L.maxCoins); cg.diamonds = Math.min(cg.diamonds, L.maxDiamonds); cg.uses = Math.min(cg.uses, L.maxUses) || 1; cg.days = Math.min(cg.days, L.maxDays) || 1; if (!L.maxDiamonds) cg.kind = 'coins'; if (!L.items) cg.item = null; }
+    this.modal((cc ? this.ccHead() : '<h3>PAINEL ADMIN</h3>' + tabs) +
       '<div class="cg">' +
-      '<button class="btn cg-pick" data-pf="cg-pick">SELECIONAR ITEM PARA CODIGUINHO</button>' +
-      '<div id="cg-sel" class="cg-sel"></div>' +
-      '<label class="cg-chk"><input type="checkbox" id="cg-money"' + (cg.money ? ' checked' : '') + '><span></span>Dar moedas ou diamantes?</label>' +
+      (cc && !L.items ? '' : '<button class="btn cg-pick" data-pf="cg-pick">SELECIONAR ITEM PARA CODIGUINHO</button>' +
+      '<div id="cg-sel" class="cg-sel"></div>') +
+      '<label class="cg-chk"><input type="checkbox" id="cg-money"' + (cg.money || (cc && !L.items) ? ' checked' : '') + '><span></span>' + (cc && !L.maxDiamonds ? 'Dar moedas?' : 'Dar moedas ou diamantes?') + '</label>' +
       '<div id="cg-money-box" class="cg-money' + (cg.money ? '' : ' hidden') + '">' +
-      '<select id="cg-kind"><option value="coins">Moedas</option><option value="diamonds">Diamantes</option><option value="both">Os 2</option></select>' +
-      '<label class="cg-amt" data-k="coins">' + LS.icon('coin', 'coin-i') + '<input id="cg-coins" type="number" min="0" max="1000000" value="' + cg.coins + '"></label>' +
-      '<label class="cg-amt" data-k="diamonds">' + LS.icon('gem', 'gem-i') + '<input id="cg-diamonds" type="number" min="0" max="100000" value="' + cg.diamonds + '"></label></div>' +
-      '<div class="cg-opts"><label>Código <small>(vazio = aleatório)</small><input id="cg-code" maxlength="20" spellcheck="false" autocomplete="off" placeholder="EX: NATAL2026"></label>' +
-      '<label>Usos <small>(0 = sem limite)</small><input id="cg-uses" type="number" min="0" value="' + cg.uses + '"></label>' +
-      '<label>Vale por <small>(dias, 0 = sempre)</small><input id="cg-days" type="number" min="0" value="' + cg.days + '"></label></div>' +
-      '<button class="btn btn-primary cg-make" data-pf="cg-make">GERAR CODIGUIN</button>' +
+      '<select id="cg-kind"' + (cc && !L.maxDiamonds ? ' class="hidden"' : '') + '><option value="coins">Moedas</option><option value="diamonds">Diamantes</option><option value="both">Os 2</option></select>' +
+      '<label class="cg-amt" data-k="coins">' + LS.icon('coin', 'coin-i') + '<input id="cg-coins" type="number" min="0" max="' + (cc ? L.maxCoins : 1000000) + '" value="' + cg.coins + '">' + (cc ? '<small>máx. ' + L.maxCoins.toLocaleString('pt-BR') + '</small>' : '') + '</label>' +
+      '<label class="cg-amt" data-k="diamonds">' + LS.icon('gem', 'gem-i') + '<input id="cg-diamonds" type="number" min="0" max="' + (cc ? L.maxDiamonds : 100000) + '" value="' + cg.diamonds + '">' + (cc ? '<small>máx. ' + L.maxDiamonds + '</small>' : '') + '</label></div>' +
+      '<div class="cg-opts"><label>Código <small>(vazio = aleatório)</small><input id="cg-code" maxlength="20" spellcheck="false" autocomplete="off" placeholder="' + (cc ? 'EX: LIVE' + this.esc(String(LS.playerProfile.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)) : 'EX: NATAL2026') + '"></label>' +
+      (cc ? '<label>Usos <small>(1 a ' + L.maxUses + ')</small><input id="cg-uses" type="number" min="1" max="' + L.maxUses + '" value="' + cg.uses + '"></label>' +
+        '<label>Vale por <small>(1 a ' + L.maxDays + ' dias)</small><input id="cg-days" type="number" min="1" max="' + L.maxDays + '" value="' + cg.days + '"></label></div>'
+      : '<label>Usos <small>(0 = sem limite)</small><input id="cg-uses" type="number" min="0" value="' + cg.uses + '"></label>' +
+        '<label>Vale por <small>(dias, 0 = sempre)</small><input id="cg-days" type="number" min="0" value="' + cg.days + '"></label></div>') +
+      '<button class="btn btn-primary cg-make" data-pf="cg-make"' + (cc && !this.ccData.left ? ' disabled' : '') + '>GERAR CODIGUIN</button>' +
       '<p id="pf-err" class="pf-err hidden"></p><div id="cg-out"></div>' +
-      '<div class="cg-list-h">CODIGUINS CRIADOS</div><div id="cg-list" class="cg-list"><p class="pf-hint">Carregando…</p></div>' +
+      '<div class="cg-list-h">' + (cc ? 'MEUS CODIGUINS' : 'CODIGUINS CRIADOS') + '</div><div id="cg-list" class="cg-list"><p class="pf-hint">Carregando…</p></div>' +
       '</div><div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>', 'adm wide');
     const kind = document.getElementById('cg-kind'); kind.value = cg.kind;
+    if (cc && !L.items) cg.money = true;
     const syncMoney = () => {
       cg.money = document.getElementById('cg-money').checked; cg.kind = kind.value;
       document.getElementById('cg-money-box').classList.toggle('hidden', !cg.money);
       document.querySelectorAll('.cg-amt').forEach(el => el.classList.toggle('hidden', !(cg.kind === 'both' || cg.kind === el.dataset.k)));
     };
     document.getElementById('cg-money').addEventListener('change', syncMoney); kind.addEventListener('change', syncMoney); syncMoney();
-    this.cgSel(); this.cgList();
+    this.cgSel(); this.cgList(); if (cc) this.ccHeadUpd();
   },
   cgSel() {
     const el = document.getElementById('cg-sel'); if (!el) return;
-    const it = this.cg.item && LS.Cosmetics.byId[this.cg.item];
+    const it = this.cgCur.item && LS.Cosmetics.byId[this.cgCur.item];
     if (!it) { el.innerHTML = '<p class="pf-hint">Nenhum item (dá pra fazer codiguin só de moedas/diamantes).</p>'; return; }
     const R = LS.Cosmetics.RARITY[it.rarity];
     el.innerHTML = '<div class="cg-item" style="--rc:' + R.color + '"><img alt="" data-tid="' + it.id + '"><div><span class="cg-rar">' + R.name + '</span><b>' + this.esc(it.name) + '</b><small>' + this.esc(it.id) + '</small></div>' +
@@ -344,27 +353,32 @@ LS.Profile = {
     LS.Thumbs.into(el.querySelector('img'), it);
   },
   cgPicker(tab) {
+    const C = LS.Cosmetics, cc = this.cgMode === 'cc'; // criador: sem exclusivos de codiguin, de diamante, do Gold Royale nem peças de fantasia
+    const L = cc && this.ccData.limits, ok = i => !i.free && !(cc && (i.code || i.dprice || i.piece || (i.rarity >= 3 && !L.legend))); // criador: Gold Royale até Épico (lendário só se liberado)
+    const TABS = this.CG_TABS.filter(t => C.items.some(i => ok(i) && t.test(i))); // abas vazias somem
     this.cgTab = tab || this.cgTab || 'costume';
-    const C = LS.Cosmetics, T = this.CG_TABS.find(t => t.id === this.cgTab) || this.CG_TABS[0];
-    const items = C.items.filter(i => !i.free && T.test(i)).sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
+    const T = TABS.find(t => t.id === this.cgTab) || TABS[0]; this.cgTab = T.id;
+    const items = C.items.filter(i => ok(i) && T.test(i)).sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
     let pk = document.getElementById('cg-picker');
     if (!pk) { pk = document.createElement('div'); pk.id = 'cg-picker'; document.getElementById('pf-modal').appendChild(pk); } // fora da caixa que rola
     pk.innerHTML = '<div class="cgp-head"><b>ESCOLHA O ITEM</b><button class="btn small" data-pf="cg-pclose">FECHAR</button></div>' +
-      '<div class="cgp-tabs">' + this.CG_TABS.map(t => '<button class="' + (t.id === T.id ? 'on' : '') + '" data-pf="cg-ptab" data-v="' + t.id + '">' + t.label + '</button>').join('') + '</div>' +
+      '<div class="cgp-tabs">' + TABS.map(t => '<button class="' + (t.id === T.id ? 'on' : '') + '" data-pf="cg-ptab" data-v="' + t.id + '">' + t.label + '</button>').join('') + '</div>' +
       '<div class="cgp-grid">' + items.map(it => { const R = C.RARITY[it.rarity];
-        return '<button class="wr-card' + (this.cg.item === it.id ? ' on' : '') + '" data-pf="cg-item" data-v="' + it.id + '" style="--rc:' + R.color + '"><div class="wr-img"><img alt="" data-tid="' + it.id + '"></div>' +
+        return '<button class="wr-card' + (this.cgCur.item === it.id ? ' on' : '') + '" data-pf="cg-item" data-v="' + it.id + '" style="--rc:' + R.color + '"><div class="wr-img"><img alt="" data-tid="' + it.id + '"></div>' +
           '<b>' + this.esc(it.name) + '</b><small>' + R.name + '</small></button>'; }).join('') + '</div>';
     pk.querySelectorAll('img[data-tid]').forEach(img => LS.Thumbs.into(img, C.byId[img.dataset.tid]));
   },
-  cgSelect(id) { this.cg.item = id; const pk = document.getElementById('cg-picker'); if (pk) pk.remove(); this.cgSel(); },
+  cgSelect(id) { this.cgCur.item = id; const pk = document.getElementById('cg-picker'); if (pk) pk.remove(); this.cgSel(); },
   async cgMake() {
-    const cg = this.cg, v = id => document.getElementById(id).value;
+    const cg = this.cgCur, cc = this.cgMode === 'cc', v = id => document.getElementById(id).value;
     cg.coins = +v('cg-coins') || 0; cg.diamonds = +v('cg-diamonds') || 0; cg.uses = +v('cg-uses') || 0; cg.days = +v('cg-days') || 0;
     const o = { code: v('cg-code').trim(), item: cg.item, maxUses: cg.uses, days: cg.days,
       coins: cg.money && cg.kind !== 'diamonds' ? cg.coins : 0, diamonds: cg.money && cg.kind !== 'coins' ? cg.diamonds : 0 };
     const btn = document.querySelector('[data-pf="cg-make"]'); btn.disabled = true;
     try {
-      const c = await LS.Account.adminCreateCode(o);
+      let c;
+      if (cc) { const d = await LS.Account.ccCreate(o); c = d.code; this.ccData = d; this.ccHeadUpd(); }
+      else c = await LS.Account.adminCreateCode(o);
       document.getElementById('pf-err').classList.add('hidden');
       document.getElementById('cg-out').innerHTML = '<div class="cg-out"><small>CODIGUIN CRIADO</small><b>' + c.code + '</b><span>' + this.cgDesc(c) + '</span>' +
         '<button class="btn btn-primary small" data-pf="cg-copy" data-v="' + c.code + '">COPIAR</button></div>';
@@ -383,11 +397,12 @@ LS.Profile = {
   async cgList() {
     const el = document.getElementById('cg-list'); if (!el) return;
     try {
-      const list = await LS.Account.adminCodes();
+      const cc = this.cgMode === 'cc', list = cc ? (this.ccData = await LS.Account.ccState()).codes : await LS.Account.adminCodes();
+      if (cc) this.ccHeadUpd();
       el.innerHTML = list.length ? list.map(c => {
         const exp = c.exp ? (c.exp < Date.now() ? '<em class="cg-dead">vencido</em>' : 'até ' + new Date(c.exp).toLocaleDateString('pt-BR')) : 'sem validade';
         const full = c.maxUses && c.uses >= c.maxUses;
-        return '<div class="cg-row' + (full || (c.exp && c.exp < Date.now()) ? ' off' : '') + '"><b>' + c.code + '</b><span>' + this.cgDesc(c) + '</span>' +
+        return '<div class="cg-row' + (full || (c.exp && c.exp < Date.now()) ? ' off' : '') + '"><b>' + c.code + (c.cc && !cc ? ' <em class="cg-by">por ' + this.esc(c.byName || c.by) + '</em>' : '') + '</b><span>' + this.cgDesc(c) + '</span>' +
           '<small>' + c.uses + '/' + (c.maxUses || '∞') + ' usos · ' + exp + '</small>' +
           '<button class="btn small" data-pf="cg-copy" data-v="' + c.code + '">COPIAR</button><button class="btn small cg-del" data-pf="cg-del" data-v="' + c.code + '">APAGAR</button></div>';
       }).join('') : '<p class="pf-hint">Nenhum codiguin ainda.</p>';
@@ -401,7 +416,45 @@ LS.Profile = {
   async cgDel(code) {
     const b = document.querySelector('[data-pf="cg-del"][data-v="' + code + '"]');
     if (b && !b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'CERTEZA?'; return; } // 2 toques pra apagar
-    try { await LS.Account.adminDeleteCode(code); this.cgList(); } catch (e) { this.modalError(e.message); }
+    try { if (this.cgMode === 'cc') await LS.Account.ccDelete(code); else await LS.Account.adminDeleteCode(code); this.cgList(); } catch (e) { this.modalError(e.message); }
+  },
+  // ---------- painel do CRIADOR DE CONTEÚDO: codiguins próprios, dentro dos limites que o owner define ----------
+  async openCc() {
+    try { this.ccData = await LS.Account.ccState(); } catch (e) { LS.HUD.toast(e.message); return; }
+    this.cgMode = 'cc'; this.openCodes('');
+  },
+  ccHead() {
+    return '<h3 class="cc-title">PAINEL DO CRIADOR</h3><div id="cc-head" class="cc-head"></div>';
+  },
+  ccHeadUpd() {
+    const el = document.getElementById('cc-head'), D = this.ccData; if (!el || !D) return;
+    const L = D.limits, nx = D.next && !D.left ? ' · libera mais em ' + Math.max(1, Math.ceil((D.next - Date.now()) / 864e5)) + ' dia(s)' : '';
+    el.innerHTML = '<div class="cc-stats"><div><b>' + D.left + '<small>/' + L.perWeek + '</small></b><span>PODE CRIAR<br>ESSA SEMANA</span></div>' +
+      '<div><b>' + D.codes.length + '</b><span>CODIGUINS<br>ATIVOS</span></div><div><b>' + D.total.toLocaleString('pt-BR') + '</b><span>RESGATES<br>NO TOTAL</span></div></div>' +
+      '<p class="pf-hint cc-rules">Seus limites: até <b>' + L.maxUses + '</b> usos · até ' + LS.icon('coin', 'coin-i') + '<b>' + L.maxCoins.toLocaleString('pt-BR') + '</b>' +
+      (L.maxDiamonds ? ' · até ' + LS.icon('gem', 'gem-i') + '<b>' + L.maxDiamonds + '</b>' : ' · sem diamantes') + ' · vale até <b>' + L.maxDays + '</b> dias' + (L.items ? ' · itens do Gold Royale ' + (L.legend ? '(até Lendário)' : '(até Épico)') : '') + nx + '</p>';
+    const mk = document.querySelector('[data-pf="cg-make"]'); if (mk) mk.disabled = !D.left;
+  },
+  // ADMIN → CRIADORES: limites dos codiguins dos criadores
+  async openCcLimits(tabs) {
+    this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Quem tem o selo <b>CRIADOR DE CONTEÚDO</b> ganha o botão CODIGUINS no perfil e cria os próprios codiguins (pra sortear em live) dentro destes limites. Itens exclusivos de codiguin e fantasias de diamante nunca entram.</p>' +
+      '<div id="cc-lim" class="cc-lim"><p class="pf-hint">Carregando…</p></div><p id="pf-err" class="pf-err hidden"></p>' +
+      '<div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>', 'adm');
+    try {
+      const L = await LS.Account.ccLimits(), f = (id, label, v, hint) => '<label>' + label + (hint ? ' <small>' + hint + '</small>' : '') + '<input id="' + id + '" type="number" min="0" value="' + v + '"></label>';
+      document.getElementById('cc-lim').innerHTML = '<div class="cg-opts cc-grid">' + f('ccl-week', 'Codiguins por semana', L.perWeek, '(0 = desliga)') + f('ccl-uses', 'Usos máx. por codiguin', L.maxUses) +
+        f('ccl-days', 'Validade máx. (dias)', L.maxDays) + f('ccl-coins', 'Moedas máx.', L.maxCoins) + f('ccl-dia', 'Diamantes máx.', L.maxDiamonds, '(0 = não pode)') + '</div>' +
+        '<label class="cg-chk"><input type="checkbox" id="ccl-items"' + (L.items ? ' checked' : '') + '><span></span>Pode dar itens do Gold Royale (até Épico)</label>' +
+        '<label class="cg-chk"><input type="checkbox" id="ccl-legend"' + (L.legend ? ' checked' : '') + '><span></span>Pode dar também os LENDÁRIOS (Coroa Real, Auréola, Armadura, Galáxia)</label>' +
+        '<button class="btn btn-primary cg-make" data-pf="ccl-save">SALVAR LIMITES</button>';
+    } catch (e) { this.modalError(e.message); }
+  },
+  async ccLimSave() {
+    const v = id => +document.getElementById(id).value || 0;
+    try {
+      await LS.Account.ccLimits({ perWeek: v('ccl-week'), maxUses: v('ccl-uses'), maxDays: v('ccl-days'), maxCoins: v('ccl-coins'), maxDiamonds: v('ccl-dia'), items: document.getElementById('ccl-items').checked, legend: document.getElementById('ccl-legend').checked });
+      this.modalError('Limites salvos!'); document.getElementById('pf-err').classList.add('ok');
+    } catch (e) { this.modalError(e.message); }
   },
   devStatus() {
     const on = LS.Console.dev, chk = document.getElementById('pf-dev-chk'), st = document.getElementById('pf-dev-st');
@@ -452,12 +505,14 @@ LS.Profile = {
         case 'search': this.openSearch(); break;
         case 'search-go': this.searchGo(); break;
         case 'admin': this.openAdmin(); break;
+        case 'cc': this.openCc(); break;
+        case 'ccl-save': this.ccLimSave(); break;
         case 'adm-tab': this.openAdmin(el.dataset.v); break;
         case 'cg-pick': this.cgPicker(); break;
         case 'cg-ptab': this.cgPicker(el.dataset.v); break;
         case 'cg-item': this.cgSelect(el.dataset.v); break;
         case 'cg-pclose': { const pk = document.getElementById('cg-picker'); if (pk) pk.remove(); break; }
-        case 'cg-clear': this.cg.item = null; this.cgSel(); break;
+        case 'cg-clear': this.cgCur.item = null; this.cgSel(); break;
         case 'cg-make': this.cgMake(); break;
         case 'cg-copy': this.cgCopy(el.dataset.v); break;
         case 'cg-del': this.cgDel(el.dataset.v); break;

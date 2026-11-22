@@ -103,6 +103,11 @@ LS.Account = {
   async adminCodes() { return (await this.api('/api/admin/codes', null, 'GET')).codes; },
   async adminCreateCode(o) { return (await this.api('/api/admin/codes/create', o)).code; },
   async adminDeleteCode(code) { return (await this.api('/api/admin/codes/delete', { code })).codes; },
+  // criadores de conteúdo: codiguins próprios dentro dos limites do owner
+  async ccState() { return await this.api('/api/cc/codes', null, 'GET'); },
+  async ccCreate(o) { return await this.api('/api/cc/codes/create', o); },
+  async ccDelete(code) { return await this.api('/api/cc/codes/delete', { code }); },
+  async ccLimits(set) { return (await this.api('/api/admin/cc-limits', set || null, set ? 'POST' : 'GET')).limits; },
   async logout() { try { await this.api('/api/logout', {}); } catch (e) { /* tanto faz */ } this.drop(); },
   // troca o nome da conta: o servidor cobra as moedas (manda as moedas atuais antes, pra ele saber quantas tem)
   async rename(name) {
