@@ -192,6 +192,10 @@ LS.Net = {
         if (it) LS.Loot.remove(it, E(m.by) || null);
         break;
       }
+      case 'gel': { // bola de gelo de outro jogador: mesma física daqui, a parede nasce no mesmo lugar
+        const f = E(m.i); if (!f || this.owns(f) || !Array.isArray(m.o) || !Array.isArray(m.v)) break;
+        LS.GelBall.spawn(f, new THREE.Vector3(...m.o), new THREE.Vector3(...m.v)); break;
+      }
       case 'fix': { const f = E(m.i); if (f && this.owns(f)) { f.pos.set(m.p[0], m.p[1], m.p[2]); f.vel.set(0, 0, 0); } break; }
       case 'host': this.host = m.host; if (m.host === this.you) this.takeOverBots(); break;
       case 'end': {

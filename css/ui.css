@@ -871,8 +871,9 @@ body.mobile #touch-ui { display: block; position: absolute; inset: 0; pointer-ev
 /* cura à esquerda com a quantidade (plaquinha branca embaixo, dentro do botão) */
 #touch-ui .med { left: calc(var(--u) * 20); top: calc(var(--u) * 39); width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
 #touch-ui .band { left: calc(var(--u) * 35); top: calc(var(--u) * 40); width: calc(var(--u) * 11); height: calc(var(--u) * 11); }
-#touch-ui .med .pix, #touch-ui .band .pix { margin-top: calc(var(--u) * -1.4); }
-#touch-ui .med::after, #touch-ui .band::after { content: attr(data-n); position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); min-width: calc(var(--u) * 4.2); height: calc(var(--u) * 3.4);
+#touch-ui .gel { right: calc(var(--u) * 48); bottom: calc(var(--u) * 17); width: calc(var(--u) * 12); height: calc(var(--u) * 12); }
+#touch-ui .med .pix, #touch-ui .band .pix, #touch-ui .gel .pix { margin-top: calc(var(--u) * -1.4); }
+#touch-ui .med::after, #touch-ui .band::after, #touch-ui .gel::after { content: attr(data-n); position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); min-width: calc(var(--u) * 4.2); height: calc(var(--u) * 3.4);
   padding: 0 calc(var(--u) * 0.8); box-sizing: border-box; background: #ffffff; color: #1b1e2b; font-family: var(--display); font-size: calc(var(--u) * 2.7); line-height: calc(var(--u) * 3.4); text-align: center;
   box-shadow: 0 calc(var(--u) * 0.4) 0 #8a93a6; }
 #touch-ui .tb.empty { opacity: calc(var(--tbo, 0.85) * 0.5); }
@@ -884,7 +885,7 @@ body.mobile #touch-ui { display: block; position: absolute; inset: 0; pointer-ev
 #touch-ui .map { top: calc(var(--u) * 2); right: calc(155px * var(--hz, 1) + 3vh); }
 #touch-ui .bag { top: calc(155px * var(--hz, 1) + 4vh); right: 2vh; }
 #touch-ui .zoom { right: calc(var(--u) * 47); bottom: calc(var(--u) * 36); width: calc(var(--u) * 11); height: calc(var(--u) * 11); --bd: rgba(255, 255, 255, 0.85); color: #fff; font-size: calc(var(--u) * 3.6); text-shadow: calc(var(--u) * 0.35) calc(var(--u) * 0.35) 0 rgba(0, 0, 0, 0.6); }
-#touch-ui.air .fire, #touch-ui.air .fire2, #touch-ui.air .aim, #touch-ui.air .crouch, #touch-ui.air .reload, #touch-ui.air .med, #touch-ui.air .band, #touch-ui.air .run { display: none; }
+#touch-ui.air .fire, #touch-ui.air .fire2, #touch-ui.air .aim, #touch-ui.air .crouch, #touch-ui.air .reload, #touch-ui.air .med, #touch-ui.air .band, #touch-ui.air .gel, #touch-ui.air .run { display: none; }
 /* joystick: base em "círculo de pixel" com setinhas, bolinha em bloco; vai pra onde o dedo encostar */
 #joy { position: absolute; left: calc(var(--u) * 22); top: calc(100% - var(--u) * 21); width: calc(var(--u) * 30); height: calc(var(--u) * 30); margin: calc(var(--u) * -15) 0 0 calc(var(--u) * -15);
   clip-path: var(--pxc); -webkit-clip-path: var(--pxc); background: rgba(255, 255, 255, 0.4); opacity: calc(var(--tbo, 0.85) * 0.75); pointer-events: none; transition: opacity 0.15s; isolation: isolate; }

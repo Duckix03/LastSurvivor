@@ -9,8 +9,8 @@
 <meta name="theme-color" content="#0b0f1c">
 <title>LAST SURVIVOR</title>
 <link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=70">
-<link rel="stylesheet" href="css/ui.css?v=70">
+<link rel="stylesheet" href="css/style.css?v=71">
+<link rel="stylesheet" href="css/ui.css?v=71">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
 </head>
@@ -292,6 +292,7 @@
       <div><kbd>1 / 2</kbd> Trocar arma</div>
       <div><kbd>Roda do mouse</kbd> Trocar arma</div>
       <div><kbd>H</kbd> Usar kit médico</div>
+      <div><kbd>Q</kbd> Jogar bola de gelo (parede)</div>
       <div><kbd>G</kbd> Usar bandagem</div>
       <div><kbd>M</kbd> Mapa ampliado</div>
       <div><kbd>Esc</kbd> Pausar</div>
@@ -376,7 +377,7 @@
     </div>
     <div class="bar-wrap"><div class="bar-label">COLETE</div><div class="bar armor"><div id="armor-fill"></div></div></div>
     <div class="bar-wrap"><div class="bar-label">VIDA <span id="hp-num">100</span></div><div class="bar health"><div id="health-fill"></div></div></div>
-    <div id="meds"><img class="mi" id="ico-medkit" alt=""><span id="med-count">0</span> [H] &nbsp; <img class="mi" id="ico-bandage" alt=""><span id="band-count">0</span> [G]</div>
+    <div id="meds"><img class="mi" id="ico-medkit" alt=""><span id="med-count">0</span> [H] &nbsp; <img class="mi" id="ico-bandage" alt=""><span id="band-count">0</span> [G] &nbsp; <img class="mi" id="ico-gel" alt=""><span id="gel-count">0</span> [Q]</div>
   </div>
 
   <div id="bottom-right">
@@ -460,59 +461,59 @@
 </div>
 
 <script src="js/vendor/three.min.js"></script>
-<script src="js/config.js?v=70"></script>
-<script src="js/icons.js?v=70"></script>
-<script src="js/post.js?v=70"></script>
-<script src="js/console.js?v=70"></script>
-<script src="js/audio.js?v=70"></script>
-<script src="js/gunsound.js?v=70"></script>
-<script src="js/input.js?v=70"></script>
-<script src="js/pixicons.js?v=70"></script>
-<script src="js/touch.js?v=70"></script>
-<script src="js/world.js?v=70"></script>
-<script src="js/sky.js?v=70"></script>
-<script src="js/worldbuild.js?v=70"></script>
-<script src="js/housekit.js?v=70"></script>
-<script src="js/houses.js?v=70"></script>
-<script src="js/skin.js?v=70"></script>
-<script src="js/character.js?v=70"></script>
-<script src="js/animlib.js?v=70"></script>
-<script src="js/itemmodels.js?v=70"></script>
-<script src="js/itemicons.js?v=70"></script>
-<script src="js/textures.js?v=70"></script>
-<script src="js/flora.js?v=70"></script>
-<script src="js/effects.js?v=70"></script>
-<script src="js/gelwall.js?v=70"></script>
-<script src="js/loot.js?v=70"></script>
-<script src="js/combat.js?v=70"></script>
-<script src="js/player.js?v=70"></script>
-<script src="js/bot.js?v=70"></script>
-<script src="js/zone.js?v=70"></script>
-<script src="js/plane.js?v=70"></script>
-<script src="js/net.js?v=70"></script>
-<script src="js/duel.js?v=70"></script>
-<script src="js/custommap.js?v=70"></script>
-<script src="js/hud.js?v=70"></script>
-<script src="js/victory.js?v=70"></script>
-<script src="js/esp.js?v=70"></script>
-<script src="js/lobbyscene.js?v=70"></script>
-<script src="js/lobby.js?v=70"></script>
-<script src="js/banners.js?v=70"></script>
-<script src="js/account.js?v=70"></script>
-<script src="js/cosmetics.js?v=70"></script>
-<script src="js/thumbs.js?v=70"></script>
-<script src="js/wardrobe.js?v=70"></script>
-<script src="js/shop.js?v=70"></script>
-<script src="js/friends.js?v=70"></script>
-<script src="js/profile.js?v=70"></script>
-<script src="js/conta.js?v=70"></script>
-<script src="js/modes.js?v=70"></script>
-<script src="js/menu.js?v=70"></script>
-<script src="js/spectate.js?v=70"></script>
-<script src="js/custom.js?v=70"></script>
-<script src="js/game.js?v=70"></script>
-<script src="js/app.js?v=70"></script>
-<script src="js/uikit.js?v=70"></script>
-<script src="js/main.js?v=70"></script>
+<script src="js/config.js?v=71"></script>
+<script src="js/icons.js?v=71"></script>
+<script src="js/post.js?v=71"></script>
+<script src="js/console.js?v=71"></script>
+<script src="js/audio.js?v=71"></script>
+<script src="js/gunsound.js?v=71"></script>
+<script src="js/input.js?v=71"></script>
+<script src="js/pixicons.js?v=71"></script>
+<script src="js/touch.js?v=71"></script>
+<script src="js/world.js?v=71"></script>
+<script src="js/sky.js?v=71"></script>
+<script src="js/worldbuild.js?v=71"></script>
+<script src="js/housekit.js?v=71"></script>
+<script src="js/houses.js?v=71"></script>
+<script src="js/skin.js?v=71"></script>
+<script src="js/character.js?v=71"></script>
+<script src="js/animlib.js?v=71"></script>
+<script src="js/itemmodels.js?v=71"></script>
+<script src="js/itemicons.js?v=71"></script>
+<script src="js/textures.js?v=71"></script>
+<script src="js/flora.js?v=71"></script>
+<script src="js/effects.js?v=71"></script>
+<script src="js/gelwall.js?v=71"></script>
+<script src="js/loot.js?v=71"></script>
+<script src="js/combat.js?v=71"></script>
+<script src="js/player.js?v=71"></script>
+<script src="js/bot.js?v=71"></script>
+<script src="js/zone.js?v=71"></script>
+<script src="js/plane.js?v=71"></script>
+<script src="js/net.js?v=71"></script>
+<script src="js/duel.js?v=71"></script>
+<script src="js/custommap.js?v=71"></script>
+<script src="js/hud.js?v=71"></script>
+<script src="js/victory.js?v=71"></script>
+<script src="js/esp.js?v=71"></script>
+<script src="js/lobbyscene.js?v=71"></script>
+<script src="js/lobby.js?v=71"></script>
+<script src="js/banners.js?v=71"></script>
+<script src="js/account.js?v=71"></script>
+<script src="js/cosmetics.js?v=71"></script>
+<script src="js/thumbs.js?v=71"></script>
+<script src="js/wardrobe.js?v=71"></script>
+<script src="js/shop.js?v=71"></script>
+<script src="js/friends.js?v=71"></script>
+<script src="js/profile.js?v=71"></script>
+<script src="js/conta.js?v=71"></script>
+<script src="js/modes.js?v=71"></script>
+<script src="js/menu.js?v=71"></script>
+<script src="js/spectate.js?v=71"></script>
+<script src="js/custom.js?v=71"></script>
+<script src="js/game.js?v=71"></script>
+<script src="js/app.js?v=71"></script>
+<script src="js/uikit.js?v=71"></script>
+<script src="js/main.js?v=71"></script>
 </body>
 </html>

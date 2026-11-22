@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '70'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '71'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // versão do ONLINE (crossplay navegador ↔ app). Suba +1 quando mudar algo que quebra a partida online
 // (armas, mapa, protocolo de rede...) e suba junto o MIN_PROTO em server/src/worker.js, depois "npx wrangler deploy".
 // Quem estiver com versão mais velha (ex.: APK antigo) recebe o aviso pra atualizar em vez de entrar com regras diferentes.
@@ -37,6 +37,7 @@ LS.WEB_URL = 'https://lastsurvivor.pages.dev/';
 LS.GOOGLE_CLIENT_ID = '';
 LS.ISLAND_RADIUS = 340;     // raio útil da ilha
 LS.WATER_LEVEL = 0;
+LS.GEL = { name: 'Bola de Gelo', max: 4 }; // vira a parede de gel (js/gelwall.js)
 LS.BOT_COUNT = 30;
 // bots sempre no NORMAL, de propósito (não tem mais escolha de dificuldade): dano dos tiros deles × dmg, mira entre skill[0] e skill[1]
 LS.BOT_LEVEL = { dmg: 0.55, skill: [0.35, 1] };

@@ -126,7 +126,7 @@ LS.Duel = {
     this.round++;
     this.mapIdx = this.order[(this.round - 1) % this.order.length];
     this.buildMap(this.mapIdx);
-    LS.Effects.clear(); LS.Loot.clear();
+    LS.Effects.clear(); LS.Loot.clear(); LS.GelWall.clear();
     const side = this.round % 2 ? -1 : 1, L = this.loadout || []; // lados trocam a cada round
     const zs = this.size > 1 ? [-this.TEAM_Z, this.TEAM_Z] : [0];
     this.mine.forEach((f, i) => this.spawn(f, side, L, zs[i]));
@@ -166,7 +166,7 @@ LS.Duel = {
     this.equip(f, L);
     f.vest = { level: 2, dur: LS.GEAR.vest.levels[2].dur }; f.helmet = { level: 2, dur: LS.GEAR.helmet.levels[2].dur }; f.bag = 1;
     f.model.setGear(2, 2, 1);
-    f.meds = { medkit: 1, bandage: 3 };
+    f.meds = { medkit: 1, bandage: 3 }; f.gel = 2; // bolas de gelo: sempre 2 no começo do round
     f.model.root.visible = true; f.model.root.position.copy(f.pos); f.model.root.rotation.y = f.yaw;
   },
   onKill() {

@@ -295,6 +295,13 @@ export class Match {
         this.taken.add(id); this.bcast({ t: 'pick', id, by: String(m.by || '') }, pid);
         break;
       }
+      case 'gel': { // bola de gelo (vira parede de gel): só repassa, no máximo 1 a cada 0,4 s por personagem
+        const ent = this.ents.get(String(m.i)), now = Date.now();
+        if (!this.owns(pid, ent) || !ent.alive || now - (ent.gelT || 0) < 400 || !Array.isArray(m.o) || !Array.isArray(m.v)) return;
+        ent.gelT = now;
+        this.bcast({ t: 'gel', i: ent.id, o: m.o.slice(0, 3).map(v => num(v)), v: m.v.slice(0, 3).map(v => Math.max(-40, Math.min(40, num(v)))) }, pid);
+        break;
+      }
       case 'drops': { // o que um personagem deixou cair ao morrer (quem era dono dele manda a lista)
         if (!Array.isArray(m.items)) return;
         this.bcast({ t: 'drops', k: m.k | 0, items: m.items.slice(0, 20) }, pid);
@@ -407,14 +414,14 @@ export class Room extends Match {
   reset() {
     super.reset();
     this.members = new Map(); this.seq = 0; this.ph = 'lobby'; this.round = 0; this.score = [0, 0];
-    this.cfg = this.cfg || { name: 'Sala', pass: '', size: 2, rounds: 8 };
+    this.cfg = this.cfg || { name: 'Sala', pass: '', size: 2, rounds: 8, gelInf: true };
     clearTimeout(this.phT); this.phT = null; this.endPending = false;
   }
   async fetch(req) {
     const url = new URL(req.url);
     if (url.pathname === '/init' && req.method === 'POST') {
       const d = await req.json();
-      this.cfg = { name: ('Sala de ' + cleanName(d.hostName)).slice(0, 20), pass: '', size: 2, rounds: 8 };
+      this.cfg = { name: ('Sala de ' + cleanName(d.hostName)).slice(0, 20), pass: '', size: 2, rounds: 8, gelInf: true };
       this.reset();
       this.id = d.id; this.hostAcc = d.hostAcc; this.hostName = d.hostName; this.alive = true;
       clearInterval(this.beat); this.beat = setInterval(() => this.publish(), 60000);
@@ -463,7 +470,7 @@ export class Room extends Match {
     return null;
   }
   roomMsg() {
-    return { t: 'room', id: this.id, name: this.cfg.name, hasPass: !!this.cfg.pass, pass: null, size: this.cfg.size, rounds: this.cfg.rounds, owner: this.owner, ph: this.ph,
+    return { t: 'room', id: this.id, name: this.cfg.name, hasPass: !!this.cfg.pass, pass: null, size: this.cfg.size, rounds: this.cfg.rounds, gelInf: this.cfg.gelInf !== false, owner: this.owner, ph: this.ph,
       members: [...this.members.values()].map(o => ({ pid: o.pid, name: o.name, look: o.look, acc: o.accId, badges: o.badges, slot: o.slot })) };
   }
   sendRoom() {
@@ -519,6 +526,7 @@ export class Room extends Match {
         if (typeof d.name === 'string') this.cfg.name = d.name.replace(/[<>&"'`]/g, '').trim().slice(0, 20) || this.cfg.name;
         if (typeof d.pass === 'string') this.cfg.pass = d.pass.replace(/[^0-9A-Za-z]/g, '').slice(0, 12);
         if (d.rounds !== undefined) this.cfg.rounds = Math.max(4, Math.min(16, d.rounds | 0));
+        if (d.gelInf !== undefined) this.cfg.gelInf = !!d.gelInf; // gelo infinito (desligado: 2 por round)
         if (d.size !== undefined) {
           this.cfg.size = Math.max(1, Math.min(RM_TEAM, d.size | 0));
           for (const o of this.members.values()) if (o.slot.t !== 's' && o.slot.i >= this.cfg.size) { o.slot = { t: 'x', i: 99 }; o.slot = this.freeSlot(true) || this.freeSlot(false) || { t: 's', i: 0 }; }
@@ -556,7 +564,8 @@ export class Room extends Match {
     if (d.t === 'hit') { const v = this.ents.get(String(d.v)); if (this.ph !== 'fight' || !v || v.team === me.team) return; }
     if (d.t === 'env' && this.ph !== 'fight') return;
     if (d.t === 'st' && this.ph !== 'fight') me.pos = null; // fora da luta (loja/contagem) cada um vai pro lugar de nascer: sem trava de teleporte
-    if (d.t === 'st' || d.t === 'fire' || d.t === 'hit' || d.t === 'env' || d.t === 'heal') super.onMsg(pid, d);
+    if (d.t === 'gel' && this.ph !== 'fight') return;
+    if (d.t === 'st' || d.t === 'fire' || d.t === 'hit' || d.t === 'env' || d.t === 'heal' || d.t === 'gel') super.onMsg(pid, d);
   }
   sendPicks(team) {
     const list = {}; for (const e of this.ents.values()) if (e.team === team) list[e.id] = { w: e.picks || [], r: !!e.ready };
@@ -579,7 +588,7 @@ export class Room extends Match {
     this.loaded = new Set(); clearTimeout(this.phT); this.phT = setTimeout(() => this.nextRound(), 40000);
   }
   gameMsg() {
-    return { t: 'game', seed: this.seed, rounds: this.cfg.rounds, size: this.cfg.size, name: this.cfg.name,
+    return { t: 'game', seed: this.seed, rounds: this.cfg.rounds, size: this.cfg.size, name: this.cfg.name, gelInf: this.cfg.gelInf !== false,
       players: [...this.ents.values()].map(e => { const o = this.members.get(e.id); return { pid: e.id, name: e.name, look: o ? o.look : null, team: e.team, i: e.idx }; }) };
   }
   phaseMsg(extra) {

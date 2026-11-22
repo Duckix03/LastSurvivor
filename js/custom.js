@@ -35,6 +35,7 @@ LS.Custom = {
       else if (id === 'cu-rounds') this.send({ t: 'set', rounds: +e.target.value });
       else if (id === 'cu-name') this.send({ t: 'set', name: e.target.value });
       else if (id === 'cu-pass') this.send({ t: 'set', pass: e.target.value });
+      else if (id === 'cu-gel') this.send({ t: 'set', gelInf: e.target.value === '1' });
     });
     box.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target.id === 'cu-id' || e.target.id === 'cu-jpass')) this.joinFromInput(); });
   },
@@ -154,8 +155,10 @@ LS.Custom = {
       ? '<label>Nome<input id="cu-name" maxlength="20" value="' + this.esc(R.name) + '"></label>' +
         '<label>Senha<span class="cu-pw"><input id="cu-pass" type="password" maxlength="12" placeholder="sem senha" value="' + this.esc(R.pass || '') + '"><button data-cu="showpass" title="Mostrar">' + LS.icon('eye') + '</button></span></label>' +
         '<label>Jogadores por time<select id="cu-size">' + opt(1, 10, R.size) + '</select></label>' +
-        '<label>Rounds<select id="cu-rounds">' + opt(4, 16, R.rounds) + '</select></label>'
-      : '<div class="cu-kv"><span>Senha</span><b>' + (R.hasPass ? 'SIM' : 'NÃO') + '</b></div><div class="cu-kv"><span>Times</span><b>' + R.size + ' V ' + R.size + '</b></div><div class="cu-kv"><span>Rounds</span><b>' + R.rounds + '</b></div>';
+        '<label>Rounds<select id="cu-rounds">' + opt(4, 16, R.rounds) + '</select></label>' +
+        '<label>Gelo infinito<select id="cu-gel"><option value="1"' + (R.gelInf !== false ? ' selected' : '') + '>SIM</option><option value="0"' + (R.gelInf === false ? ' selected' : '') + '>NÃO (2 por round)</option></select></label>'
+      : '<div class="cu-kv"><span>Senha</span><b>' + (R.hasPass ? 'SIM' : 'NÃO') + '</b></div><div class="cu-kv"><span>Times</span><b>' + R.size + ' V ' + R.size + '</b></div><div class="cu-kv"><span>Rounds</span><b>' + R.rounds + '</b></div>' +
+        '<div class="cu-kv"><span>Gelo</span><b>' + (R.gelInf !== false ? 'INFINITO' : '2 POR ROUND') + '</b></div>';
     return '<div class="cu-room">' +
       '<div class="cu-left">' +
         '<div class="cu-idbar"><span>ID <b>' + R.id + '</b></span>' + (R.hasPass ? '<i class="cu-lock">' + LS.icon('lock') + '</i>' : '') + '<button class="cu-ref" data-cu="copy">COPIAR ID</button></div>' +
@@ -265,6 +268,7 @@ LS.Custom = {
         LS.Duel.equip(P, load[this.you] || ['ak47', 'm1887']);
         P.vest = { level: 2, dur: LS.GEAR.vest.levels[2].dur }; P.helmet = { level: 2, dur: LS.GEAR.helmet.levels[2].dur }; P.bag = 1; P.model.setGear(2, 2, 1);
         P.meds = { medkit: 1, bandage: 3 };
+        P.gelInf = this.game.gelInf !== false; P.gel = P.gelInf ? 0 : 2; // bolas de gelo: infinitas ou 2 por round
         P.model.root.visible = true; P.model.root.position.copy(P.pos); P.model.root.rotation.y = P.yaw;
       } else {
         f.alive = true; f.hp = 100; f.pos.set(sp.x, CM.C.fy, sp.z); f.yaw = sp.yaw; f.tgt = null; f.netHidden = true; f.state = 'ground';
@@ -285,7 +289,7 @@ LS.Custom = {
     } else if (m.ph === 'count') {
       G.frozen = true; this.fighting = false;
       this.placeAll();
-      LS.Loot.clear(); LS.Effects.clear();
+      LS.Loot.clear(); LS.Effects.clear(); LS.GelWall.clear();
       this.zone.rng = LS.util.seeded(m.zs); this.zone.reset(); this.zone.update(0, []);
       this.fightT = 0; LS.CustomMap.setWalls(0); this.wallMsg = false;
       if (this.isPlayer) { LS.Input.enabled = true; LS.Input.lock(); }

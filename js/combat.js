@@ -14,6 +14,7 @@ LS.Fighter = class {
     this.weapons = [null, null]; this.slot = 0;
     this.ammo = { light: 0, rifle: 0, sniper: 0, shell: 0 };
     this.meds = { medkit: 0, bandage: 0 };
+    this.gel = 0; this.gelCd = 0; this.gelInf = false; // bolas de gelo (parede de gel)
     this.kills = 0; this.damageDealt = 0;
     this.reloadT = 0; this.fireCd = 0; this.healT = 0; this.healType = null;
     this.crouch = false; this.running = false; this.aiming = false; this.onGround = false;
@@ -63,6 +64,12 @@ LS.Fighter = class {
       if (it.amount <= 0) LS.Loot.remove(it, this);
       return LS.MEDS[it.id].name + ' +' + take;
     }
+    if (it.type === 'gel') {
+      const space = LS.GEL.max - (this.gel || 0); if (space <= 0 || this.gelInf) return null;
+      const take = Math.min(space, it.amount); this.gel += take; it.amount -= take;
+      if (it.amount <= 0) LS.Loot.remove(it, this);
+      return LS.GEL.name + ' +' + take;
+    }
     if (it.type === 'vest' || it.type === 'helmet') {
       const g = this[it.type], def = LS.GEAR[it.type].levels[it.level];
       if (it.level < g.level || (it.level === g.level && g.dur >= def.dur * 0.6)) return null;
@@ -96,7 +103,7 @@ LS.Fighter = class {
   cancelHeal() { this.healType = null; this.healT = 0; }
 
   updateTimers(dt) {
-    this.fireCd = Math.max(0, this.fireCd - dt);
+    this.fireCd = Math.max(0, this.fireCd - dt); this.gelCd = Math.max(0, (this.gelCd || 0) - dt);
     this.recoilKick = Math.max(0, this.recoilKick - dt * 6);
     // a mira "fecha" rápido quando para de atirar (estilo celular)
     if (this.bloom > 0 && LS.Game.time - this.lastFireT > 0.1) { const R = this.recoilDef(); this.bloom = Math.max(0, this.bloom - dt * Math.max(0.06, R.bm * 4.5)); }
@@ -208,6 +215,7 @@ LS.Fighter = class {
       this.weapons.forEach(w => { if (w) drop('weapon', w.id, 0, 1, w.mag); });
       for (const t in this.ammo) if (this.ammo[t] > 0) drop('ammo', t, 0, this.ammo[t]);
       for (const t in this.meds) if (this.meds[t] > 0) drop('med', t, 0, this.meds[t]);
+      if (this.gel > 0) drop('gel', 'gel', 0, this.gel);
       if (this.vest.level && this.vest.dur > 10) drop('vest', null, this.vest.level, 1);
       if (this.helmet.level && this.helmet.dur > 10) drop('helmet', null, this.helmet.level, 1);
       if (this.bag) drop('bag', null, this.bag, 1);

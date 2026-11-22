@@ -146,6 +146,9 @@ LS.Items = {
         p.push([x, y, 0.01, 0.058, 0.058, 0.12, 0xd8352a], [x, y, -0.065, 0.062, 0.062, 0.03, 0xd8a640]); }
       return p; }
   },
+  // bola de gelo (vira a parede de gel): bolinha de bloquinhos branco-azulada
+  GEL: () => [[0, 0.13, 0, 0.2, 0.2, 0.2, 0xe8fbff], [0, 0.13, 0, 0.26, 0.14, 0.14, 0xbdf2ff], [0, 0.13, 0, 0.14, 0.26, 0.14, 0xd4f7ff], [0, 0.13, 0, 0.14, 0.14, 0.26, 0xa8ecff],
+    [0.05, 0.19, 0.08, 0.05, 0.05, 0.05, 0xffffff], [-0.06, 0.08, 0.1, 0.04, 0.04, 0.04, 0x7fdcff]],
   MEDS: {
     medkit: () => [[0, 0.14, 0, 0.44, 0.28, 0.3, 0xf2f2f2], [0, 0.2, 0, 0.45, 0.016, 0.31, 0xc8c8c8],
       [0, 0.13, 0.156, 0.18, 0.06, 0.012, 0xe02020], [0, 0.13, 0.156, 0.06, 0.18, 0.012, 0xe02020], [0, 0.13, -0.156, 0.18, 0.06, 0.012, 0xe02020], [0, 0.13, -0.156, 0.06, 0.18, 0.012, 0xe02020],
@@ -197,6 +200,7 @@ LS.Items = {
     if (it.type === 'weapon') return this.gunGeometry(it.id, true);
     if (it.type === 'ammo') return this.geometry('ammo:' + it.id, this.AMMO[it.id], 1, true);
     if (it.type === 'med') return this.geometry('med:' + it.id, this.MEDS[it.id], 1, true);
+    if (it.type === 'gel') return this.geometry('gel', this.GEL, 1, true);
     return this.gearGeometry(it.type, it.level, true);
   },
   // nível de raridade (0 comum .. 3 lendário) e cor
@@ -204,6 +208,7 @@ LS.Items = {
     if (it.type === 'weapon') return LS.WEAPONS[it.id].rarity;
     if (it.type === 'med') return it.id === 'medkit' ? 2 : 1;
     if (it.type === 'ammo') return 0;
+    if (it.type === 'gel') return 2;
     return it.level;
   },
   color(it) { return it.type === 'ammo' ? LS.AMMO_TYPES[it.id].color : LS.LEVEL_COLORS[this.rarity(it)]; }

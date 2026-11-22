@@ -214,7 +214,7 @@ LS.Console = {
     }
     return best;
   },
-  itemArgs() { return [...LS.WEAPON_IDS, ...Object.keys(LS.AMMO_TYPES), ...Object.keys(LS.MEDS), 'vest', 'helmet', 'bag', 'kit']; },
+  itemArgs() { return [...LS.WEAPON_IDS, ...Object.keys(LS.AMMO_TYPES), ...Object.keys(LS.MEDS), 'vest', 'helmet', 'bag', 'gelo', 'kit']; },
 
   cmds: {
     help: { desc: 'lista os comandos', fn() {
@@ -289,6 +289,7 @@ LS.Console = {
       if (LS.WEAPONS[id]) return this.give(P, 'weapon', id);
       if (LS.AMMO_TYPES[id]) return this.give(P, 'ammo', id, 0, n || LS.AMMO_TYPES[id].pickup * 2);
       if (LS.MEDS[id]) return this.give(P, 'med', id, 0, n || 3);
+      if (id === 'gelo' || id === 'gel') return this.give(P, 'gel', 'gel', 0, n || 2);
       if (id === 'vest' || id === 'helmet' || id === 'bag') return this.give(P, id, id, LS.util.clamp(Math.round(n || 3), 1, 3));
       throw new Error('Item desconhecido. Itens: ' + this.itemArgs().join(', '));
     } },
