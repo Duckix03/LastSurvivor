@@ -1484,3 +1484,9 @@ body.mobile #cs-shop .cs-box { zoom: var(--hz, 1); }
 .cu-list + .panel-buttons { position: sticky; bottom: -18px; }
 #hud.custom .ds-name { max-width: 150px; }
 .cu-row .btn { flex: none !important; width: auto !important; min-width: 96px; }
+
+/* painéis compridos (Novidades, Perfil...): rolam por dentro e o VOLTAR fica sempre visível embaixo */
+.panel-screen > .panel:not(.set-panel):not(.cu-panel) { max-height: 92vh; overflow-y: auto; overscroll-behavior: contain; }
+.panel-screen > .panel:not(.cu-panel) > .panel-buttons { position: sticky; bottom: 0; z-index: 3; padding-top: 12px; margin-top: 10px;
+  background: linear-gradient(0deg, rgba(10, 14, 22, 0.97) 60%, rgba(10, 14, 22, 0)); box-shadow: 0 34px 0 rgba(10, 14, 22, 0.97); } /* a sombra cobre o espaço de baixo do painel */
+body.mobile .panel-screen > .panel:not(.set-panel):not(.cu-panel) { max-height: calc(94vh / var(--uiz, 1)); }
