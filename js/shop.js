@@ -69,6 +69,9 @@ LS.Shop = {
     h += '<div class="panel-buttons"><button class="btn btn-primary" data-sh="back">VOLTAR</button></div><div id="sh-modal" class="hidden"></div>';
     const body = document.getElementById('shop-body');
     body.innerHTML = h; this.fillThumbs(body);
+    // o VOLTAR vai pra barra de baixo do painel (fica parado enquanto a loja rola)
+    const panel = body.closest('.panel'), pb = body.querySelector(':scope > .panel-buttons');
+    if (panel && pb && panel.classList.contains('wrapped')) { panel.querySelectorAll(':scope > .panel-buttons').forEach(x => x.remove()); panel.appendChild(pb); }
   },
   modal(html) { const m = document.getElementById('sh-modal'); m.innerHTML = '<div class="sh-modal-box">' + html + '</div>'; m.classList.remove('hidden'); this.fillThumbs(m); },
   closeModal() { const m = document.getElementById('sh-modal'); if (m) m.classList.add('hidden'); },

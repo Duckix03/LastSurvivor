@@ -15,6 +15,18 @@ LS.UI = {
     this.backTo = this.current !== id ? this.current : this.backTo; this.showScreen(id);
   },
   // volta pra tela de antes (painel aberto de dentro de outro painel volta pra ele, não fica preso)
+  // painéis: o conteúdo rola numa caixa por dentro (.panel-scroll). Antes o painel inteiro rolava e a borda em degradê,
+  // as listras e a faixa dos botões rolavam junto (borda cortada no meio, faixa escura "vazando" no celular)
+  wrapPanels() {
+    document.querySelectorAll('.panel-screen > .panel:not(.set-panel)').forEach(p => {
+      if (p.querySelector(':scope > .panel-scroll')) return;
+      const box = document.createElement('div'); box.className = 'panel-scroll';
+      [...p.children].filter(c => c.tagName !== 'H2' && !c.classList.contains('panel-buttons') && c.id !== 'pf-modal').forEach(c => box.appendChild(c));
+      const btns = p.querySelector(':scope > .panel-buttons');
+      p.insertBefore(box, btns || null);
+      p.classList.add('wrapped');
+    });
+  },
   back() {
     if (this.current === 'panel-custom' && LS.Custom) LS.Custom.leave(true); // sair da tela da sala = sair da sala
     let to = this.stack.pop();
@@ -124,6 +136,8 @@ window.addEventListener('load', () => {
     document.body.innerHTML = '<div style="color:#fff;font-family:sans-serif;padding:40px;font-size:20px">Não foi possível carregar o Three.js. Verifique sua conexão com a internet e recarregue a página.</div>';
     return;
   }
+  LS.UI.wrapPanels();
+  LS.checkAppVersion(); // app velho: tela de "atualize"
   LS.Game.init();
   LS.App.init(); // app Android (APK): botão voltar etc. No navegador não faz nada
   LS.Touch.init(); // celular: controles de toque (só liga em tela de toque)

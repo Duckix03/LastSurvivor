@@ -12,7 +12,7 @@ LS.Custom = {
   // ---------- painel ----------
   init() {
     const box = document.getElementById('custom-body');
-    box.addEventListener('click', e => {
+    document.getElementById('panel-custom').addEventListener('click', e => { // no painel todo: os botões de baixo ficam fora do conteúdo que rola
       const el = e.target.closest('[data-cu]'); if (!el) return;
       LS.Audio.init(); LS.Audio.click();
       const a = el.dataset.cu;
@@ -112,11 +112,17 @@ LS.Custom = {
     if (!LS.Account.logged()) {
       box.innerHTML = '<div class="fr-guest"><b>SALAS SÓ COM AMIGOS</b><p>Crie uma conta pra montar salas personalizadas e jogar X1 até 10v10 com os seus amigos.</p><button class="btn btn-primary" data-cu="login">CRIAR CONTA / ENTRAR</button></div>' +
         '<div class="panel-buttons"><button class="btn" data-cu="back">VOLTAR</button></div>';
-      return;
+      this.foot(box); return;
     }
-    if (!LS.NET_URL) { box.innerHTML = '<div class="fr-guest"><b>ONLINE DESLIGADO</b><p>Esse jogo não tem servidor online configurado.</p></div><div class="panel-buttons"><button class="btn" data-cu="back">VOLTAR</button></div>'; return; }
+    if (!LS.NET_URL) { box.innerHTML = '<div class="fr-guest"><b>ONLINE DESLIGADO</b><p>Esse jogo não tem servidor online configurado.</p></div><div class="panel-buttons"><button class="btn" data-cu="back">VOLTAR</button></div>'; this.foot(box); return; }
     box.innerHTML = this.view === 'room' && this.room ? this.roomHtml() : this.listHtml();
+    this.foot(box);
     if (this.view === 'room' && this.room) this.fillAvatars(box);
+  },
+  // os botões (VOLTAR / SAIR / INICIAR) vão pra barra de baixo do painel, que não rola
+  foot(box) {
+    const f = document.getElementById('custom-foot'), b = box.querySelector(':scope > .panel-buttons');
+    f.innerHTML = ''; if (b) { [...b.childNodes].forEach(n => f.appendChild(n)); b.remove(); }
   },
   renderMsg() { const n = document.getElementById('cu-msg'); if (n) { n.textContent = this.err; n.className = 'cu-msg' + (this.err ? '' : ' hidden'); } },
   thumb(cls) { return '<div class="cu-thumb ' + (cls || '') + '"><img src="' + this.mapThumb() + '" alt=""><span>ILHA PLANA</span></div>'; },

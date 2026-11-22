@@ -66,40 +66,45 @@ LS.HUD = {
     }
   },
 
+  // escreve no HTML só quando o valor muda (antes reescrevia dezenas de textos e estilos todo quadro: pesava no celular)
+  _t(el, v) { v = String(v); if (el._tv !== v) { el._tv = v; el.textContent = v; } },
+  _h(el, v) { if (el._hv !== v) { el._hv = v; el.innerHTML = v; } },
+  _s(el, k, v) { v = String(v); const key = '_s' + k; if (el[key] !== v) { el[key] = v; el.style[k] = v; } },
+  _c(el, v) { if (el._cv !== v) { el._cv = v; el.className = v; } },
   update(dt, G) {
     const P = G.player, E = this.el;
-    E.alive.textContent = G.aliveCount();
-    E.kills.textContent = G.mode === 'duel' ? LS.Duel.totalKills() : G.mode === 'custom' ? LS.Custom.kills : P.kills;
-    E.timer.textContent = LS.util.fmtTime(G.time);
+    this._t(E.alive, G.aliveCount());
+    this._t(E.kills, G.mode === 'duel' ? LS.Duel.totalKills() : G.mode === 'custom' ? LS.Custom.kills : P.kills);
+    this._t(E.timer, LS.util.fmtTime(G.time));
     // vida/colete
-    E['health-fill'].style.width = P.hp + '%';
+    this._s(E['health-fill'], 'width', P.hp + '%');
     E['health-fill'].parentElement.classList.toggle('low', P.hp < 30);
-    E['hp-num'].textContent = Math.ceil(P.hp);
+    this._t(E['hp-num'], Math.ceil(P.hp));
     const vd = P.vest.level ? LS.GEAR.vest.levels[P.vest.level].dur : 1;
-    E['armor-fill'].style.width = (P.vest.level ? P.vest.dur / vd * 100 : 0) + '%';
+    this._s(E['armor-fill'], 'width', (P.vest.level ? P.vest.dur / vd * 100 : 0) + '%');
     // ícones gerados por código: só troca a imagem quando o item muda
     const setImg = (img, src) => { if (img.dataset.k !== src) { img.dataset.k = src; img.src = src || ''; } };
     const gear = (el, kind, lv, dur, max) => {
-      el.className = 'gear-item' + (lv ? ' l' + lv : ''); el.querySelector('span').textContent = lv ? 'Nv.' + lv + (max ? ' ' + Math.ceil(dur / max * 100) + '%' : '') : '-';
+      this._c(el, 'gear-item' + (lv ? ' l' + lv : '')); this._t(el.querySelector('span'), lv ? 'Nv.' + lv + (max ? ' ' + Math.ceil(dur / max * 100) + '%' : '') : '-');
       setImg(el.querySelector('img'), LS.Icons.get(kind, null, lv || 1));
     };
     gear(E['gear-vest'], 'vest', P.vest.level, P.vest.dur, vd);
     gear(E['gear-helmet'], 'helmet', P.helmet.level, P.helmet.dur, P.helmet.level ? LS.GEAR.helmet.levels[P.helmet.level].dur : 1);
     gear(E['gear-bag'], 'bag', P.bag, 0, 0);
     if (!this.medIcons) { this.medIcons = true; setImg(this.$('ico-medkit'), LS.Icons.get('med', 'medkit')); setImg(this.$('ico-bandage'), LS.Icons.get('med', 'bandage')); setImg(this.$('ico-gel'), LS.Icons.get('gel', 'gel')); }
-    E['med-count'].textContent = P.meds.medkit; E['band-count'].textContent = P.meds.bandage; E['gel-count'].textContent = P.gelInf ? '∞' : (P.gel | 0);
+    this._t(E['med-count'], P.meds.medkit); this._t(E['band-count'], P.meds.bandage); this._t(E['gel-count'], P.gelInf ? '∞' : (P.gel | 0));
     // armas
     for (let i = 0; i < 2; i++) {
       const w = P.weapons[i], s = E['slot-' + i];
       s.classList.toggle('active', i === P.slot && !!w);
-      s.querySelector('.name').textContent = w ? LS.WEAPONS[w.id].name : 'VAZIO';
+      this._t(s.querySelector('.name'), w ? LS.WEAPONS[w.id].name : 'VAZIO');
       const wi = s.querySelector('.wi'); wi.classList.toggle('on', !!w); if (w) setImg(wi, LS.Icons.get('weapon', w.id));
     }
     const w = P.weapon(), d = P.wdef();
-    E['weapon-name'].textContent = d ? d.name + ' · ' + d.cat.toUpperCase() : 'DESARMADO';
-    E['ammo-mag'].textContent = w ? w.mag : '-';
+    this._t(E['weapon-name'], d ? d.name + ' · ' + d.cat.toUpperCase() : 'DESARMADO');
+    this._t(E['ammo-mag'], w ? w.mag : '-');
     E['ammo-mag'].classList.toggle('empty', !!w && w.mag === 0);
-    E['ammo-res'].textContent = d ? P.ammo[d.ammo] : '-';
+    this._t(E['ammo-res'], d ? P.ammo[d.ammo] : '-');
     const ai = this.$('ammo-ico'); ai.classList.toggle('on', !!d); if (d) setImg(ai, LS.Icons.get('ammo', d.ammo));
     E['reload-text'].classList.toggle('hidden', P.reloadT <= 0);
     // mira dinâmica
@@ -107,15 +112,15 @@ LS.HUD = {
     const cam = LS.Game.camera, sp = d ? P.currentSpread() : 0.01;
     const gapT = 3 + Math.tan(Math.min(sp, 0.35)) / Math.tan(cam.fov * Math.PI / 360) * (window.innerHeight / 2);
     this._gap = this._gap === undefined ? gapT : LS.util.lerp(this._gap, gapT, Math.min(1, LS.Game.lastDt * (gapT > this._gap ? 30 : 12) || 1));
-    E.crosshair.style.setProperty('--gap', Math.min(90, this._gap).toFixed(1) + 'px');
-    E.crosshair.style.visibility = P.state === 'ground' && P.alive ? 'visible' : 'hidden';
+    { const gv = Math.min(90, this._gap).toFixed(1) + 'px'; if (E.crosshair._gap !== gv) { E.crosshair._gap = gv; E.crosshair.style.setProperty('--gap', gv); } }
+    this._s(E.crosshair, 'visibility', P.state === 'ground' && P.alive ? 'visible' : 'hidden');
     E.crosshair.classList.toggle('ads', !!(P.aiming && d && !d.scope)); // mira de ponto ao aproximar
     // cura
     if (P.healType) {
       E['heal-progress'].classList.remove('hidden');
       const m = LS.MEDS[P.healType];
-      E['heal-fill'].style.width = ((1 - P.healT / m.time) * 100) + '%';
-      E['heal-label'].textContent = 'Usando ' + m.name + '...';
+      this._s(E['heal-fill'], 'width', ((1 - P.healT / m.time) * 100) + '%');
+      this._t(E['heal-label'], 'Usando ' + m.name + '...');
     } else E['heal-progress'].classList.add('hidden');
     // prompt
     let pr = P.prompt;
@@ -123,24 +128,26 @@ LS.HUD = {
     if (P.state === 'plane') pr = G.plane.canJump() ? kSp + ' Saltar do avião' : 'Aguarde o avião chegar à ilha...';
     else if (P.state === 'fall') pr = kSp + ' Abrir paraquedas';
     if (!P.alive && G.mode === 'duel') { const sp = LS.Duel.spectateTarget(); if (sp) pr = 'ASSISTINDO <b>' + sp.name + '</b>'; } // 2v2: morto, vendo o parceiro
-    E.prompt.innerHTML = pr || '';
+    this._h(E.prompt, pr || '');
     // zona
     const Z = G.zone, out = Z.isOutside(P.pos), gas = G.mode === 'duel';
     E['zone-info'].classList.toggle('danger', out);
-    if (Z.finished) E['zone-text'].textContent = gas ? 'Gás fechado' : 'Zona final';
-    else if (gas) E['zone-text'].textContent = (Z.shrinking ? 'Gás fechando: ' : 'Gás fecha em: ') + LS.util.fmtTime(Z.timer);
-    else E['zone-text'].textContent = (Z.shrinking ? 'Zona encolhendo: ' : 'Zona encolhe em: ') + LS.util.fmtTime(Z.timer);
+    if (Z.finished) this._t(E['zone-text'], gas ? 'Gás fechado' : 'Zona final');
+    else if (gas) this._t(E['zone-text'], (Z.shrinking ? 'Gás fechando: ' : 'Gás fecha em: ') + LS.util.fmtTime(Z.timer));
+    else this._t(E['zone-text'], (Z.shrinking ? 'Zona encolhendo: ' : 'Zona encolhe em: ') + LS.util.fmtTime(Z.timer));
     const dn = Math.hypot(P.pos.x - Z.next.x, P.pos.z - Z.next.y) - Z.nextR;
-    if (gas) E['zone-dist'].textContent = out ? '⚠ NO GÁS! -' + Z.dps + ' HP/s' : 'Fique longe do gás';
-    else E['zone-dist'].textContent = out ? '⚠ FORA DA ZONA! -' + Z.dps + ' HP/s' : (dn > 0 && !Z.finished ? 'Próxima zona a ' + Math.round(dn) + ' m' : 'Você está na área segura');
-    E['zone-vignette'].style.opacity = out ? 1 : 0;
+    if (gas) this._t(E['zone-dist'], out ? '⚠ NO GÁS! -' + Z.dps + ' HP/s' : 'Fique longe do gás');
+    else this._t(E['zone-dist'], out ? '⚠ FORA DA ZONA! -' + Z.dps + ' HP/s' : (dn > 0 && !Z.finished ? 'Próxima zona a ' + Math.round(dn) + ' m' : 'Você está na área segura'));
+    this._s(E['zone-vignette'], 'opacity', out ? 1 : 0);
     // mensagens
     if (this.centerT > 0) { this.centerT -= dt; if (this.centerT <= 0) E['center-msg'].classList.remove('show'); }
     this.dmgFlash = Math.max(0, this.dmgFlash - dt * 2);
-    E['damage-vignette'].style.opacity = Math.max(this.dmgFlash, P.hp < 30 ? 0.5 + Math.sin(G.time * 5) * 0.2 : 0);
+    this._s(E['damage-vignette'], 'opacity', Math.max(this.dmgFlash, P.hp < 30 ? 0.5 + Math.sin(G.time * 5) * 0.2 : 0));
     // fps
     E.fps.classList.toggle('hidden', !LS.settings.showFps);
-    if (G.mode === 'br') this.drawMinimap(G); // duelo: sem minimapa (o galpão é pequeno)
+    // minimapa: no máximo 30 vezes por segundo (15 no celular) — desenhar o canvas todo quadro pesava
+    const now = performance.now(), mmGap = LS.Touch.active ? 66 : 33;
+    if (G.mode === 'br' && now - (this._mmT || 0) >= mmGap) { this._mmT = now; this.drawMinimap(G); } // duelo: sem minimapa (o galpão é pequeno)
     this.updateShots(G);
     if (!E.bigmap.classList.contains('hidden')) this.drawBigMap(G);
   },

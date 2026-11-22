@@ -377,7 +377,7 @@ LS.Game = {
   applySettings() {
     const s = LS.settings, r = this.renderer;
     const q = s.quality;
-    const base = q === 'low' ? 0.75 : q === 'medium' ? 1 : Math.min(window.devicePixelRatio, 2);
+    const base = q === 'low' ? 0.75 : q === 'medium' ? 1 : Math.min(window.devicePixelRatio, LS.Touch && LS.Touch.active ? 1.5 : 2); // celular no alto: 1,5x (2,6x do aparelho derrubava o FPS)
     r.setPixelRatio(Math.max(0.3, base * (s.resScale || 1) * (s.perfMode ? 0.85 : 1)));
     this.applyColors();
     const shadows = q !== 'low' && !s.perfMode;
@@ -403,6 +403,10 @@ LS.Game = {
     this.lastDt = dt;
     this.fpsAcc += dt; this.fpsFrames++;
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
+    // atrás de um painel (loja, perfil, configurações...) ou da pausa/fim, a cena 3D fica parada: não redesenha à toa (pesava muito no celular)
+    const U = LS.UI, covered = (U.subPanelOpen() || ['pause', 'endscreen', 'loading'].includes(U.current)) && !(this.state === 'paused' && LS.Net.online);
+    if (covered && this._coveredDrawn) { LS.Input.endFrame(); return; }
+    this._coveredDrawn = covered;
     if (this.state === 'lobby' || (this.state === 'menu' && LS.Lobby.built)) { LS.Lobby.update(dt); LS.Post.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
     if (!this.built) return;
     if (this.state === 'playing' || (this.state === 'paused' && LS.Net.online)) this.update(dt * LS.Spectate.timeScale()); // câmera lenta na hora da morte
