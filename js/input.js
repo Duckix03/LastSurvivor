@@ -2,7 +2,7 @@
 'use strict';
 LS.Input = {
   keys: {}, pressed: {}, mouse: { dx: 0, dy: 0, left: false, right: false, leftPressed: false, wheel: 0 },
-  locked: false, enabled: false, onUnlock: null,
+  locked: false, enabled: false, onUnlock: null, lockT: 0,
 
   init(canvasEl) {
     this.canvas = canvasEl;
@@ -17,6 +17,8 @@ LS.Input = {
     window.addEventListener('blur', () => { this.keys = {}; this.mouse.left = this.mouse.right = false; });
     document.addEventListener('mousemove', e => {
       if (!this.locked) return;
+      // logo depois de prender o mouse o navegador às vezes manda um "pulo" enorme (a câmera virava sozinha): ignora
+      if (performance.now() - this.lockT < 120 || Math.abs(e.movementX) > 500 || Math.abs(e.movementY) > 500) return;
       this.mouse.dx += e.movementX || 0;
       this.mouse.dy += e.movementY || 0;
     });
@@ -35,6 +37,7 @@ LS.Input = {
     document.addEventListener('pointerlockchange', () => {
       const was = this.locked;
       this.locked = document.pointerLockElement === this.canvas;
+      if (this.locked && !was) this.lockT = performance.now();
       if (was && !this.locked && this.onUnlock) this.onUnlock();
     });
   },

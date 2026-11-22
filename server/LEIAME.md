@@ -139,3 +139,11 @@ Perfil → **ADMIN** → aba **GERADOR DE CODIGUIN**:
 Cada conta resgata cada código **uma vez** (Configurações → Conta ou botão **CODIGUIN** na loja).
 **Adicionar item exclusivo novo:** coloque em `EXCLUSIVE` (js/cosmetics.js), desenhe em `js/character.js`/`js/skin.js`
 e adicione o id em `EXCLUSIVE` no `server/src/accounts.js` (fantasia: `EXCLUSIVE_COSTUMES` com as peças).
+
+## 🏝️ Salas personalizadas (só amigos)
+
+- Rotas novas: `POST /room/new` (cria, precisa de conta), `POST /room/list` (salas abertas dos amigos) e `/ws/room/<ID de 7 números>`.
+- Dois Durable Objects novos: `Room` (uma por sala: lobby + partida) e `RoomDir` (a lista de salas abertas). Já estão no `wrangler.toml` (migração `v3`), então é só rodar `npx wrangler deploy` de novo.
+- Só entra quem é **amigo do dono** da sala (e com a senha, se tiver). Espectadores recebem a posição de todo mundo; jogadores continuam com o anti-wallhack.
+- A autoridade é a mesma da partida normal (vida, tiros, dano), sem bots e sem fogo amigo. Não dá kill, moedas nem XP.
+- Teste local: `npx wrangler dev --var SHOP_SECS:60` deixa a loja com 60 s (padrão 15 s).

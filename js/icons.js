@@ -29,6 +29,9 @@ LS.ICONS = {
   friends: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.8 2.9-6.5 6.5-6.5s6.5 2.7 6.5 6.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14c2 .9 3 3 3 6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  door: '<path d="M4 21h16M7 21V4h10v17"/><circle cx="14" cy="13" r="1" fill="currentColor"/>',
   modes: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M17 13v8M13 17h8"/>'
 };
 LS.icon = (n, cls) => '<svg class="svgi' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (LS.ICONS[n] || '') + '</svg>';

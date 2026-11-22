@@ -18,7 +18,7 @@ LS.Game = {
     // logarithmicDepthBuffer foi avaliado e ficou desligado: anula o polygonOffset (marcas de bala, vidro) e custa desempenho.
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.25, 1000);
     LS.Input.init(this.renderer.domElement);
-    LS.Input.onUnlock = () => { if (this.state === 'playing' && !this.inventoryOpen && !LS.Console.open && !LS.Duel.shopOpen && !LS.Spectate.active) this.pause(); };
+    LS.Input.onUnlock = () => { if (this.state === 'playing' && !this.inventoryOpen && !LS.Console.open && !LS.Duel.shopOpen && !LS.Spectate.active && !(this.mode === 'custom' && (LS.Custom.shopOpen || !['count', 'fight', 'end'].includes(LS.Custom.phase)))) this.pause(); };
     LS.HUD.init();
     window.addEventListener('resize', () => {
       this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix();
@@ -180,6 +180,25 @@ LS.Game = {
     });
   },
 
+  // SALA PERSONALIZADA (online, só amigos): ilha plana, times, rounds. Regras em js/custom.js
+  startCustom(d) {
+    LS.Audio.init();
+    LS.UI.showScreen('loading');
+    document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
+    this.build(() => {
+      LS.Duel.exit(); LS.Victory.hide(); LS.HUD.clearShots(); this.mode = 'custom'; this.lastKiller = null; this.zone.rng = null;
+      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop();
+      LS.Custom.setup(d);
+      this.precompile();
+      document.getElementById('killfeed').innerHTML = '';
+      LS.UI.showScreen(null); LS.HUD.show(true); this.setInventory(false);
+      document.getElementById('bigmap').classList.add('hidden');
+      this.state = 'playing'; this.frozen = true;
+      LS.Input.enabled = false; LS.Input.unlock(); // a loja/contagem libera
+      LS.Audio.stopAll();
+    });
+  },
+
   jumpFromPlane(f) {
     f.state = 'fall';
     this.plane.exitPoint(f.pos); // sai pela rampa traseira
@@ -207,10 +226,10 @@ LS.Game = {
     victim.placement = this.aliveCount() + 1;
     const mine = killer === this.player || victim === this.player;
     LS.HUD.killFeed(killer && killer !== victim ? killer.name : '', victim.name, weapon || '?', head, mine);
-    if (this.mode === 'duel') {
+    if (this.mode === 'duel' || this.mode === 'custom') {
       if (killer === this.player && victim !== this.player) LS.Audio.kill();
-      if (victim === this.player) LS.Spectate.start(killer, weapon, head); else LS.Spectate.onKill(victim, killer); // killcam também no duelo
-      LS.Duel.onKill(victim, killer); return;
+      if (victim === this.player) LS.Spectate.start(killer, weapon, head); else LS.Spectate.onKill(victim, killer); // killcam também no duelo e na sala
+      if (this.mode === 'custom') LS.Custom.onKill(victim, killer); else LS.Duel.onKill(victim, killer); return;
     }
     if (killer === this.player && victim !== this.player) {
       LS.Audio.kill();
@@ -235,7 +254,7 @@ LS.Game = {
     if (e.repeat) return;
     if (LS.Duel.shopOpen) return; // loja do duelo aberta
     if (e.code === 'Tab' && this.player.alive) { this.setInventory(!this.inventoryOpen); }
-    else if (e.code === 'KeyM' && this.mode !== 'duel') LS.HUD.toggleBigMap();
+    else if (e.code === 'KeyM' && this.mode === 'br') LS.HUD.toggleBigMap();
     else if (e.code === 'Escape' && this.inventoryOpen) { this.setInventory(false); this.pause(); }
   },
   setInventory(open) {
@@ -261,6 +280,7 @@ LS.Game = {
     this.clock.getDelta();
   },
   quitToMenu() {
+    if (this.mode === 'custom' && LS.Custom.inGame) { LS.Custom.quit(); return; } // sala: sai dela (sem prêmio)
     LS.Spectate.stop(); LS.Net.leave(); this.frozen = false; LS.HUD.clearShots(); LS.Victory.hide();
     this.state = 'menu'; LS.Input.enabled = false; LS.Input.unlock();
     this.setInventory(false);
@@ -400,8 +420,8 @@ LS.Game = {
   update(dt) {
     this.time += dt;
     const P = this.player;
-    const duel = this.mode === 'duel';
-    if (!duel) {
+    const duel = this.mode === 'duel', custom = this.mode === 'custom', arena = duel || custom;
+    if (!arena) {
       this.plane.update(dt);
       if (!this.plane.active || this.plane.progress > 0.97) {
         for (const f of this.fighters) if (f.state === 'plane' && !f.remote) this.jumpFromPlane(f);
@@ -413,12 +433,13 @@ LS.Game = {
       else b.update(dt);
     }
     LS.Net.update(dt); // online: jogadores remotos + envio da posição
-    this.zone.update(duel && !LS.Duel.fighting() ? 0 : dt, this.fighters); // duelo: o gás só anda durante a luta
+    this.zone.update((duel && !LS.Duel.fighting()) || (custom && !LS.Custom.fighting) ? 0 : dt, this.fighters); // duelo/sala: o gás só anda durante a luta
     if (duel) LS.Duel.update(dt);
+    if (custom) LS.Custom.update(dt);
     const focus = P.state === 'plane' ? this.plane.mesh.position : P.pos;
     LS.Loot.update(dt, focus);
     LS.Effects.update(dt);
-    LS.World.updateSky(duel ? 0.33 : this.time / 430, this.scene, focus, dt); // duelo: sempre de dia
+    LS.World.updateSky(arena ? 0.33 : this.time / 430, this.scene, focus, dt); // duelo e sala: sempre de dia
     // lá do alto (avião/queda) a névoa e o limite de visão acompanham a altura: senão o chão inteiro fica dentro da névoa
     const fd = LS.effDist(), ch = Math.max(0, this.camera.position.y - LS.World.heightAt(this.camera.position.x, this.camera.position.z) - 25);
     this.scene.fog.near = fd * 0.3 + ch * 1.1; this.scene.fog.far = fd + ch * 0.9;

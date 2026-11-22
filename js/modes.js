@@ -22,6 +22,7 @@ LS.Modes = {
     document.getElementById('modes-grid').addEventListener('click', e => {
       const sz = e.target.closest('[data-size]');
       if (sz) { LS.Audio.init(); LS.Audio.click(); this.setSize(+sz.dataset.size); this.set('duel'); this.renderGrid(); return; } // troca 1v1/2v2 e fica no painel
+      if (e.target.closest('[data-custom]')) { LS.Audio.init(); LS.Audio.click(); LS.Custom.open(); return; } // salas: abre o painel delas
       const c = e.target.closest('[data-mode]'); if (!c) return;
       LS.Audio.init(); LS.Audio.click();
       this.set(c.dataset.mode); LS.UI.back();
@@ -70,8 +71,9 @@ LS.Modes = {
         '<div class="mode-title"><b>' + m.name + (m.vs ? ' <em>' + m.vs + '</em>' : '') + '</b><span>' + m.place + ' · ' + m.players + ' jogadores</span></div>' +
         '<div class="mode-info"><p>' + m.desc + '</p>' + sizes + '</div></button>';
     });
-    cards.push('<div class="mode-card locked"><div class="mode-art">' + this.art('soon') + '</div>' +
-      '<div class="mode-title"><b>EM BREVE</b><span>Novo modo chegando</span></div><div class="mode-info"><p>Fique de olho nas novidades!</p></div></div>');
+    cards.push('<button class="mode-card custom-card" data-custom="1"><div class="mode-art"><img class="banner3d" src="' + LS.Custom.mapThumb() + '" alt=""></div><div class="mode-shine"></div>' +
+      '<span class="mode-tag">SÓ AMIGOS</span><div class="mode-title"><b>SALA PERSONALIZADA</b><span>Ilha plana · X1 até 10v10</span></div>' +
+      '<div class="mode-info"><p>Crie uma sala com ID e senha, chame os amigos e escolha times e rounds. Sem kill, moedas ou XP.</p></div></button>');
     document.getElementById('modes-grid').innerHTML = cards.join('');
     // banners 3D com os modelos do jogo: enquanto não ficam prontos, mostra o desenho
     if (LS.Banners && LS.Game.renderer) LS.Banners.generate(Object.keys(LS.MODES).map(id => this.artId(id)), (art, url) => {

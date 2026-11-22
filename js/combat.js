@@ -204,7 +204,7 @@ LS.Fighter = class {
       const it = LS.Loot.spawn(type, id, lv, amt, p.x + Math.cos(a) * r, gy, p.z + Math.sin(a) * r);
       if (extra !== undefined) it.ammoInMag = extra;
     };
-    if (LS.Game.mode !== 'duel') { // no duelo não cai loot: cada round começa com as armas do round
+    if (LS.Game.mode === 'br') { // no duelo e na sala não cai loot: cada round começa com as armas do round
       this.weapons.forEach(w => { if (w) drop('weapon', w.id, 0, 1, w.mag); });
       for (const t in this.ammo) if (this.ammo[t] > 0) drop('ammo', t, 0, this.ammo[t]);
       for (const t in this.meds) if (this.meds[t] > 0) drop('med', t, 0, this.meds[t]);
