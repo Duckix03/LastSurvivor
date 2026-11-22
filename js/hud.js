@@ -5,7 +5,7 @@ LS.HUD = {
   init() {
     this.el = {};
     ['hud', 'alive', 'kills', 'timer', 'fps', 'zone-info', 'zone-text', 'zone-dist', 'minimap', 'killfeed', 'crosshair', 'hitmarker', 'scope', 'damage-vignette',
-      'zone-vignette', 'dmg-indicators', 'center-msg', 'prompt', 'heal-progress', 'heal-fill', 'heal-label', 'armor-fill', 'health-fill', 'hp-num', 'med-count', 'band-count',
+      'zone-vignette', 'dmg-indicators', 'center-msg', 'prompt', 'heal-progress', 'heal-fill', 'heal-label', 'armor-fill', 'health-fill', 'hp-num', 'med-count', 'band-count', 'gel-count',
       'slot-0', 'slot-1', 'weapon-name', 'ammo-mag', 'ammo-res', 'reload-text', 'gear-vest', 'gear-helmet', 'gear-bag', 'bigmap', 'bigmap-canvas', 'inventory',
       'inv-weapons', 'inv-ammo', 'inv-gear', 'inv-meds', 'inv-cap'].forEach(id => this.el[id] = this.$(id));
     this.mm = this.el.minimap.getContext('2d');
@@ -86,8 +86,8 @@ LS.HUD = {
     gear(E['gear-vest'], 'vest', P.vest.level, P.vest.dur, vd);
     gear(E['gear-helmet'], 'helmet', P.helmet.level, P.helmet.dur, P.helmet.level ? LS.GEAR.helmet.levels[P.helmet.level].dur : 1);
     gear(E['gear-bag'], 'bag', P.bag, 0, 0);
-    if (!this.medIcons) { this.medIcons = true; setImg(this.$('ico-medkit'), LS.Icons.get('med', 'medkit')); setImg(this.$('ico-bandage'), LS.Icons.get('med', 'bandage')); }
-    E['med-count'].textContent = P.meds.medkit; E['band-count'].textContent = P.meds.bandage;
+    if (!this.medIcons) { this.medIcons = true; setImg(this.$('ico-medkit'), LS.Icons.get('med', 'medkit')); setImg(this.$('ico-bandage'), LS.Icons.get('med', 'bandage')); setImg(this.$('ico-gel'), LS.Icons.get('gel', 'gel')); }
+    E['med-count'].textContent = P.meds.medkit; E['band-count'].textContent = P.meds.bandage; E['gel-count'].textContent = P.gelInf ? '∞' : (P.gel | 0);
     // armas
     for (let i = 0; i < 2; i++) {
       const w = P.weapons[i], s = E['slot-' + i];

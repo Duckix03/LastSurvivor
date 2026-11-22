@@ -175,6 +175,7 @@ LS.Player = class extends LS.Fighter {
         if (I.wasPressed('KeyR')) this.startReload();
         if (I.wasPressed('KeyH')) this.startHeal('medkit');
         if (I.wasPressed('KeyG')) this.startHeal('bandage');
+        if (I.wasPressed('KeyQ') && LS.GelBall.throwFrom(this, this.aimDir)) { this.fireCd = Math.max(this.fireCd, 0.35); if (this.healType) this.cancelHeal(); } // bola de gelo → parede
         const d = this.wdef();
         if (!d && I.mouse.leftPressed) this.tryPunch(); // sem arma: soco
         if (d && (d.auto ? I.mouse.left : I.mouse.leftPressed)) {

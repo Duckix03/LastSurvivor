@@ -95,6 +95,7 @@ LS.GelWall = class {
   }
   update(dt) {
     this.t += dt;
+    if (this.life !== undefined && this.state !== 'shatter' && this.state !== 'dead') { this.life -= dt; if (this.life <= 0) this.shatter(); } // some sozinha depois de um tempo
     for (const m of this.bubbles) { const u = m.userData; u.y += u.sp * dt; if (u.y > u.top) u.y = 0.1; m.position.set(u.x, u.y, u.z); m.visible = this.state !== 'shatter'; }
     if (this.state === 'grow') {
       this.place(this.t);
@@ -118,7 +119,67 @@ LS.GelWall = class {
     this.mesh.geometry.dispose(); this.mesh.material.dispose();
     const L = LS.GelWall.list, i = L.indexOf(this); if (i >= 0) L.splice(i, 1);
   }
-  static updateAll(dt) { for (const w of LS.GelWall.list.slice()) w.update(dt); }
-  static clear() { for (const w of LS.GelWall.list.slice()) w.dispose(); }
+  static updateAll(dt) { if (LS.GelBall) LS.GelBall.update(dt); for (const w of LS.GelWall.list.slice()) w.update(dt); }
+  static clear() { for (const w of LS.GelWall.list.slice()) w.dispose(); if (LS.GelBall) LS.GelBall.clear(); }
 };
 LS.GelWall.list = [];
+
+// ---------- BOLA DE GELO: o item que vira a parede ----------
+//  Q (ou o botão ❄ no celular) arremessa; onde ela cair nasce a parede, virada pra quem jogou.
+//  Battle royale: começa com 0 (acha no chão) · Duelo: 2 por round · Sala: infinita (ou 2 por round se o dono desligar)
+LS.GelBall = {
+  SPEED: 15, UP: 3.2, GRAV: 22, CD: 0.55, LIFE: 30, PER_OWNER: 4,
+  balls: [],
+  mesh() {
+    if (!this._geo) this._geo = LS.Items.itemGeometry({ type: 'gel', id: 'gel' });
+    return LS.Items.mesh(this._geo);
+  },
+  // o jogador (ou quem estiver no comando local) arremessa: tira do inventário e avisa a rede
+  throwFrom(f, dir) {
+    if (!f.alive || f.state !== 'ground' || (f.gelCd || 0) > 0) return false;
+    if (!f.gelInf && !(f.gel > 0)) return false;
+    if (!f.gelInf) f.gel--;
+    f.gelCd = this.CD;
+    const o = f.eyePos(new THREE.Vector3()); o.y -= 0.25; o.x += dir.x * 0.6; o.z += dir.z * 0.6;
+    const v = new THREE.Vector3(dir.x, Math.max(-0.4, dir.y), dir.z).normalize().multiplyScalar(this.SPEED); v.y += this.UP;
+    if (LS.Net.online && LS.Net.owns(f)) LS.Net.send({ t: 'gel', i: f.netId, o: [o.x, o.y, o.z].map(n => Math.round(n * 100) / 100), v: [v.x, v.y, v.z].map(n => Math.round(n * 100) / 100) });
+    this.spawn(f, o, v);
+    if (LS.Audio.ctx) LS.Audio._noise(0.12, 'bandpass', 900, 1, 0.18);
+    return true;
+  },
+  // cria a bolinha voando (também usado quando chega da rede: mesma física = mesmo lugar em todo mundo)
+  spawn(owner, o, v) {
+    const m = this.mesh(); m.scale.setScalar(1.5); m.position.copy(o); LS.Game.scene.add(m);
+    this.balls.push({ owner, pos: o.clone(), vel: v.clone(), m, t: 0 });
+  },
+  update(dt) {
+    const W = LS.World, d = this._d || (this._d = new THREE.Vector3());
+    for (let i = this.balls.length - 1; i >= 0; i--) {
+      const b = this.balls[i]; b.t += dt;
+      const step = dt; b.vel.y -= this.GRAV * step;
+      d.copy(b.vel).multiplyScalar(step); const len = d.length(); d.divideScalar(len || 1);
+      const hit = W.raycast(b.pos, d, len + 0.15);
+      let land = null;
+      if (hit < len + 0.1) land = b.pos.clone().addScaledVector(d, Math.max(0, hit - 0.5)); // bateu (chão, parede, caixa): nasce um pouco antes
+      else b.pos.addScaledVector(d, len);
+      const g = W.groundAt(b.pos.x, b.pos.z, b.pos.y + 0.2, 0.2);
+      if (!land && b.pos.y <= g + 0.05) land = b.pos.clone();
+      if (!land && b.t > 2.5) land = b.pos.clone();
+      b.m.position.copy(b.pos); b.m.rotation.x += dt * 9; b.m.rotation.z += dt * 6;
+      if (land) { this.balls.splice(i, 1); if (b.m.parent) b.m.parent.remove(b.m); this.burst(b.owner, land); }
+    }
+  },
+  // a bolinha estoura e a parede brota de frente pra quem jogou
+  burst(owner, p) {
+    const W = LS.World, y = W.groundAt(p.x, p.z, p.y + 0.6, 0.3);
+    const from = owner ? owner.pos : p, yaw = Math.atan2(from.x - p.x, from.z - p.z);
+    // no máximo algumas paredes por pessoa (a mais velha estoura) e um teto geral
+    const mine = LS.GelWall.list.filter(w => w.owner === owner && w.state !== 'shatter');
+    if (owner && mine.length >= this.PER_OWNER) mine[0].shatter();
+    const all = LS.GelWall.list.filter(w => w.state !== 'shatter'); if (all.length >= 40) all[0].shatter();
+    const w = new LS.GelWall(LS.Game.scene, p.x, y, p.z, yaw, { seed: Math.floor(p.x * 73 + p.z * 31) });
+    w.owner = owner; w.life = this.LIFE;
+    if (LS.Audio.ctx) { LS.Audio._noise(0.25, 'lowpass', 700, 1, 0.3); LS.Audio._tone('sine', 300, 700, 0.18, 0.1); }
+  },
+  clear() { for (const b of this.balls) if (b.m.parent) b.m.parent.remove(b.m); this.balls = []; }
+};

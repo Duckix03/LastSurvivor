@@ -70,7 +70,9 @@ LS.Loot = {
     } else if (r < 0.6) {
       const a = U.pick(Object.keys(LS.AMMO_TYPES));
       this.spawn('ammo', a, 0, LS.AMMO_TYPES[a].pickup, x, y, z);
-    } else if (r < 0.78) {
+    } else if (r < 0.66) { // bola de gelo (parede): só achando no chão
+      this.spawn('gel', 'gel', 0, Math.random() < 0.35 ? 2 : 1, x, y, z);
+    } else if (r < 0.8) {
       this.spawn('med', Math.random() < 0.4 ? 'medkit' : 'bandage', 0, Math.random() < 0.4 ? 1 : 2, x, y, z);
     } else {
       const lv = Math.random() < 0.55 ? 1 : Math.random() < 0.75 ? 2 : 3;
@@ -100,6 +102,7 @@ LS.Loot = {
     if (it.type === 'weapon') return LS.WEAPONS[it.id].name + ' (' + LS.WEAPONS[it.id].cat + ')';
     if (it.type === 'ammo') return LS.AMMO_TYPES[it.id].name + ' x' + it.amount;
     if (it.type === 'med') return LS.MEDS[it.id].name + ' x' + it.amount;
+    if (it.type === 'gel') return LS.GEL.name + ' x' + it.amount;
     if (it.type === 'vest') return 'Colete' + lv[it.level];
     if (it.type === 'helmet') return 'Capacete' + lv[it.level];
     if (it.type === 'bag') return 'Mochila' + lv[it.level];

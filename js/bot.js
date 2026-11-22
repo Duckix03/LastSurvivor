@@ -43,6 +43,7 @@ LS.Bot = class extends LS.Fighter {
       return uses && this.ammo[it.id] < this.maxAmmo(it.id) * 0.8;
     }
     if (it.type === 'med') return this.meds[it.id] < this.maxMed(it.id);
+    if (it.type === 'gel') return false; // bots não usam a parede
     if (it.type === 'vest' || it.type === 'helmet') return it.level > this[it.type].level;
     if (it.type === 'bag') return it.level > this.bag;
     return false;

@@ -49,7 +49,7 @@ LS.Touch = {
     ui.innerHTML = '<div id="joy">' + arrows + '<i></i></div>' +
       this.btn('fire', '', 'fire', 'fire') + this.btn('fire2', '', 'fire', 'fire2') + this.btn('aim', '', 'aim', 'aim') +
       this.btn('jump', '', 'jump', 'jump') + this.btn('crouch', '', 'crouch', 'crouch') + this.btn('reload', '', 'reload', 'reload') +
-      this.btn('med', '', 'med', 'med') + this.btn('band', '', 'band', 'band') + this.btn('use', 'PEGAR', 'use', 'use hidden') + this.btn('zoom', '8x', '', 'zoom hidden') +
+      this.btn('med', '', 'med', 'med') + this.btn('band', '', 'band', 'band') + this.btn('gel', '', 'gel', 'gel') + this.btn('use', 'PEGAR', 'use', 'use hidden') + this.btn('zoom', '8x', '', 'zoom hidden') +
       this.btn('run', '', 'run', 'run') +
       this.btn('bag', '', 'bag', 'bag') + this.btn('map', '', 'map', 'map') + this.btn('pause', '', 'pause', 'pause');
     const hud = document.getElementById('hud');
@@ -99,6 +99,7 @@ LS.Touch = {
       case 'reload': I.pressed.KeyR = true; break;
       case 'med': I.pressed.KeyH = true; break;
       case 'band': I.pressed.KeyG = true; break;
+      case 'gel': I.pressed.KeyQ = true; break;
       case 'use': I.pressed.KeyE = true; I.keys.KeyE = true; hold.key = 'KeyE'; break;
       case 'bag': if (G.state === 'playing' && G.player.alive) G.setInventory(!G.inventoryOpen); break;
       case 'map': LS.HUD.toggleBigMap(); break;
@@ -164,8 +165,8 @@ LS.Touch = {
     if (!this.active) return;
     const G = LS.Game, P = G.player, ui = document.getElementById('touch-ui');
     ui.classList.toggle('air', !!P && P.state !== 'ground');
-    if (P && P.meds) for (const [b, n] of [['med', P.meds.medkit], ['band', P.meds.bandage]]) {
-      const el = ui.querySelector('[data-tb=' + b + ']'); el.dataset.n = n | 0; el.classList.toggle('empty', !n);
+    if (P && P.meds) for (const [b, n] of [['med', P.meds.medkit], ['band', P.meds.bandage], ['gel', P.gelInf ? '∞' : P.gel | 0]]) {
+      const el = ui.querySelector('[data-tb=' + b + ']'); el.dataset.n = typeof n === 'string' ? n : n | 0; el.classList.toggle('empty', !n);
     }
     const zb = ui.querySelector('[data-tb=zoom]'), zOn = !!(P && P.scopeUp);
     zb.classList.toggle('hidden', !zOn); if (zOn) zb.querySelector('span').textContent = (+P.scopeZoom).toFixed(P.scopeZoom % 1 ? 1 : 0) + 'x';
