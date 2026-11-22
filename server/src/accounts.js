@@ -2,7 +2,7 @@
 //
 // Por que existe: sem conta, qualquer um coloca o nome que quiser (até o seu). Com conta:
 //   - o NOME é único e fica reservado pra quem criou a conta (com senha)
-//   - os SELOS (owner, dev, criador de conteúdo, verificado) só são dados aqui no servidor, pelo dono do jogo
+//   - os SELOS (owner, dev, tester, criador de conteúdo, verificado) só são dados aqui no servidor, pelo dono do jogo
 //   - CURTIDAS são de verdade: cada conta curte um perfil uma vez só
 //
 // Rotas (todas JSON, em /api/...):
@@ -38,7 +38,7 @@
 'use strict';
 
 const TOKEN_DAYS = 90, RENAME_COST = 10000, PBKDF2_ITER = 10000; // trocar de nome custa 10.000 moedas (igual a js/config.js) // poucas iterações: o plano grátis tem só ~10 ms de CPU por pedido
-const BADGES = ['owner', 'dev', 'cc', 'verificado'];
+const BADGES = ['owner', 'dev', 'tester', 'cc', 'verificado'];
 const MAX_FRIENDS = 200, ONLINE_MS = 150000; // online = mandou sinal nos últimos 2,5 min
 const RESERVED = ['admin', 'adm', 'moderador', 'owner', 'dono', 'dev', 'suporte', 'support', 'convidado', 'guest', 'lastsurvivor', 'last_survivor', 'sistema', 'system', 'claude', 'anthropic'];
 const NAME_RE = /^[A-Za-z0-9_.\-À-ÿ]{3,16}$/;
