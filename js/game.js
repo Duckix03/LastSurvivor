@@ -214,7 +214,7 @@ LS.Game = {
   // ---------- Eventos ----------
   onDamage(victim, attacker, dmg, head) {
     if (!victim.isPlayer) { if (victim.onHurt) victim.onHurt(attacker); return; }
-    LS.Audio.hurt();
+    LS.Audio.hurt(head); // levou na cabeça: panela abafada
     let ang = null;
     if (attacker) {
       const rel = LS.util.angleDiff(this.player.camYaw, Math.atan2(attacker.pos.x - victim.pos.x, attacker.pos.z - victim.pos.z));
@@ -393,7 +393,7 @@ LS.Game = {
       const fd = LS.effDist(); this.scene.fog.far = fd; this.scene.fog.near = fd * 0.3;
     } else r.shadowMap.enabled = shadows;
     this.camera.far = LS.effDist() + 100; this.camera.updateProjectionMatrix();
-    LS.Audio.setVolume(s.muted ? 0 : s.volume);
+    LS.Audio.setVolume(s.muted ? 0 : s.volume); if (LS.Music) LS.Music.sync();
   },
 
   // ---------- Loop ----------
@@ -401,6 +401,9 @@ LS.Game = {
     requestAnimationFrame(this.loop);
     const dt = Math.min(this.clock.getDelta(), 0.05) * LS.Console.timeScale;
     this.lastDt = dt;
+    // música do lobby e ambiente do reverb (galpão no duelo), conferidos poucas vezes por segundo
+    const nowMs = performance.now();
+    if (!(nowMs < this._sndT)) { this._sndT = nowMs + 400; if (LS.Music) LS.Music.sync(); if (LS.Audio.ctx) LS.Audio.setEnv(this.mode === 'duel' && this.state !== 'menu' && this.state !== 'lobby' ? 'hall' : 'open'); }
     this.fpsAcc += dt; this.fpsFrames++;
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
     // atrás de um painel (loja, perfil, configurações...) ou da pausa/fim, a cena 3D fica parada: não redesenha à toa (pesava muito no celular)

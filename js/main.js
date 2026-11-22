@@ -53,6 +53,7 @@ LS.UI = {
       $('set-perf').checked = S.perfMode;
       $('set-fps').checked = S.showFps;
       $('set-vol').value = S.volume; $('val-vol').textContent = pc(S.volume);
+      const mv = S.musicVol === undefined ? 0.5 : S.musicVol; $('set-music').value = mv; $('val-music').textContent = pc(mv);
       $('set-aa').checked = S.aimAssist !== false;
       $('set-fullscreen').checked = !!document.fullscreenElement;
       $('set-btns').value = S.btnSize || 1; $('val-btns').textContent = pc(S.btnSize || 1); // celular
@@ -74,6 +75,7 @@ LS.UI = {
     $('set-quality').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) { LS.Audio.click(); S.quality = b.dataset.q; changed(); } });
     $('set-filter').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { LS.Audio.click(); S.filter = b.dataset.f; if (!S.vivid) S.vivid = 0.6; changed(); } });
     $('set-vol').addEventListener('input', e => { S.volume = +e.target.value; changed(); });
+    $('set-music').addEventListener('input', e => { S.musicVol = +e.target.value; changed(); if (LS.Music) LS.Music.sync(); });
     $('set-dist').addEventListener('input', e => { S.renderDistance = +e.target.value; changed(); });
     $('set-fps').addEventListener('change', e => { S.showFps = e.target.checked; changed(); });
     $('set-res').addEventListener('input', e => { S.resScale = +e.target.value; changed(); });
@@ -120,7 +122,7 @@ LS.UI = {
       case 'settings-reset':
         { // volta ao padrão só o que está na aba aberta
           const D = LS.defaultSettings, TAB = { sens: ['sensGeneral', 'sensRedDot', 'sens4x', 'sens6x', 'sens8x'],
-            gfx: ['resScale', 'quality', 'filter', 'vivid', 'renderDistance', 'postfx', 'perfMode', 'showFps'], geral: ['volume', 'aimAssist', 'btnSize', 'btnAlpha', 'uiSize'] };
+            gfx: ['resScale', 'quality', 'filter', 'vivid', 'renderDistance', 'postfx', 'perfMode', 'showFps'], geral: ['volume', 'musicVol', 'aimAssist', 'btnSize', 'btnAlpha', 'uiSize'] };
           for (const k of TAB[this.settingsTab] || []) LS.settings[k] = D[k];
           LS.saveSettings(); this.syncSettings(); LS.Game.applySettings(); LS.Touch.fit();
         }
