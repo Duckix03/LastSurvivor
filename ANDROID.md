@@ -28,6 +28,14 @@ O **GitHub Actions** compila o APK sozinho a cada push:
 No celular: abra o link, baixe e instale (o Android pede pra permitir "instalar apps desconhecidos"). As próximas
 versões instalam **por cima**, sem perder nada.
 
+## 🔄 Atualização dentro do app
+
+Quando sai versão nova, o app mostra **"Ei! Seu jogo está desatualizado."** e o botão **Atualizar** faz tudo sozinho:
+confere se o APK novo já foi publicado em Releases, pede (só na 1ª vez) a permissão de "instalar apps desconhecidos",
+baixa com barra de progresso e abre o instalador do Android por cima do jogo. Código: `ApkUpdaterPlugin.java` (nativo)
+e `LS.AppUpdate` em `js/config.js`. Se algo falhar, oferece baixar pelo navegador.
+(Quem ainda está com um APK de antes disso atualiza uma última vez pelo navegador.)
+
 ## 🛠️ Compilar no seu computador (opcional)
 
 Precisa de Node 22, JDK 21 e Android Studio (ou o Android SDK).

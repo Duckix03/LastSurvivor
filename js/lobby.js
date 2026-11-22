@@ -8,7 +8,8 @@ LS.Lobby = {
     this.built = true;
     const sc = this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 420); // enxerga o céu e a cidade ao longe
-    LS.LobbyScene.build(sc, this);
+    this.themeId = LS.LobbyThemes.active();
+    LS.LobbyScene.build(sc, this, LS.LobbyThemes.T[this.themeId]);
     // personagem do jogador (segura a arma escolhida no Arsenal)
     this.model = new LS.CharacterModel({ look: LS.playerProfile.look });
     this.model.setGun(LS.playerProfile.weapon || null);
@@ -35,6 +36,20 @@ LS.Lobby = {
     this.syncUI();
   },
 
+  // troca o tema do cenário (Natal, Halloween...): refaz o terraço e mantém os personagens
+  applyTheme() {
+    const id = LS.LobbyThemes.active();
+    if (!this.built || id === this.themeId) return;
+    this.themeId = id;
+    const keep = new Set([this.model.root, ...this.extras.map(m => m.root)]), sc = this.scene;
+    for (const o of [...sc.children]) {
+      if (keep.has(o)) continue;
+      sc.remove(o);
+      o.traverse(n => { if (n.geometry) n.geometry.dispose(); const ms = n.material ? (Array.isArray(n.material) ? n.material : [n.material]) : [];
+        ms.forEach(m => { if (m.map && m.map !== LS.LobbyThemes._dot) m.map.dispose(); m.dispose(); }); });
+    }
+    LS.LobbyScene.build(sc, this, LS.LobbyThemes.T[id]);
+  },
   buildUI() {
     LS.Wardrobe.init(); // guarda-roupa em grade (js/wardrobe.js)
     // o nome é trocado no perfil (custa moedas): tocar no campo abre a edição do perfil
@@ -83,11 +98,12 @@ LS.Lobby = {
       onFail: why => {
         if (!this.searching) return;
         this.online = false;
+        if (why === 'maint') { this.cancelSearch(); return; } // manutenção: a tela de manutenção aparece por cima
         title.textContent = why === 'nomatch' ? 'NINGUÉM ONLINE AGORA' : why === 'outdated' ? 'JOGO DESATUALIZADO' : 'SERVIDOR INDISPONÍVEL';
         cnt.textContent = 'começando contra bots…';
         if (why === 'outdated') { // versão velha não entra no online (crossplay com regras diferentes dá bug)
           cnt.textContent = LS.IS_APP ? 'baixe o app novo pra jogar online · contra bots…' : 'recarregue a página pra jogar online · contra bots…';
-          if (LS.IS_APP && !this._askedUpdate) { this._askedUpdate = true; setTimeout(() => { if (confirm('Tem uma versão nova do Last Survivor!\nBaixar agora pra jogar online?')) location.href = LS.APP_DOWNLOAD_URL; }, 1600); }
+          if (LS.IS_APP && !this._askedUpdate) { this._askedUpdate = true; setTimeout(() => LS.showOutdated('?'), 1600); } // tela de atualizar (baixa e instala o APK sozinho)
         }
         setTimeout(() => { if (!this.searching) return; this.searching = false; document.getElementById('lobby-mm').classList.add('hidden'); title.textContent = 'PROCURANDO PARTIDA'; LS.Game.startMatch(); }, 1400);
       },

@@ -33,6 +33,8 @@
 //   POST /api/admin/codes/create {code?, item?, coins, diamonds, maxUses, days}   (só owner) cria codiguin
 //   GET  /api/admin/codes                      (só owner) lista os codiguins
 //   POST /api/admin/codes/delete {code}        (só owner) apaga um codiguin
+//   POST /api/presence {sid}                   (público) "X jogando" + config do jogo: tema do lobby e manutenção
+//   POST /api/admin/game {theme?, maint?, msg?}   (só owner) tema do lobby pra todos e modo manutenção (só owner/dev entram)
 //   GET  /api/admin/cc-limits · POST /api/admin/cc-limits {...}   (só owner) limites dos codiguins dos criadores
 //   GET  /api/cc/codes                         (criador de conteúdo) seus codiguins + limites + quantos ainda pode criar
 //   POST /api/cc/codes/create {code?, item?, coins, diamonds, maxUses, days}   (criador) cria dentro dos limites
@@ -64,6 +66,8 @@ const PROTECTED = it => EXCLUSIVE.has(it) || it in DIAMOND_PRICES || PIECE_SET.h
 const DAILY_DIAMONDS = 10, DAILY_MS = 20 * 3600e3;
 const CODE_RE = /^[A-Z0-9-]{4,20}$/, CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 // codiguins dos criadores de conteúdo: o owner muda esses limites no painel ADMIN → CRIADORES
+// tema do lobby (iguais aos de js/lobbythemes.js) · manutenção: só owner e DEV entram no jogo
+const THEMES = ['auto', 'padrao', 'halloween', 'natal', 'anonovo', 'verao', 'junina'], STAFF = b => (b || []).includes('owner') || (b || []).includes('dev');
 const CC_DEFAULT = { perWeek: 5, maxUses: 100, maxCoins: 5000, maxDiamonds: 0, maxDays: 30, items: true, legend: false }, WEEK_MS = 7 * 864e5;
 // lendários do Gold Royale (iguais aos de raridade 3 em js/cosmetics.js): criador só dá se o owner liberar
 const ROYALE_LEGEND = new Set(['hat:coroa', 'hat:auréola', 'top:armadura', 'pattern:galáxia']);
@@ -115,11 +119,22 @@ export class Accounts {
 
   // quem está com o jogo aberto: cada aba manda um sinal a cada ~40 s com um código aleatório (não identifica ninguém).
   // Fica só na memória: se o servidor reiniciar, o número volta sozinho em menos de 1 minuto.
-  presence(b) {
+  async presence(b) {
     const P = this.pres || (this.pres = new Map()), now = Date.now(), sid = String(b.sid || '');
     if (/^[a-z0-9]{10,32}$/.test(sid) && (P.has(sid) || P.size < 200000)) P.set(sid, now);
     if (!this.presT || now - this.presT > 10000) { this.presT = now; for (const [k, t] of P) if (now - t > 100000) P.delete(k); }
-    return { online: P.size };
+    const g = await this.gameCfg();
+    return { online: P.size, theme: g.theme, maint: g.maint, msg: g.msg };
+  }
+  // config do jogo (fica na memória depois da 1ª leitura: o "X jogando" pede isso toda hora)
+  async gameCfg() { return this.gcfg || (this.gcfg = Object.assign({ theme: 'auto', maint: false, msg: '' }, (await this.st.get('cfg:game')) || {})); }
+  async setGame(b) {
+    const g = Object.assign({}, await this.gameCfg());
+    if (b.theme !== undefined) { if (!THEMES.includes(b.theme)) return fail('Tema inválido.'); g.theme = b.theme; }
+    if (b.maint !== undefined) g.maint = !!b.maint;
+    if (b.msg !== undefined) g.msg = txt(b.msg, 160);
+    this.gcfg = g; await this.st.put('cfg:game', g);
+    return json({ game: g });
   }
 
   async fetch(req) {
@@ -133,7 +148,7 @@ export class Accounts {
       if (path === '/api/login') return await this.login(body);
       if (path === '/api/google') return await this.google(body, await this.auth(req, true));
       if (path === '/api/handoff/redeem') return await this.redeem(body);
-      if (path === '/api/presence') return json(this.presence(body)); // contador "X jogando" do lobby (sem conta: convidados contam também)
+      if (path === '/api/presence') return json(await this.presence(body)); // contador "X jogando" do lobby (sem conta: convidados contam também)
       let m = path.match(/^\/api\/profile\/(\d{10})$/);
       if (m && req.method === 'GET') return await this.publicProfile(m[1], await this.auth(req, true));
       const me = await this.auth(req);
@@ -159,6 +174,10 @@ export class Accounts {
         if (path === '/api/cc/codes' && req.method === 'GET') return json(await this.ccState(me));
         if (path === '/api/cc/codes/create') return await this.ccCreate(me, body);
         if (path === '/api/cc/codes/delete') return await this.ccDelete(me, body);
+      }
+      if (path === '/api/admin/game') {
+        if (!me.badges.includes('owner')) return fail('Só o owner pode mudar isso.', 403);
+        return req.method === 'POST' ? await this.setGame(body) : json({ game: await this.gameCfg() });
       }
       if (path === '/api/admin/cc-limits') {
         if (!me.badges.includes('owner')) return fail('Só o owner pode mudar os limites.', 403);
@@ -541,8 +560,9 @@ export class Accounts {
     if (/^[0-9a-f]{64}$/.test(tok)) {
       const t = await this.st.get('t:' + tok);
       const a = t && t.exp > Date.now() && await this.st.get('a:' + t.id);
-      if (a) return { name: a.name, id: a.id, badges: a.badges, friends: a.friends || [] };
+      if (a) return { name: a.name, id: a.id, badges: a.badges, friends: a.friends || [], maint: (await this.gameCfg()).maint && !STAFF(a.badges) };
     }
+    if ((await this.gameCfg()).maint) return { name: 'Convidado', maint: true }; // manutenção: convidado não entra
     const name = txt(b.name, 16) || 'Jogador';
     if (await this.st.get('u:' + name.toLowerCase()) || RESERVED.includes(name.toLowerCase())) return { name: 'Convidado' + Math.floor(1000 + Math.random() * 9000) };
     return { name };

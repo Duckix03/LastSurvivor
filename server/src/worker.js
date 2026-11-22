@@ -92,6 +92,7 @@ export class Matchmaker {
     try {
       const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('global')).fetch('https://accounts/internal/resolve', { method: 'POST', body: JSON.stringify({ token: m.auth, name: p.name }) });
       const d = await r.json(); if (d && d.name) { p.name = cleanName(d.name); p.accId = d.id || null; p.badges = d.badges || []; }
+      if (d && d.maint) { send(p.ws, { t: 'maint' }); try { p.ws.close(1000, 'maint'); } catch (e) { } return; } // manutenção: só owner/DEV jogam
     } catch (e) { /* contas fora do ar: segue com o nome mandado */ }
     if (p.gone) return;
     this.queue.push(p);
@@ -375,6 +376,7 @@ export async function roomRoutes(req, env, url) {
   if (req.method === 'OPTIONS') return new Response(null, { headers: Object.assign({ 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST' }, cors) });
   const b = await req.json().catch(() => ({}));
   const acc = await resolveAcc(env, b.auth);
+  if (acc.maint) return jsonR({ err: 'O jogo está em manutenção. Volte daqui a pouquinho!' });
   if (!acc.id) return jsonR({ err: 'Entre na sua conta pra usar salas personalizadas (são só com amigos).' });
   const dir = env.ROOMDIR.get(env.ROOMDIR.idFromName('global'));
   if (url.pathname === '/room/list') return dir.fetch('https://dir/list', { method: 'POST', body: JSON.stringify({ me: acc.id, friends: acc.friends || [] }) });

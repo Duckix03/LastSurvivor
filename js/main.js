@@ -138,6 +138,7 @@ window.addEventListener('load', () => {
     document.body.innerHTML = '<div style="color:#fff;font-family:sans-serif;padding:40px;font-size:20px">Não foi possível carregar o Three.js. Verifique sua conexão com a internet e recarregue a página.</div>';
     return;
   }
+  if (window.__bootP) window.__bootP(0.7, 'MONTANDO O LOBBY…');
   LS.UI.wrapPanels();
   if (!LS.Full.can()) { // iPhone: sem tela cheia no navegador → esconde o botão e a opção
     document.querySelectorAll('[data-action="fullscreen"]').forEach(b => b.style.display = 'none');
@@ -162,6 +163,8 @@ window.addEventListener('load', () => {
   LS.UI.bindSettings();
   LS.UIKit.init(); // caixas de seleção, números, sliders e animações próprias (js/uikit.js)
   LS.UI.updateMenuStats();
+  // tela de carregamento some depois que o lobby já foi desenhado (2 quadros)
+  if (window.__bootP) { window.__bootP(0.92, 'QUASE LÁ…'); requestAnimationFrame(() => requestAnimationFrame(() => window.__bootP(1, 'PRONTO!'))); }
   document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => LS.UI.onAction(b.dataset.action)));
   window.addEventListener('keydown', e => {
     if (e.code === 'Escape' && LS.UI.subPanelOpen()) LS.UI.back();

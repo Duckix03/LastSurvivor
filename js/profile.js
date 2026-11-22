@@ -286,9 +286,13 @@ LS.Profile = {
     this.admTab = tab = tab || this.admTab || 'badges';
     const tabs = '<div class="adm-tabs"><button class="' + (tab === 'badges' ? 'on' : '') + '" data-pf="adm-tab" data-v="badges">SELOS</button>' +
       '<button class="' + (tab === 'codes' ? 'on' : '') + '" data-pf="adm-tab" data-v="codes">GERADOR DE CODIGUIN</button>' +
-      '<button class="' + (tab === 'cc' ? 'on' : '') + '" data-pf="adm-tab" data-v="cc">CRIADORES</button></div>';
+      '<button class="' + (tab === 'cc' ? 'on' : '') + '" data-pf="adm-tab" data-v="cc">CRIADORES</button>' +
+      '<button class="' + (tab === 'theme' ? 'on' : '') + '" data-pf="adm-tab" data-v="theme">TEMAS</button>' +
+      '<button class="' + (tab === 'maint' ? 'on' : '') + '" data-pf="adm-tab" data-v="maint">MANUTENÇÃO</button></div>';
     if (tab === 'codes') { this.cgMode = 'admin'; return this.openCodes(tabs); }
     if (tab === 'cc') return this.openCcLimits(tabs);
+    if (tab === 'theme') return this.openThemes(tabs);
+    if (tab === 'maint') return this.openMaint(tabs);
     const on = LS.Console.dev;
     this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Dê ou tire selos de qualquer conta pelo ID.</p><div class="pf-row"><input id="pf-adm-id" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ID da conta"><button class="btn small" data-pf="adm-find">BUSCAR</button></div>' +
       '<div id="pf-adm-box"></div><p id="pf-err" class="pf-err hidden"></p>' +
@@ -456,6 +460,44 @@ LS.Profile = {
       this.modalError('Limites salvos!'); document.getElementById('pf-err').classList.add('ok');
     } catch (e) { this.modalError(e.message); }
   },
+  // ADMIN → TEMAS: muda o lobby de todo mundo (Natal, Halloween...). Prévia muda só o seu
+  async openThemes(tabs) {
+    this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">O tema muda o cenário do lobby de <b>todo mundo</b> (chega em até 1 minuto, sem precisar atualizar o jogo). <b>Automático</b> escolhe pela data.</p>' +
+      '<div id="th-now" class="th-now"></div><div id="th-grid" class="th-grid"><p class="pf-hint">Carregando…</p></div><p id="pf-err" class="pf-err hidden"></p>' +
+      '<div class="pf-modal-btns">' + (LS.LobbyThemes.preview ? '<button class="btn" data-pf="th-stop">PARAR PRÉVIA</button>' : '') + '<button class="btn btn-primary" data-pf="close">FECHAR</button></div>', 'adm wide');
+    let cur = LS.LobbyThemes.server;
+    try { cur = (await LS.Account.adminGame()).theme; } catch (e) { this.modalError(e.message); }
+    const TH = LS.LobbyThemes, opts = [{ id: 'auto', name: 'Automático', sw: ['#3a4a6a', '#8a9ab8'] }].concat(TH.LIST);
+    document.getElementById('th-now').innerHTML = 'Agora pra todos: <b>' + this.esc(TH.name(cur)) + '</b>' + (TH.preview ? ' · sua prévia: <b>' + this.esc(TH.name(TH.preview)) + '</b>' : '');
+    document.getElementById('th-grid').innerHTML = opts.map(t => '<div class="th-card' + (t.id === cur ? ' on' : '') + '"><div class="th-sw" style="background:linear-gradient(135deg,' + t.sw[0] + ',' + t.sw[1] + ')">' + (t.id === cur ? '<i>ATIVO</i>' : '') + '</div>' +
+      '<b>' + this.esc(t.id === 'auto' ? 'Automático' : t.name) + '</b><small>' + (t.id === 'auto' ? 'hoje: ' + this.esc(TH.name(TH.byDate())) : '&nbsp;') + '</small>' +
+      '<div class="th-btns"><button class="btn small" data-pf="th-prev" data-v="' + t.id + '">PRÉVIA</button><button class="btn small btn-primary" data-pf="th-set" data-v="' + t.id + '"' + (t.id === cur ? ' disabled' : '') + '>APLICAR</button></div></div>').join('');
+  },
+  async thSet(id) {
+    try { const g = await LS.Account.adminGame({ theme: id }); LS.LobbyThemes.preview = null; LS.LobbyThemes.setServer(g.theme); this.openAdmin('theme'); setTimeout(() => { this.modalError('Tema aplicado pra todos: ' + LS.LobbyThemes.name(g.theme)); const e = document.getElementById('pf-err'); if (e) e.classList.add('ok'); }, 300); }
+    catch (e) { this.modalError(e.message); }
+  },
+  thPreview(id) { LS.LobbyThemes.setPreview(id); this.closeModal(); LS.UI.showScreen('menu-main'); LS.HUD.toast('Prévia: ' + LS.LobbyThemes.name(id) + ' (só pra você)'); },
+  // ADMIN → MANUTENÇÃO: durante uma atualização só o owner e quem tem selo DEV entram
+  async openMaint(tabs) {
+    this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Ligada, <b>só você e quem tem o selo DEV</b> entram no jogo. Os outros veem a tela "Estamos atualizando o jogo!" e o servidor recusa a fila e as salas. Chega pra todo mundo em até 1 minuto.</p>' +
+      '<div id="mt-adm" class="mt-adm"><p class="pf-hint">Carregando…</p></div><p id="pf-err" class="pf-err hidden"></p>' +
+      '<div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>', 'adm');
+    try {
+      const g = await LS.Account.adminGame();
+      document.getElementById('mt-adm').innerHTML = '<div class="pf-adm-sec mt-row"><label class="pf-switch"><input type="checkbox" id="mt-on"' + (g.maint ? ' checked' : '') + '><span></span></label>' +
+        '<div><b id="mt-st">' + (g.maint ? 'MANUTENÇÃO LIGADA' : 'Desligada · todo mundo pode jogar') + '</b><small>Lembre de desligar quando a atualização terminar.</small></div></div>' +
+        '<label class="mt-lbl">Recado na tela <small>(opcional)</small><input id="mt-msg" maxlength="160" placeholder="Ex: Voltamos às 18h com o modo novo!" value="' + this.esc(g.msg || '') + '"></label>' +
+        '<button class="btn btn-primary cg-make" data-pf="mt-save">SALVAR</button>';
+      document.getElementById('mt-on').addEventListener('change', e => { document.getElementById('mt-st').textContent = e.target.checked ? 'MANUTENÇÃO LIGADA (salve pra valer)' : 'Desligada (salve pra valer)'; });
+    } catch (e) { this.modalError(e.message); }
+  },
+  async mtSave() {
+    try { const g = await LS.Account.adminGame({ maint: document.getElementById('mt-on').checked, msg: document.getElementById('mt-msg').value });
+      LS.Maint.set(g.maint, g.msg); this.modalError(g.maint ? 'Manutenção LIGADA: só owner e DEV entram.' : 'Manutenção desligada: todo mundo pode jogar.'); document.getElementById('pf-err').classList.add('ok');
+      document.getElementById('mt-st').textContent = g.maint ? 'MANUTENÇÃO LIGADA' : 'Desligada · todo mundo pode jogar'; }
+    catch (e) { this.modalError(e.message); }
+  },
   devStatus() {
     const on = LS.Console.dev, chk = document.getElementById('pf-dev-chk'), st = document.getElementById('pf-dev-st');
     if (chk) chk.checked = on;
@@ -507,6 +549,10 @@ LS.Profile = {
         case 'admin': this.openAdmin(); break;
         case 'cc': this.openCc(); break;
         case 'ccl-save': this.ccLimSave(); break;
+        case 'th-set': this.thSet(el.dataset.v); break;
+        case 'th-prev': this.thPreview(el.dataset.v); break;
+        case 'th-stop': LS.LobbyThemes.setPreview(null); this.openAdmin('theme'); break;
+        case 'mt-save': this.mtSave(); break;
         case 'adm-tab': this.openAdmin(el.dataset.v); break;
         case 'cg-pick': this.cgPicker(); break;
         case 'cg-ptab': this.cgPicker(el.dataset.v); break;

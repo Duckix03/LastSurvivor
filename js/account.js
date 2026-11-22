@@ -59,6 +59,7 @@ LS.Account = {
     this.refreshUI();
   },
   refreshUI() {
+    if (LS.Maint) LS.Maint.sync(); // entrou/saiu da conta: DEV passa pela manutenção
     if (LS.Menu && LS.Profile && LS.Profile.bound) LS.Menu.render();
     if (LS.Lobby && LS.Lobby.built) { LS.Lobby.model.applyLook(LS.playerProfile.look); LS.Lobby.model.setGun(LS.playerProfile.weapon || null); LS.Lobby.syncUI(); }
     const n = document.getElementById('lobby-name');
@@ -107,6 +108,7 @@ LS.Account = {
   async ccState() { return await this.api('/api/cc/codes', null, 'GET'); },
   async ccCreate(o) { return await this.api('/api/cc/codes/create', o); },
   async ccDelete(code) { return await this.api('/api/cc/codes/delete', { code }); },
+  async adminGame(set) { return (await this.api('/api/admin/game', set || null, set ? 'POST' : 'GET')).game; },
   async ccLimits(set) { return (await this.api('/api/admin/cc-limits', set || null, set ? 'POST' : 'GET')).limits; },
   async logout() { try { await this.api('/api/logout', {}); } catch (e) { /* tanto faz */ } this.drop(); },
   // troca o nome da conta: o servidor cobra as moedas (manda as moedas atuais antes, pra ele saber quantas tem)
@@ -149,6 +151,8 @@ LS.Presence = {
       const r = await fetch(LS.NET_URL.replace(/\/$/, '') + '/api/presence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sid: this.sid }) });
       const j = await r.json();
       if (typeof j.online === 'number') this.show(Math.max(1, j.online)); // no mínimo você
+      if (j.theme) LS.LobbyThemes.setServer(j.theme); // tema do lobby escolhido pelo dono do jogo
+      if (j.maint !== undefined) LS.Maint.set(j.maint, j.msg);
     } catch (e) { /* sem internet/servidor: some o contador */ this.show(null); }
   },
   show(n) {
@@ -162,5 +166,33 @@ LS.Presence = {
     const step = now => { const k = Math.min(1, (now - t0) / 700); el.textContent = fmt(from + (n - from) * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
     requestAnimationFrame(step);
     box.title = n === 1 ? 'Só você com o jogo aberto agora' : n.toLocaleString('pt-BR') + ' pessoas com o jogo aberto agora';
+  }
+};
+
+// MANUTENÇÃO: quando o dono liga (ADMIN → MANUTENÇÃO), só ele e quem tem o selo DEV entram no jogo.
+// Os outros veem esta tela no menu (o servidor também recusa a fila e as salas). Sem internet não bloqueia.
+LS.Maint = {
+  on: false, msg: '',
+  staff() { const a = LS.Account, b = a && a.logged() && a.me ? a.me.badges || [] : []; return b.includes('owner') || b.includes('dev'); },
+  set(on, msg) { this.on = !!on; this.msg = msg || ''; this.sync(); },
+  recheck() { LS.Presence.ping(); },
+  sync() {
+    const G = LS.Game, idle = !G || G.state === 'menu' || G.state === 'lobby', staff = this.staff();
+    document.body.classList.toggle('ls-maint-staff', this.on && staff);
+    const show = this.on && !staff && idle && !(LS.UI && LS.UI.current === 'panel-settings'); // configurações abertas = entrando na conta
+    let el = document.getElementById('maint');
+    if (!show) { if (el) el.remove(); return; }
+    if (LS.Lobby && LS.Lobby.searching) LS.Lobby.cancelSearch();
+    if (!el) {
+      el = document.createElement('div'); el.id = 'maint';
+      el.innerHTML = '<div class="mt-box"><div class="mt-icon"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" fill="currentColor"/></svg></div>' +
+        '<h1>Estamos atualizando o jogo!</h1><p>O Last Survivor está em manutenção rapidinho pra receber novidades. Volte daqui a pouquinho!</p><div class="mt-msg hidden"></div>' +
+        '<div class="mt-btns"><button class="btn btn-primary mt-retry">TENTAR DE NOVO</button><button class="btn mt-dev">SOU DEV · ENTRAR</button></div><small class="mt-who"></small></div>';
+      document.body.appendChild(el);
+      el.querySelector('.mt-retry').addEventListener('click', e => { const b = e.currentTarget; b.disabled = true; b.textContent = 'CONFERINDO…'; this.recheck(); setTimeout(() => { b.disabled = false; b.textContent = 'TENTAR DE NOVO'; }, 1500); });
+      el.querySelector('.mt-dev').addEventListener('click', () => { LS.UI.onAction('settings'); LS.UI.setTab('conta'); this.sync(); });
+    }
+    const m = el.querySelector('.mt-msg'); m.textContent = this.msg; m.classList.toggle('hidden', !this.msg);
+    const a = LS.Account; el.querySelector('.mt-who').textContent = a && a.logged() && a.me ? 'Você entrou como ' + a.me.name + ' (sem selo DEV).' : '';
   }
 };
