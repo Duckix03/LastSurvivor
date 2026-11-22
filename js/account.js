@@ -126,3 +126,36 @@ LS.Account = {
     this._statT = setTimeout(() => this.api('/api/stats', { stats: LS.stats }).catch(() => {}), now ? 0 : 1500);
   }
 };
+
+// "X jogando" do lado do título no lobby: cada aba aberta manda um sinal a cada 40 s (código aleatório da aba,
+// não identifica ninguém) e o servidor devolve quantas abas mandaram sinal no último minuto e meio.
+LS.Presence = {
+  n: null, timer: null,
+  init() {
+    if (!LS.NET_URL) return;
+    try { this.sid = sessionStorage.getItem('ls_sid'); } catch (e) { /* ignora */ }
+    if (!this.sid) { const a = new Uint8Array(12); crypto.getRandomValues(a); this.sid = Array.from(a, b => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join(''); try { sessionStorage.setItem('ls_sid', this.sid); } catch (e) { /* ignora */ } }
+    this.ping();
+    this.timer = setInterval(() => { if (!document.hidden) this.ping(); }, 40000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.ping(); });
+  },
+  async ping() {
+    try {
+      const r = await fetch(LS.NET_URL.replace(/\/$/, '') + '/api/presence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sid: this.sid }) });
+      const j = await r.json();
+      if (typeof j.online === 'number') this.show(Math.max(1, j.online)); // no mínimo você
+    } catch (e) { /* sem internet/servidor: some o contador */ this.show(null); }
+  },
+  show(n) {
+    const box = document.getElementById('lb-online'), el = document.getElementById('lb-online-n');
+    if (!box || !el) return;
+    if (n === null) { box.classList.add('hidden'); return; }
+    const from = this.n === null ? n : this.n; this.n = n;
+    box.classList.remove('hidden');
+    // conta subindo/descendo rapidinho até o número novo
+    const t0 = performance.now(), fmt = v => Math.round(v).toLocaleString('pt-BR');
+    const step = now => { const k = Math.min(1, (now - t0) / 700); el.textContent = fmt(from + (n - from) * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+    box.title = n === 1 ? 'Só você com o jogo aberto agora' : n.toLocaleString('pt-BR') + ' pessoas com o jogo aberto agora';
+  }
+};
