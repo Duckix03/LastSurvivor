@@ -2,15 +2,25 @@
 'use strict';
 LS.UI = {
   screens: ['menu-main', 'lobby', 'panel-modes', 'panel-custom', 'panel-shop', 'panel-friends', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
-  current: 'menu-main', backTo: 'menu-main',
+  current: 'menu-main', backTo: 'menu-main', stack: [], // stack: de onde cada painel foi aberto (VOLTAR volta um passo)
 
   showScreen(id) {
     this.screens.forEach(s => document.getElementById(s).classList.toggle('active', s === id));
     this.current = id;
+    if (id === 'menu-main' || id === null) this.stack = []; // no menu (ou jogando) não tem pra onde voltar
   },
   subPanelOpen() { return ['panel-modes', 'panel-custom', 'panel-shop', 'panel-friends', 'panel-settings', 'panel-controls', 'panel-credits', 'panel-arsenal', 'panel-stats', 'panel-news'].includes(this.current); },
-  openPanel(id) { this.backTo = this.current; this.showScreen(id); },
-  back() { this.showScreen(this.backTo || 'menu-main'); },
+  openPanel(id) {
+    if (this.current && this.current !== id) this.stack.push(this.current);
+    this.backTo = this.current !== id ? this.current : this.backTo; this.showScreen(id);
+  },
+  // volta pra tela de antes (painel aberto de dentro de outro painel volta pra ele, não fica preso)
+  back() {
+    if (this.current === 'panel-custom' && LS.Custom) LS.Custom.leave(true); // sair da tela da sala = sair da sala
+    let to = this.stack.pop();
+    while (to && (to === this.current || to === 'loading')) to = this.stack.pop();
+    this.showScreen(to || 'menu-main');
+  },
   updateMenuStats() {
     if (LS.Menu) LS.Menu.render();
   },

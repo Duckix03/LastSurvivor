@@ -25,7 +25,7 @@ LS.Custom = {
       else if (a === 'kick') this.send({ t: 'kick', pid: el.dataset.pid });
       else if (a === 'start') this.send({ t: 'start' });
       else if (a === 'leave') this.leave();
-      else if (a === 'back') { this.leave(true); LS.UI.back(); }
+      else if (a === 'back') LS.UI.back(); // o VOLTAR já sai da sala
       else if (a === 'copy') { try { navigator.clipboard.writeText(this.room.id); this.toast('ID copiado: ' + this.room.id); } catch (er) { this.toast('ID: ' + this.room.id); } }
       else if (a === 'showpass') { const i = document.getElementById('cu-pass'); if (i) i.type = i.type === 'password' ? 'text' : 'password'; }
     });
@@ -77,7 +77,7 @@ LS.Custom = {
     this.ws = ws; this.room = null;
     ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', proto: LS.NET_PROTO, auth: LS.Account.token, pass, look: LS.playerProfile.look }));
     ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } if (ws === this.ws) this.onMsg(m); };
-    ws.onclose = () => { if (ws !== this.ws) return; this.ws = null; this.busy = false; const was = this.inGame; this.room = null; if (was) this.exitMatch(); if (!this.err) this.err = 'Você saiu da sala.'; this.view = 'list'; if (LS.UI.current === 'panel-custom' || was) { LS.UI.showScreen('panel-custom'); this.render(); this.list(); } };
+    ws.onclose = () => { if (ws !== this.ws) return; this.ws = null; this.busy = false; const was = this.inGame; this.room = null; if (was) this.exitMatch(); if (!this.err) this.err = 'Você saiu da sala.'; this.view = 'list'; if (LS.UI.current === 'panel-custom' || was) { if (was) LS.UI.showScreen('panel-custom'); this.render(); this.list(); } };
     ws.onerror = () => { if (ws === this.ws && !this.room) this.err = 'Não deu pra conectar na sala.'; };
   },
   leave(silent) {
@@ -95,7 +95,7 @@ LS.Custom = {
       case 'welcome': this.you = m.you; return;
       case 'denied': this.err = m.why; return; // a conexão fecha logo depois
       case 'note': this.toast(m.msg); return;
-      case 'room': this.room = m; this.busy = false; if (!this.inGame) { this.view = 'room'; if (LS.UI.current !== 'panel-custom') LS.UI.showScreen('panel-custom'); this.render(); } return;
+      case 'room': this.room = m; this.busy = false; if (!this.inGame) { this.view = 'room'; if (LS.UI.current === 'panel-custom') this.render(); } return; // não puxa a tela de volta
       case 'game': this.begin(m); return;
       case 'phase': this.onPhase(m); return;
       case 'picks': this.picks = m.list; this.renderShop(); return;
