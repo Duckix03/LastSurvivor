@@ -91,7 +91,7 @@ LS.GelWall = class {
     this.state = 'shatter'; this.t = 0; this.removeColliders();
     const rnd = Math.random;
     this.blocks.forEach(b => { b.vx = Math.sin(b.a) * (1 + rnd() * 2) + (rnd() - 0.5) * 2; b.vz = (rnd() - 0.3) * 3; b.vy = 2 + rnd() * 4 + b.y * 0.6; b.rx = (rnd() - 0.5) * 12; b.rz = (rnd() - 0.5) * 12; b.px = b.x; b.py = b.y; b.pz = b.z; });
-    if (LS.Audio && LS.Audio.ctx) { LS.Audio._noise(0.35, 'highpass', 1800, 1, 0.35); LS.Audio._tone('triangle', 1400, 500, 0.25, 0.12); }
+    if (LS.Audio.ctx) { const s = LS.GelWall.snd(this.group.position); LS.Audio.gelBreak(s.d, s.pan); }
   }
   update(dt) {
     this.t += dt;
@@ -120,6 +120,12 @@ LS.GelWall = class {
     const L = LS.GelWall.list, i = L.indexOf(this); if (i >= 0) L.splice(i, 1);
   }
   static updateAll(dt) { if (LS.GelBall) LS.GelBall.update(dt); for (const w of LS.GelWall.list.slice()) w.update(dt); }
+  // distância e lado (estéreo) de um ponto em relação a quem está jogando
+  static snd(p) {
+    const P = LS.Game.player; if (!P || !P.pos) return { d: 0, pan: 0 };
+    const dx = p.x - P.pos.x, dz = p.z - P.pos.z, d = Math.hypot(dx, dz);
+    return { d, pan: d < 0.5 ? 0 : -Math.sin(LS.util.angleDiff(P.camYaw, Math.atan2(dx, dz))) };
+  }
   static clear() { for (const w of LS.GelWall.list.slice()) w.dispose(); if (LS.GelBall) LS.GelBall.clear(); }
 };
 LS.GelWall.list = [];
@@ -144,7 +150,7 @@ LS.GelBall = {
     const v = new THREE.Vector3(dir.x, Math.max(-0.4, dir.y), dir.z).normalize().multiplyScalar(this.SPEED); v.y += this.UP;
     if (LS.Net.online && LS.Net.owns(f)) LS.Net.send({ t: 'gel', i: f.netId, o: [o.x, o.y, o.z].map(n => Math.round(n * 100) / 100), v: [v.x, v.y, v.z].map(n => Math.round(n * 100) / 100) });
     this.spawn(f, o, v);
-    if (LS.Audio.ctx) LS.Audio._noise(0.12, 'bandpass', 900, 1, 0.18);
+    if (LS.Audio.ctx) { if (f.isPlayer) LS.Audio.gelThrow(); else { const s = LS.GelWall.snd(f.pos); if (s.d < 40) LS.Audio.gelThrow(s.d, s.pan); } }
     return true;
   },
   // cria a bolinha voando (também usado quando chega da rede: mesma física = mesmo lugar em todo mundo)
@@ -179,7 +185,7 @@ LS.GelBall = {
     const all = LS.GelWall.list.filter(w => w.state !== 'shatter'); if (all.length >= 40) all[0].shatter();
     const w = new LS.GelWall(LS.Game.scene, p.x, y, p.z, yaw, { seed: Math.floor(p.x * 73 + p.z * 31) });
     w.owner = owner; w.life = this.LIFE;
-    if (LS.Audio.ctx) { LS.Audio._noise(0.25, 'lowpass', 700, 1, 0.3); LS.Audio._tone('sine', 300, 700, 0.18, 0.1); }
+    if (LS.Audio.ctx) { const s = LS.GelWall.snd(p); LS.Audio.gelPop(s.d, s.pan); }
   },
   clear() { for (const b of this.balls) if (b.m.parent) b.m.parent.remove(b.m); this.balls = []; }
 };

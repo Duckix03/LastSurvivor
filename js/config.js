@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '72'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '74'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // versão do ONLINE (crossplay navegador ↔ app). Suba +1 quando mudar algo que quebra a partida online
 // (armas, mapa, protocolo de rede...) e suba junto o MIN_PROTO em server/src/worker.js, depois "npx wrangler deploy".
 // Quem estiver com versão mais velha (ex.: APK antigo) recebe o aviso pra atualizar em vez de entrar com regras diferentes.
@@ -70,7 +70,7 @@ LS.BOT_LEVEL = { dmg: 0.55, skill: [0.35, 1] };
 LS.GRAVITY = 24;
 
 // ---------- Configurações persistentes ----------
-LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, renderDistance: 400, fullscreen: false, showFps: false, resScale: 1, perfMode: false, vivid: 0.6, postfx: true, aimAssist: true,
+LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, musicVol: 0.5, renderDistance: 400, fullscreen: false, showFps: false, resScale: 1, perfMode: false, vivid: 0.6, postfx: true, aimAssist: true,
   // celular: tamanho dos botões de toque, transparência deles e tamanho dos menus/HUD (1 = padrão)
   btnSize: 1, btnAlpha: 0.85, uiSize: 1,
   // sensibilidade estilo Free Fire (0 a 100; 50 = padrão): geral (sem mirar), red dot (mirando sem luneta) e lunetas 4x/6x/8x

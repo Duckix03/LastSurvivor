@@ -111,12 +111,13 @@ LS.UIKit = {
     if (!b || b.closest('#touch-ui') || b.disabled) return;
     const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2;
     const z = b.offsetWidth ? r.width / b.offsetWidth : 1; // celular: os menus estão com zoom
-    const s = document.createElement('span'); s.className = 'rip';
+    // tags próprias (não <span>): o CSS dos botões estiliza 'span' (ex.: o quadradinho do ícone do menu) e a onda virava um ícone duplicado
+    const s = document.createElement('ls-rip'); s.className = 'rip';
     s.style.width = s.style.height = d / z + 'px';
     s.style.left = (e.clientX - r.left - d / 2) / z + 'px'; s.style.top = (e.clientY - r.top - d / 2) / z + 'px';
     if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
     let h = b.querySelector(':scope > .rip-h'); // camada que recorta a onda (não corta os selos "NOVO" do botão)
-    if (!h) { h = document.createElement('span'); h.className = 'rip-h'; b.appendChild(h); }
+    if (!h) { h = document.createElement('ls-rip'); h.className = 'rip-h'; b.appendChild(h); }
     h.appendChild(s);
     setTimeout(() => s.remove(), 650);
   },
