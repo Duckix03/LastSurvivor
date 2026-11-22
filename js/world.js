@@ -213,7 +213,7 @@ LS.World = {
     return tmin;
   },
   raycast(o, d, maxDist) {
-    let best = maxDist;
+    let best = maxDist, hitBox = null; // hitBox: a caixa acertada (lastBox: pra parede de gel saber que levou tiro)
     const ex = o.x + d.x * maxDist, ez = o.z + d.z * maxDist;
     const minX = Math.min(o.x, ex), maxX = Math.max(o.x, ex), minZ = Math.min(o.z, ez), maxZ = Math.max(o.z, ez);
     // percorre as células da grade ao longo do raio (rápido mesmo para raios longos)
@@ -241,7 +241,7 @@ LS.World = {
               }
               tb = hitT;
             }
-            if (tb >= 0 && tb < best) best = tb;
+            if (tb >= 0 && tb < best) { best = tb; hitBox = b; }
           }
         }
       if (s >= horiz) break;
@@ -255,11 +255,12 @@ LS.World = {
       if (y < h) {
         let a = prevT, c = tt;
         for (let i = 0; i < 6; i++) { const m = (a + c) / 2; if (o.y + d.y * m < this.heightAt(o.x + d.x * m, o.z + d.z * m)) c = m; else a = m; }
-        best = a; break;
+        best = a; hitBox = null; break;
       }
       prevT = tt;
       if (tt >= best) break;
     }
+    this.lastBox = hitBox;
     return best;
   },
   hasLOS(a, b) {

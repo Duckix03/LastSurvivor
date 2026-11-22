@@ -84,7 +84,7 @@ LS.Game = {
       this.bots.forEach(b => b.model.applyLook(LS.Skin.randomLook()));
       this.plane.reset(); this.zone.reset();
       this.precompile();
-      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop();
+      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
       const df = LS.BOT_LEVEL; this.botDamageMul = df.dmg; this.bots.forEach(b => { b.skill = LS.util.rand(df.skill[0], df.skill[1]); });
       this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
       document.getElementById('killfeed').innerHTML = '';
@@ -130,7 +130,7 @@ LS.Game = {
       if (host) N.send({ t: 'diff', dmg: df.dmg });
       this.fighters = fighters;
       this.precompile();
-      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop();
+      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
       this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
       document.getElementById('killfeed').innerHTML = '';
       LS.UI.showScreen(null); LS.HUD.show(true); this.setInventory(false);
@@ -166,7 +166,7 @@ LS.Game = {
       this.fighters = mine.concat(foes);
       LS.Loot.clear(); LS.Effects.clear();
       this.plane.active = false; this.plane.mesh.visible = false;
-      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop();
+      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
       LS.Duel.enter(this.scene, mine, foes); // monta o galpão, o 1º mapa e começa o round 1
       this.precompile();
       document.getElementById('killfeed').innerHTML = '';
@@ -187,7 +187,7 @@ LS.Game = {
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
       LS.Duel.exit(); LS.Victory.hide(); LS.HUD.clearShots(); this.mode = 'custom'; this.lastKiller = null; this.zone.rng = null;
-      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop();
+      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
       LS.Custom.setup(d);
       this.precompile();
       document.getElementById('killfeed').innerHTML = '';
@@ -439,6 +439,7 @@ LS.Game = {
     const focus = P.state === 'plane' ? this.plane.mesh.position : P.pos;
     LS.Loot.update(dt, focus);
     LS.Effects.update(dt);
+    LS.GelWall.updateAll(dt); // paredes de gel (brotar / balançar / estourar)
     LS.World.updateSky(arena ? 0.33 : this.time / 430, this.scene, focus, dt); // duelo e sala: sempre de dia
     // lá do alto (avião/queda) a névoa e o limite de visão acompanham a altura: senão o chão inteiro fica dentro da névoa
     const fd = LS.effDist(), ch = Math.max(0, this.camera.position.y - LS.World.heightAt(this.camera.position.x, this.camera.position.z) - 25);

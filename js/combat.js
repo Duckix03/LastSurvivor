@@ -283,8 +283,9 @@ LS.Combat = {
       if (shooter.isPlayer) d = this.coneDir(this._d, dir, spread, p, wdef.pellets);
       else { d = this._d.copy(dir); d.x += (Math.random() - 0.5) * 2 * spread; d.y += (Math.random() - 0.5) * 2 * spread; d.z += (Math.random() - 0.5) * 2 * spread; d.normalize(); } // bots: como antes
       const maxR = wdef.range * 1.6;
-      const wt = LS.World.raycast(origin, d, maxR);
+      const wt = LS.World.raycast(origin, d, maxR), wbox = LS.World.lastBox;
       const hit = this.hitFighter(origin, d, wt, shooter);
+      if (!hit && wbox && wbox.gel) wbox.gel.hit(wdef.dmg); // parede de gel balança (e estoura) com os tiros
       const t = hit ? hit.t : wt;
       const end = this._end.copy(origin).addScaledVector(d, t);
       if (p < 3) LS.Effects.tracer(muzzle, end);
