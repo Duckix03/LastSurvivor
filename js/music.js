@@ -3,9 +3,12 @@
 //   1–4 abertura (pad + chimbal + arpejo leve) · 5–12 completa (bumbo, palma, baixo "pulsando" e arpejo com eco)
 //   13–14 respiro (sem bumbo) · 15–16 volta com virada e subida de ruído
 // Toca no menu e no guarda-roupa; com um painel aberto fica abafada; some quando a partida começa.
+// MÚSICAS DOS TEMAS (assets/music/<tema>.mp3, volume já igualado em -18 LUFS): cada tema do lobby tem a sua; tocam em
+// loop com emenda cruzada (sem corte) e trocam com crossfade quando o tema muda. A faixa gerada acima é só a reserva
+// (sem internet / arquivo não carregou).
 'use strict';
 LS.Music = {
-  BPM: 104, playing: false, step: 0, nextT: 0,
+  BPM: 104, playing: false, step: 0, nextT: 0, bufs: {}, loading: {}, cur: null, XF: 2.5, TRACK_GAIN: 0.85,
   CHORDS: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], // Lá m, Fá, Dó, Sol (MIDI)
   init(ctx, master) {
     this.ctx = ctx; this.A = LS.Audio;
@@ -29,6 +32,7 @@ LS.Music = {
     const G = LS.Game, on = !!G && (G.state === 'menu' || G.state === 'lobby') && this.vol01() > 0 && !document.hidden;
     if (on && !this.playing) this.start(); else if (!on && this.playing) this.stop();
     if (this.playing) {
+      if (this.cur && this.cur.id !== this.trackId()) this.useTrack(this.trackId()); // tema mudou: troca a música
       const t = this.ctx.currentTime, covered = LS.UI && LS.UI.subPanelOpen();
       this.vol.gain.setTargetAtTime(this.vol01() * 0.9, t, 0.4);
       this.tone.frequency.setTargetAtTime(covered ? 1100 : 20000, t, covered ? 0.15 : 0.4); // painel aberto: abafa
@@ -38,11 +42,52 @@ LS.Music = {
     this.playing = true; this.step = 0; this.bar = 0; this.nextT = this.ctx.currentTime + 0.1;
     this.vol.gain.cancelScheduledValues(this.ctx.currentTime); this.vol.gain.setValueAtTime(0, this.ctx.currentTime);
     this.vol.gain.linearRampToValueAtTime(this.vol01() * 0.9, this.ctx.currentTime + 2.5);
-    clearInterval(this.timer); this.timer = setInterval(() => this.tick(), 25);
+    clearInterval(this.timer); this.timer = null;
+    this.useTrack(this.trackId());
   },
+  startSynth() { if (!this.timer) { this.step = 0; this.bar = 0; this.nextT = this.ctx.currentTime + 0.1; this.timer = setInterval(() => this.tick(), 25); } },
   stop() {
-    this.playing = false; clearInterval(this.timer);
+    this.playing = false; clearInterval(this.timer); this.timer = null;
     const t = this.ctx.currentTime; this.vol.gain.cancelScheduledValues(t); this.vol.gain.setValueAtTime(this.vol.gain.value, t); this.vol.gain.linearRampToValueAtTime(0, t + 0.8);
+    clearTimeout(this._stopT); this._stopT = setTimeout(() => { if (!this.playing && this.cur) { this.drop(this.cur, 0); this.cur = null; } }, 900); // libera o áudio depois do fade
+  },
+  // ---------- músicas dos temas ----------
+  trackId() { return LS.LobbyThemes ? LS.LobbyThemes.active() : 'padrao'; },
+  load(id) {
+    if (this.bufs[id] !== undefined) return Promise.resolve(this.bufs[id]);
+    return this.loading[id] || (this.loading[id] = fetch('assets/music/' + id + '.mp3').then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then(ab => new Promise((ok, no) => { const p = this.ctx.decodeAudioData(ab, ok, no); if (p && p.then) p.then(ok, no); }))
+      .then(b => (this.bufs[id] = b), () => (this.bufs[id] = null)) // sem arquivo: null → usa a faixa gerada
+      .finally(() => { delete this.loading[id]; }));
+  },
+  useTrack(id) {
+    if (this.cur && this.cur.id === id) return;
+    this.want = id;
+    this.load(id).then(buf => {
+      if (!this.playing || this.want !== id || (this.cur && this.cur.id === id)) return;
+      if (!buf) { this.startSynth(); return; }
+      clearInterval(this.timer); this.timer = null; // a música de verdade chegou: para a reserva
+      if (this.cur) this.drop(this.cur, 1.6);
+      const g = this.ctx.createGain(); g.gain.value = this.TRACK_GAIN; g.connect(this.vol);
+      this.cur = { id, buf, g, srcs: [], timer: null };
+      this.loopAt(this.cur, this.ctx.currentTime + 0.05, true);
+    });
+  },
+  // toca uma volta da música e agenda a próxima começando XF segundos antes do fim (as duas se cruzam: sem emenda seca)
+  loopAt(tr, t, first) {
+    const c = this.ctx, dur = tr.buf.duration, XF = Math.min(this.XF, dur / 4);
+    const src = c.createBufferSource(), g = c.createGain(); src.buffer = tr.buf; src.connect(g); g.connect(tr.g);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + (first ? 1.6 : XF));
+    g.gain.setValueAtTime(1, t + dur - XF); g.gain.linearRampToValueAtTime(0, t + dur);
+    src.start(t); src.stop(t + dur + 0.05);
+    tr.srcs.push(src); src.onended = () => { const i = tr.srcs.indexOf(src); if (i >= 0) tr.srcs.splice(i, 1); };
+    const next = t + dur - XF;
+    tr.timer = setTimeout(() => { if (this.cur === tr) this.loopAt(tr, next, false); }, Math.max(0, (next - c.currentTime - 1.5) * 1000));
+  },
+  drop(tr, fade) {
+    clearTimeout(tr.timer); const t = this.ctx.currentTime;
+    tr.g.gain.cancelScheduledValues(t); tr.g.gain.setValueAtTime(tr.g.gain.value, t); tr.g.gain.linearRampToValueAtTime(0, t + fade + 0.01);
+    setTimeout(() => { tr.srcs.forEach(s => { try { s.stop(); } catch (e) { /* já parou */ } }); try { tr.g.disconnect(); } catch (e) { /* ok */ } }, (fade + 0.1) * 1000);
   },
   // agenda as próximas notas um pouquinho à frente (relógio do áudio, não do JS: não atrasa)
   tick() {

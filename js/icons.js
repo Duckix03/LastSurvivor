@@ -3,6 +3,8 @@
 'use strict';
 window.LS = window.LS || {};
 LS.ICONS = {
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5L12 13l8.5-6.5"/>',
+  gift: '<rect x="3" y="9" width="18" height="5" rx="1"/><path d="M5 14v6h14v-6M12 9v11M12 9c-1.5-3-5-4.5-6-2.5S8.5 9 12 9zM12 9c1.5-3 5-4.5 6-2.5S15.5 9 12 9z"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
   gun: '<path d="M3 9h15l2-2h1v4h-3l-1 2h-4l-1 4H8l1-4H5L3 11z"/><path d="M12 13v2"/>',
   chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',

@@ -1,7 +1,7 @@
 // Menus, painéis de configuração e inicialização
 'use strict';
 LS.UI = {
-  screens: ['menu-main', 'lobby', 'panel-modes', 'panel-custom', 'panel-shop', 'panel-friends', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
+  screens: ['menu-main', 'lobby', 'panel-modes', 'panel-custom', 'panel-shop', 'panel-friends', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-mail', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
   current: 'menu-main', backTo: 'menu-main', stack: [], // stack: de onde cada painel foi aberto (VOLTAR volta um passo)
 
   showScreen(id) {
@@ -9,7 +9,7 @@ LS.UI = {
     this.current = id;
     if (id === 'menu-main' || id === null) this.stack = []; // no menu (ou jogando) não tem pra onde voltar
   },
-  subPanelOpen() { return ['panel-modes', 'panel-custom', 'panel-shop', 'panel-friends', 'panel-settings', 'panel-controls', 'panel-credits', 'panel-arsenal', 'panel-stats', 'panel-news'].includes(this.current); },
+  subPanelOpen() { return ['panel-modes', 'panel-custom', 'panel-shop', 'panel-friends', 'panel-settings', 'panel-controls', 'panel-credits', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-mail'].includes(this.current); },
   openPanel(id) {
     if (this.current && this.current !== id) this.stack.push(this.current);
     this.backTo = this.current !== id ? this.current : this.backTo; this.showScreen(id);
@@ -103,6 +103,7 @@ LS.UI = {
       case 'stats': LS.Menu.renderStats(); this.openPanel('panel-stats'); break;
       case 'stats-reset': LS.Menu.resetStats(); break;
       case 'news': this.openPanel('panel-news'); break;
+      case 'mail': LS.Mail.open(); break;
       case 'modes': LS.Modes.open(); break;
       case 'shop': LS.Shop.open('shop'); break;
       case 'royale': LS.Shop.open('royale'); break;
@@ -155,6 +156,7 @@ window.addEventListener('load', () => {
   LS.Modes.init();
   LS.Account.init(); // conta (se já entrou neste navegador)
   LS.Presence.init(); // "X jogando" no lobby
+  LS.Mail.init(); // correio (avisos e presentes do dono do jogo)
   LS.Profile.init();
   LS.Conta.init(); // aba CONTA das configurações (e a página de login com Google aberta pelo app)
   LS.Shop.init(); LS.Friends.init(); LS.Custom.init(); LS.Menu.initBanners();

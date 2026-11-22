@@ -59,6 +59,7 @@ LS.Account = {
     this.refreshUI();
   },
   refreshUI() {
+    if (LS.Mail && LS.Mail.ready) LS.Mail.refresh(); // entrou/saiu da conta: mensagens pessoais mudam
     if (LS.Maint) LS.Maint.sync(); // entrou/saiu da conta: DEV passa pela manutenção
     if (LS.Menu && LS.Profile && LS.Profile.bound) LS.Menu.render();
     if (LS.Lobby && LS.Lobby.built) { LS.Lobby.model.applyLook(LS.playerProfile.look); LS.Lobby.model.setGun(LS.playerProfile.weapon || null); LS.Lobby.syncUI(); }
@@ -108,6 +109,19 @@ LS.Account = {
   async ccState() { return await this.api('/api/cc/codes', null, 'GET'); },
   async ccCreate(o) { return await this.api('/api/cc/codes/create', o); },
   async ccDelete(code) { return await this.api('/api/cc/codes/delete', { code }); },
+  // correio
+  async mail() { return await this.api('/api/mail', null, 'GET'); },
+  async mailClaim(id) {
+    const d = await this.api('/api/mail/claim', { id }), R = d.reward;
+    if (R.coins) { LS.stats.coins = (LS.stats.coins || 0) + R.coins; LS.saveStats(); }
+    this.apply(d.account);
+    R.items.forEach(it => { if (LS.Cosmetics.byId[it]) LS.Cosmetics.give(it); }); // libera as peças (fantasia)
+    return d;
+  },
+  async mailMark(kind, ids) { return await this.api(kind === 'del' ? '/api/mail/delete' : '/api/mail/read', kind === 'del' ? { id: ids[0] } : { ids }); },
+  async adminMail() { return await this.api('/api/admin/mail', null, 'GET'); },
+  async adminMailSend(o) { return await this.api('/api/admin/mail/send', o); },
+  async adminMailDelete(id) { return await this.api('/api/admin/mail/delete', { id }); },
   async adminGame(set) { return (await this.api('/api/admin/game', set || null, set ? 'POST' : 'GET')).game; },
   async ccLimits(set) { return (await this.api('/api/admin/cc-limits', set || null, set ? 'POST' : 'GET')).limits; },
   async logout() { try { await this.api('/api/logout', {}); } catch (e) { /* tanto faz */ } this.drop(); },
@@ -153,6 +167,7 @@ LS.Presence = {
       if (typeof j.online === 'number') this.show(Math.max(1, j.online)); // no mínimo você
       if (j.theme) LS.LobbyThemes.setServer(j.theme); // tema do lobby escolhido pelo dono do jogo
       if (j.maint !== undefined) LS.Maint.set(j.maint, j.msg);
+      if (j.mailT && LS.Mail) LS.Mail.seen(j.mailT); // chegou mensagem nova pra todos
     } catch (e) { /* sem internet/servidor: some o contador */ this.show(null); }
   },
   show(n) {

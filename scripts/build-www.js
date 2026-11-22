@@ -6,7 +6,7 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const out = path.join(root, 'www');
-const ITEMS = ['index.html', 'version.json', 'favicon.png', 'css', 'js', 'fonts', 'anims'];
+const ITEMS = ['index.html', 'version.json', 'favicon.png', 'css', 'js', 'fonts', 'anims', 'assets/music'];
 
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
