@@ -62,8 +62,8 @@ LS.Menu = {
   },
   toggleMute() { LS.settings.muted = !LS.settings.muted; LS.saveSettings(); LS.Game.applySettings(); this.render(); },
   toggleFullscreen() {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else { const p = document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => { /* navegador recusou */ }); }
+    if (LS.Full.el()) LS.Full.exit();
+    else LS.Full.enter().catch(() => { /* navegador recusou */ });
   },
 
   // ---- arsenal ----

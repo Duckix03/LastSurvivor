@@ -13,7 +13,9 @@ LS.Items = {
   merge(parts, unit = 1) {
     const pos = [], nor = [], col = [], m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), c = new THREE.Color(), one = new THREE.Vector3(1, 1, 1);
     for (const p of parts) {
-      const [x, y, z, w, h, d, color, rx = 0, ry = 0, rz = 0] = p;
+      // índices em vez de "const [x, ..., rx = 0] = p": essa desestruturação com valor padrão quebra no Safari/iPhone
+      // (bug do JavaScriptCore: "undefined is not a function" depois de rodar muitas vezes) e deixava o lobby preto
+      const x = p[0], y = p[1], z = p[2], w = p[3], h = p[4], d = p[5], color = p[6], rx = p[7] || 0, ry = p[8] || 0, rz = p[9] || 0;
       const g = new THREE.BoxGeometry(w * unit, h * unit, d * unit).toNonIndexed();
       m.compose(new THREE.Vector3(x * unit, y * unit, z * unit), q.setFromEuler(e.set(rx, ry, rz)), one);
       g.applyMatrix4(m);

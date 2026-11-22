@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '76'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '77'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // versão do ONLINE (crossplay navegador ↔ app). Suba +1 quando mudar algo que quebra a partida online
 // (armas, mapa, protocolo de rede...) e suba junto o MIN_PROTO em server/src/worker.js, depois "npx wrangler deploy".
 // Quem estiver com versão mais velha (ex.: APK antigo) recebe o aviso pra atualizar em vez de entrar com regras diferentes.
@@ -70,6 +70,13 @@ LS.BOT_LEVEL = { dmg: 0.55, skill: [0.35, 1] };
 LS.GRAVITY = 24;
 
 // ---------- Configurações persistentes ----------
+// tela cheia: o iPhone (Safari) não tem; o iPad só com prefixo webkit. Sem suporte, o botão some (antes dava erro)
+LS.Full = {
+  el() { return document.fullscreenElement || document.webkitFullscreenElement || null; },
+  can() { const d = document.documentElement; return !!(d.requestFullscreen || d.webkitRequestFullscreen); },
+  enter() { try { const d = document.documentElement, f = d.requestFullscreen || d.webkitRequestFullscreen; const p = f ? f.call(d) : null; return p && p.then ? p : Promise.resolve(); } catch (e) { return Promise.reject(e); } },
+  exit() { try { const f = document.exitFullscreen || document.webkitExitFullscreen; if (f && this.el()) f.call(document); } catch (e) { /* ignora */ } },
+};
 LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, musicVol: 0.5, renderDistance: 400, fullscreen: false, showFps: false, resScale: 1, perfMode: false, vivid: 0.6, postfx: true, aimAssist: true,
   // celular: tamanho dos botões de toque, transparência deles e tamanho dos menus/HUD (1 = padrão)
   btnSize: 1, btnAlpha: 0.85, uiSize: 1,

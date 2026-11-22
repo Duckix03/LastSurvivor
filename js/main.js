@@ -55,7 +55,7 @@ LS.UI = {
       $('set-vol').value = S.volume; $('val-vol').textContent = pc(S.volume);
       const mv = S.musicVol === undefined ? 0.5 : S.musicVol; $('set-music').value = mv; $('val-music').textContent = pc(mv);
       $('set-aa').checked = S.aimAssist !== false;
-      $('set-fullscreen').checked = !!document.fullscreenElement;
+      $('set-fullscreen').checked = !!LS.Full.el();
       $('set-btns').value = S.btnSize || 1; $('val-btns').textContent = pc(S.btnSize || 1); // celular
       $('set-btna').value = S.btnAlpha === undefined ? 0.85 : S.btnAlpha; $('val-btna').textContent = pc(S.btnAlpha === undefined ? 0.85 : S.btnAlpha);
       $('set-uis').value = S.uiSize || 1; $('val-uis').textContent = pc(S.uiSize || 1);
@@ -87,8 +87,8 @@ LS.UI = {
     touchSet('set-btns', 'btnSize'); touchSet('set-btna', 'btnAlpha'); touchSet('set-uis', 'uiSize');
     $('set-fullscreen').addEventListener('change', e => {
       S.fullscreen = e.target.checked; LS.saveSettings();
-      if (e.target.checked) { const p = document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => { e.target.checked = false; }); }
-      else if (document.fullscreenElement) document.exitFullscreen();
+      if (e.target.checked) LS.Full.enter().catch(() => { e.target.checked = false; });
+      else LS.Full.exit();
     });
     document.addEventListener('fullscreenchange', sync);
     sync(); this.setTab('sens');
@@ -139,6 +139,10 @@ window.addEventListener('load', () => {
     return;
   }
   LS.UI.wrapPanels();
+  if (!LS.Full.can()) { // iPhone: sem tela cheia no navegador → esconde o botão e a opção
+    document.querySelectorAll('[data-action="fullscreen"]').forEach(b => b.style.display = 'none');
+    const sf = document.getElementById('set-fullscreen'); if (sf) sf.closest('.setting').style.display = 'none';
+  }
   LS.checkAppVersion(); // app velho: tela de "atualize"
   LS.Game.init();
   LS.App.init(); // app Android (APK): botão voltar etc. No navegador não faz nada

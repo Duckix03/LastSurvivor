@@ -180,8 +180,8 @@ LS.Touch = {
   goFull() {
     if (!this.active) return;
     try {
-      const d = document.documentElement, p = d.requestFullscreen ? d.requestFullscreen() : null;
-      if (p && p.then) p.then(() => { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); }).catch(() => {});
+      if (!LS.Full.can()) return;
+      LS.Full.enter().then(() => { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); }).catch(() => {});
     } catch (e) { /* navegador não deixa */ }
   }
 };
