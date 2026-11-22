@@ -1,6 +1,6 @@
 // PAREDE DE GEL (estilo bloquinho): muro curvo de cubos de gel azul, meio transparente, com topo de "gelo" irregular.
 // Inspirada no modelo enviado (arco de ~4 m, 2,4 m de altura), refeita em blocos pra combinar com o jogo.
-//  - nasce "brotando" do chão, do meio pras pontas, com um pulinho de geleia
+//  - nasce "brotando" do chão, do meio pras pontas, com um pulinho de geleia (sem base: só os cubos)
 //  - balança de leve quando leva tiro (hit) e estoura em pedaços que voam (shatter)
 //  - colisores por coluna: segura gente e bala
 // Teste: console → "parede" (cria na sua frente) · "parede quebrar"
@@ -44,9 +44,6 @@ LS.GelWall = class {
       m.userData = { x: col.cx + (rnd() - 0.5) * 0.25, z: col.cz + 0.05, top: col.h * B - 0.2, y: rnd() * col.h * B, sp: 0.15 + rnd() * 0.25 };
       g.add(m); this.bubbles.push(m);
     }
-    // base de gel espalhado no chão
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(R * span + 0.9, 0.08, B * 2.4), new THREE.MeshLambertMaterial({ color: 0x7fe2ff, transparent: true, opacity: 0.55 }));
-    foot.position.set(0, 0.04, -0.35); foot.scale.set(0.001, 1, 1); g.add(foot); this.foot = foot;
     scene.add(g);
     this.M = new THREE.Matrix4(); this.Q = new THREE.Quaternion(); this.S = new THREE.Vector3(); this.P = new THREE.Vector3(); this.E = new THREE.Euler();
     this.place(0);
@@ -100,7 +97,7 @@ LS.GelWall = class {
     this.t += dt;
     for (const m of this.bubbles) { const u = m.userData; u.y += u.sp * dt; if (u.y > u.top) u.y = 0.1; m.position.set(u.x, u.y, u.z); m.visible = this.state !== 'shatter'; }
     if (this.state === 'grow') {
-      this.place(this.t); this.foot.scale.x = Math.min(1, this.t / 0.35);
+      this.place(this.t);
       if (this.t > 0.9) { this.state = 'idle'; this.place(9); }
     } else if (this.state === 'idle') {
       if (this.wobT > 0) { this.wobT = Math.max(0, this.wobT - dt); this.place(9); }
@@ -111,14 +108,14 @@ LS.GelWall = class {
         const s = Math.max(0.001, (1 - k / 0.9) * 0.8);
         P.set(b.px, b.py, b.pz); E.set(b.rx * k, b.a, b.rz * k); Q.setFromEuler(E); S.set(s, s, s); M.compose(P, Q, S); im.setMatrixAt(i, M);
       });
-      im.instanceMatrix.needsUpdate = true; im.material.opacity = 0.82 * Math.max(0, 1 - k / 0.9); this.foot.material.opacity = 0.55 * Math.max(0, 1 - k / 0.6);
+      im.instanceMatrix.needsUpdate = true; im.material.opacity = 0.82 * Math.max(0, 1 - k / 0.9);
       if (k > 0.95) this.dispose();
     }
   }
   dispose() {
     this.state = 'dead'; this.removeColliders();
     if (this.group.parent) this.group.parent.remove(this.group);
-    this.mesh.geometry.dispose(); this.mesh.material.dispose(); this.foot.geometry.dispose(); this.foot.material.dispose();
+    this.mesh.geometry.dispose(); this.mesh.material.dispose();
     const L = LS.GelWall.list, i = L.indexOf(this); if (i >= 0) L.splice(i, 1);
   }
   static updateAll(dt) { for (const w of LS.GelWall.list.slice()) w.update(dt); }
