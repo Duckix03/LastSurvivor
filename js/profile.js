@@ -1,5 +1,5 @@
 // Perfil no estilo Free Fire: personagem 3D do lado, foto de perfil (foto 3D do seu boneco), nome, ID,
-// curtidas, recado (bio), selos (verificado, criador de conteúdo, dev, owner), patente, nível e estatísticas.
+// curtidas, recado (bio), selos (verificado, criador de conteúdo, dev, tester, owner), patente, nível e estatísticas.
 // Nome, curtidas e selos de verdade vêm da CONTA (js/account.js). Também mostra o perfil de outros jogadores:
 // de contas (busca por ID) e de bots (no fim da partida).
 // (Não tem envio de imagem de propósito: assim ninguém coloca foto imprópria no perfil.)
@@ -9,6 +9,7 @@ LS.Profile = {
   BADGES: {
     owner: { label: 'OWNER', cls: 'b-owner', icon: '<path d="M3 18h18l-2-10-5 4-2-7-2 7-5-4z" fill="currentColor"/>' },
     dev: { label: 'DEV', cls: 'b-dev', icon: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>' },
+    tester: { label: 'TESTER', cls: 'b-tester', icon: '<path d="M9 3h6M10 3v6l-5.2 8.6A2.2 2.2 0 0 0 6.7 21h10.6a2.2 2.2 0 0 0 1.9-3.4L14 9V3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.4 15h9.2l2 3.3a1 1 0 0 1-.9 1.5H6.3a1 1 0 0 1-.9-1.5z" fill="currentColor"/>' }, // quem entrou na beta
     cc: { label: 'CRIADOR DE CONTEÚDO', cls: 'b-cc', icon: '<rect x="2" y="5" width="20" height="14" rx="4" fill="currentColor"/><path d="M10 9l5 3-5 3z" fill="#fff"/>' },
     verificado: { label: 'VERIFICADO', cls: 'b-ver', icon: '<path d="M12 2l2.6 2 3.3-.3.9 3.2 2.9 1.6-1.2 3.1 1.2 3.1-2.9 1.6-.9 3.2-3.3-.3L12 22l-2.6-2-3.3.3-.9-3.2-2.9-1.6 1.2-3.1-1.2-3.1 2.9-1.6.9-3.2 3.3.3z" fill="currentColor"/><path d="M8 12l3 3 5-6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' }
   },
@@ -35,6 +36,8 @@ LS.Profile = {
     });
   },
   // selos só existem em conta (o servidor é quem dá); convidado não tem
+  // o "verificado" azul do lado do nome: qualquer selo menos o de tester (beta não é verificação)
+  verified(p) { return this.badgesOf(p).some(b => b !== 'tester'); },
   badgesOf(p) { if (p === LS.playerProfile && !LS.Account.logged()) return []; return (p.badges || []).filter((b, i, l) => this.BADGES[b] && l.indexOf(b) === i); },
   rankOf(level) { let r = this.RANKS[0]; for (const k of this.RANKS) if (level >= k[0]) r = k; return { name: r[1], color: r[2] }; },
   hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; },
@@ -92,7 +95,7 @@ LS.Profile = {
     const el = document.getElementById('lb-avatar'); if (!el || !LS.Game.renderer) return;
     const P = LS.playerProfile, url = this.avatarOf(P);
     el.innerHTML = url ? '<img src="' + url + '" alt="">' : this.esc((P.name || 'J').charAt(0).toUpperCase());
-    const v = document.getElementById('lb-verified'); if (v) v.innerHTML = this.badgesOf(P).length ? this.verifiedIcon() : LS.Account.logged() ? '' : '<span class="lb-guest">CONVIDADO</span>';
+    const v = document.getElementById('lb-verified'); if (v) v.innerHTML = this.verified(P) ? this.verifiedIcon() : LS.Account.logged() ? '' : '<span class="lb-guest">CONVIDADO</span>';
   },
   verifiedIcon() { return '<svg class="pf-vtick" viewBox="0 0 24 24">' + this.BADGES.verificado.icon + '</svg>'; },
 
@@ -128,7 +131,7 @@ LS.Profile = {
     body += '<div class="pf-right">' + (guest ? '<div class="pf-guest"><div><b>VOCÊ É CONVIDADO</b><span>Crie uma conta pra <b>reservar o seu nome</b>, receber curtidas, ganhar selos e levar o perfil pra qualquer computador.</span></div>' +
       '<button class="btn small btn-primary" data-pf="register">CRIAR CONTA</button><button class="btn small" data-pf="login">ENTRAR</button></div>' : '') + '<div class="pf-head">' +
       '<div class="pf-avatar">' + (this.avatarOf(p) ? '<img src="' + this.avatarOf(p) + '" alt="">' : '') + (own ? '<button class="pf-cam" data-pf="photo" title="Trocar foto">' + this.camIcon() + '</button>' : '') + '<span class="pf-lvl">' + lvl + '</span></div>' +
-      '<div class="pf-idbox"><div class="pf-name">' + this.esc(p.name || 'Jogador') + (badges.length ? this.verifiedIcon() : '') + '</div>' +
+      '<div class="pf-idbox"><div class="pf-name">' + this.esc(p.name || 'Jogador') + (badges.some(b => b !== 'tester') ? this.verifiedIcon() : '') + '</div>' +
       '<div class="pf-sub">ID: <b>' + p.id + '</b> <button class="pf-copy" data-pf="copy" title="Copiar ID">COPIAR</button> · BR</div>' +
       '<div class="pf-badges">' + (badges.length ? badges.map(k => { const B = this.BADGES[k]; return '<span class="pf-badge ' + B.cls + '"><svg viewBox="0 0 24 24">' + B.icon + '</svg>' + B.label + '</span>'; }).join('') : '<span class="pf-nobadge">Sem selos</span>') + '</div></div>' +
       '<div class="pf-likes' + (liked ? ' on' : '') + '"' + (own ? '' : ' data-pf="like"') + ' title="' + (own ? 'Curtidas que você recebeu' : 'Curtir') + '"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.6 3 5 6.6 5c2.1 0 3.6 1.2 5.4 3 1.8-1.8 3.3-3 5.4-3C21 5 23.1 8.6 21.6 11.8 19.5 16.4 12 21 12 21z" fill="currentColor"/></svg><b>' + (p.likes + (liked && !p.real ? 1 : 0)).toLocaleString('pt-BR') + '</b><span>CURTIDAS</span></div></div>';

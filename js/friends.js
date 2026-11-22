@@ -60,7 +60,7 @@ LS.Friends = {
   row(f, kind) {
     const P = LS.Profile, look = Object.assign({}, LS.defaultProfile.look, f.look || {});
     let av = ''; try { av = P.headshot(look, f.avatarBg || 0); } catch (e) { /* sem WebGL */ }
-    const tick = (f.badges || []).length ? P.verifiedIcon() : '';
+    const tick = (f.badges || []).some(b => b !== 'tester') ? P.verifiedIcon() : '';
     const status = kind === 'friend' ? '<span class="fr-st' + (f.online ? ' on' : '') + '">' + (f.online ? 'Online' : this.ago(f.last)) + '</span>' : kind === 'in' ? '<span class="fr-st">Quer ser seu amigo</span>' : '<span class="fr-st">Pedido enviado</span>';
     const btns = kind === 'friend' ? '<button class="btn small" data-fr="profile" data-id="' + f.id + '">PERFIL</button><button class="btn small fr-x" data-fr="remove" data-id="' + f.id + '">REMOVER</button>'
       : kind === 'in' ? '<button class="btn small btn-primary" data-fr="accept" data-id="' + f.id + '">ACEITAR</button><button class="btn small" data-fr="decline" data-id="' + f.id + '">RECUSAR</button>'

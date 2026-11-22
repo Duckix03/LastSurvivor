@@ -493,6 +493,7 @@ kbd { font-family: var(--display); font-weight: 400; letter-spacing: 0.5px; bord
 .pf-badge svg { width: 16px; height: 16px; }
 .b-owner { background: linear-gradient(135deg, #ffd34d, #ff9a1f); color: #3a1f00; }
 .b-dev { background: linear-gradient(135deg, #9a5cff, #5a2fd6); }
+.b-tester { background: linear-gradient(135deg, #3ee08f, #0f9a7a); }
 .b-cc { background: linear-gradient(135deg, #ff4d4d, #c4122f); }
 .b-ver { background: linear-gradient(135deg, #3ab4ff, #1f6bd6); }
 .pf-nobadge { font-size: 12px; color: var(--mut); font-style: italic; }
