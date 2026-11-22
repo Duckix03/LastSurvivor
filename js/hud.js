@@ -69,7 +69,7 @@ LS.HUD = {
   update(dt, G) {
     const P = G.player, E = this.el;
     E.alive.textContent = G.aliveCount();
-    E.kills.textContent = G.mode === 'duel' ? LS.Duel.totalKills() : P.kills;
+    E.kills.textContent = G.mode === 'duel' ? LS.Duel.totalKills() : G.mode === 'custom' ? LS.Custom.kills : P.kills;
     E.timer.textContent = LS.util.fmtTime(G.time);
     // vida/colete
     E['health-fill'].style.width = P.hp + '%';
@@ -140,7 +140,7 @@ LS.HUD = {
     E['damage-vignette'].style.opacity = Math.max(this.dmgFlash, P.hp < 30 ? 0.5 + Math.sin(G.time * 5) * 0.2 : 0);
     // fps
     E.fps.classList.toggle('hidden', !LS.settings.showFps);
-    if (G.mode !== 'duel') this.drawMinimap(G); // duelo: sem minimapa (o galpão é pequeno)
+    if (G.mode === 'br') this.drawMinimap(G); // duelo: sem minimapa (o galpão é pequeno)
     this.updateShots(G);
     if (!E.bigmap.classList.contains('hidden')) this.drawBigMap(G);
   },

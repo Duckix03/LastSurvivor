@@ -34,7 +34,7 @@
 //   GET  /api/admin/codes                      (só owner) lista os codiguins
 //   POST /api/admin/codes/delete {code}        (só owner) apaga um codiguin
 // DIAMANTES ficam só aqui no servidor (a.diamonds): ninguém dá diamante pra si mesmo mexendo no jogo.
-// Uso interno (só o Matchmaker chama, não fica exposto): /internal/resolve {token, name}
+// Uso interno (só os Durable Objects chamam, não fica exposto): /internal/resolve {token, name} · /internal/friends {id}
 'use strict';
 
 const TOKEN_DAYS = 90, RENAME_COST = 10000, PBKDF2_ITER = 10000; // trocar de nome custa 10.000 moedas (igual a js/config.js) // poucas iterações: o plano grátis tem só ~10 ms de CPU por pedido
@@ -110,6 +110,7 @@ export class Accounts {
     const url = new URL(req.url), path = url.pathname;
     try {
       if (path === '/internal/resolve') return json(await this.resolve(await req.json()));
+      if (path === '/internal/friends') { const b = await req.json(), a = await this.st.get('a:' + String(b.id || '')); return json({ friends: a ? (a.friends || []) : [] }); } // salas personalizadas: amigos do dono
       const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
       if (path === '/api/register') return await this.register(body);
       if (path === '/api/login') return await this.login(body);
@@ -473,7 +474,7 @@ export class Accounts {
     if (/^[0-9a-f]{64}$/.test(tok)) {
       const t = await this.st.get('t:' + tok);
       const a = t && t.exp > Date.now() && await this.st.get('a:' + t.id);
-      if (a) return { name: a.name, id: a.id, badges: a.badges };
+      if (a) return { name: a.name, id: a.id, badges: a.badges, friends: a.friends || [] };
     }
     const name = txt(b.name, 16) || 'Jogador';
     if (await this.st.get('u:' + name.toLowerCase()) || RESERVED.includes(name.toLowerCase())) return { name: 'Convidado' + Math.floor(1000 + Math.random() * 9000) };

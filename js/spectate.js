@@ -5,6 +5,8 @@
 //  2) ESPECTADOR: câmera no ombro de quem está vivo (começa no seu assassino). Trocar com A/D, ←/→ ou as setas
 //     da tela; arrastar gira a câmera em volta (volta sozinha pra trás dele); roda do mouse aproxima.
 //     Se quem você assiste morre, mostra quem eliminou e passa pra ele. Sobrou um só: faixa do vencedor e resultado.
+//  3) DUELO: mesma killcam e cartão (compacto, sem botões: o round segue sozinho). No 2v2 passa a assistir o parceiro;
+//     no round seguinte (você renasce) tudo some.
 'use strict';
 LS.Spectate = {
   active: false, phase: null,
@@ -16,6 +18,8 @@ LS.Spectate = {
     this.build();
     this.active = true; this.phase = 'death'; this.t = 0; this.shown = false; this.uiT = 0; this.autoT = this.AUTO;
     this.killer = killer && killer !== P ? killer : null;
+    this.duel = G.mode === 'duel' || G.mode === 'custom'; this.watchOnly = false; // sala personalizada: igual ao duelo (só o seu time)
+    this.el.root.classList.toggle('duel', this.duel); this.el.death.classList.toggle('duel', this.duel); this.el.spec.classList.toggle('duel', this.duel);
     this.target = null; this.tDead = 0; this.killedBy = null; this.overT = 0; this.oYaw = 0; this.oPitch = 0; this.zoom = 3.7; this.dragT = 0;
     this.cy = P.camYaw; this.camPos = G.camera.position.clone(); this.lookAt = P.eyePos(new THREE.Vector3());
     const dist = this.killer ? Math.hypot(this.killer.pos.x - P.pos.x, this.killer.pos.y - P.pos.y, this.killer.pos.z - P.pos.z) : 0;
@@ -36,7 +40,7 @@ LS.Spectate = {
   stop() {
     if (!this.el) return;
     this.active = false; this.phase = null; this.target = null;
-    document.body.classList.remove('ls-dead', 'ls-spec');
+    document.body.classList.remove('ls-dead', 'ls-spec'); this.watchOnly = false; this.el.spec.classList.remove('watch');
     ['death', 'spec'].forEach(k => this.el[k].classList.add('hidden'));
     this.el.fx.className = 'sp-fx';
     const G = LS.Game; G.fxFilter = ''; if (G.renderer) { G.applyColors(); setTimeout(() => { if (!this.active) G.renderer.domElement.style.transition = ''; }, 1000); }
@@ -47,7 +51,19 @@ LS.Spectate = {
     const k = this.t / 1.1; return 0.28 + 0.72 * k * k;
   },
   focus() { return this.active && this.phase !== 'death' && this.target ? this.target : null; },
-  others() { const P = LS.Game.player; return LS.Game.fighters.filter(f => f !== P && f.alive && f.state !== 'plane'); },
+  others() { const P = LS.Game.player; return LS.Game.fighters.filter(f => f !== P && f.alive && f.state !== 'plane' && (this.watchOnly || !this.duel || LS.sameTeam(P, f))); }, // duelo/sala: só o seu time · espectador da sala: todo mundo
+  // espectador da sala personalizada (não joga): assiste qualquer um, a partida inteira
+  watchAll() {
+    this.build();
+    this.active = true; this.duel = true; this.watchOnly = true; this.phase = 'spec'; this.t = 0; this.shown = true; this.killer = null;
+    this.target = null; this.tDead = 0; this.killedBy = null; this.oYaw = 0; this.oPitch = 0; this.zoom = 3.7; this.dragT = 0;
+    this.camPos = LS.Game.camera.position.clone(); this.lookAt = new THREE.Vector3(); this.cy = 0;
+    LS.Input.enabled = false; LS.Input.unlock();
+    document.body.classList.add('ls-dead', 'ls-spec');
+    this.el.root.classList.add('duel'); this.el.death.classList.add('hidden'); this.el.spec.classList.remove('duel'); this.el.spec.classList.add('watch'); this.el.fx.className = 'sp-fx';
+    this.el.spec.classList.remove('hidden'); this.retarget();
+  },
+  retarget() { if (!this.active) return; const l = this.others(); this.setTarget(l.find(f => f.isPlayer === false) || l[0], true); this.el.spec.classList.toggle('solo', l.length < 2); },
 
   // ---------- eventos do jogo ----------
   onKill(victim, killer) {
@@ -65,7 +81,8 @@ LS.Spectate = {
     document.body.classList.add('ls-spec'); this.el.fx.className = 'sp-fx';
     LS.Game.fxFilter = ''; LS.Game.applyColors();
     const k = this.killer, list = this.others();
-    this.setTarget(k && k.alive && !k.netHidden ? k : this.nearest(list), true);
+    this.setTarget(k && list.includes(k) && !k.netHidden ? k : this.nearest(list), true);
+    this.el.spec.classList.toggle('solo', this.others().length < 2);
     this.el.spec.classList.remove('hidden');
     this.checkOver();
   },
@@ -94,7 +111,7 @@ LS.Spectate = {
     this.uiT = 0;
   },
   checkOver() {
-    if (this.phase === 'over') return;
+    if (this.phase === 'over' || this.duel) return; // no duelo quem cuida do fim é o round
     const list = this.others();
     if (list.length > 1) return;
     this.phase = 'over'; this.overT = 5;
@@ -116,11 +133,12 @@ LS.Spectate = {
     const G = LS.Game, rd = Math.min(0.05, G.lastDt || 0.016), P = G.player;
     if (!this.active) return;
     // o corpo cai (o Player não anima mais depois de morto)
-    P.model.root.position.copy(P.pos); P.model.animate({ dt: rd * this.timeScale(), dead: true });
+    if (!this.watchOnly) { P.model.root.position.copy(P.pos); P.model.animate({ dt: rd * this.timeScale(), dead: true }); }
     this.t += rd;
     if (this.phase === 'death') {
       if (this.t > 0.8 && this.el.death.classList.contains('hidden') && !this.shown) { this.shown = true; this.showDeath(); }
-      if (this.shown) {
+      if (this.shown && this.duel) { if (this.t > 2.2 && this.others().length) this.watch(); } // duelo: sem botões, passa pro parceiro
+      else if (this.shown) {
         this.autoT -= rd;
         const left = Math.max(0, this.autoT);
         this.el.ring.style.setProperty('--p', (1 - left / this.AUTO).toFixed(3));
@@ -142,7 +160,7 @@ LS.Spectate = {
       this.tDead -= rd;
       if (this.tDead <= 0) {
         const kb = this.killedBy, list = this.others();
-        if (list.length > 1) this.setTarget(kb && kb.alive && !kb.netHidden ? kb : this.nearest(list, T));
+        if (list.length > (this.duel ? 0 : 1)) this.setTarget(kb && list.includes(kb) && !kb.netHidden ? kb : this.nearest(list, T));
         T = this.target;
       }
     }
@@ -215,7 +233,7 @@ LS.Spectate = {
       '<div class="sp-wipe"></div>' +
       '<div id="death-ui" class="hidden">' +
         '<div class="du-head"><div class="du-title" data-t="ELIMINADO">ELIMINADO</div><div class="du-place"><b></b><span></span></div></div>' +
-        '<div class="du-bottom">' +
+        '<div class="du-bottom"><div class="du-rib"></div>' +
           '<div class="du-card"><div class="du-face"><img alt=""></div><div class="du-who"><small></small><b></b><div class="du-hp"><i></i></div><span class="du-gear"></span></div>' +
             '<div class="du-weap"><img alt=""><b></b><span></span></div></div>' +
           '<div class="du-stats"><div><b data-s="kills">0</b><span>ABATES</span></div><div><b data-s="dmg">0</b><span>DANO</span></div><div><b data-s="time">00:00</b><span>SOBREVIVEU</span></div></div>' +
@@ -244,12 +262,14 @@ LS.Spectate = {
     d.addEventListener('click', e => {
       const b = e.target.closest('[data-du],[data-sp]'); if (!b || !this.active) return;
       const a = b.dataset.du || b.dataset.sp;
-      if (a === 'watch') this.watch(); else if (a === 'leave') this.leave(); else if (a === 'prev') this.cycle(-1); else if (a === 'next') this.cycle(1);
+      if (a === 'watch') this.watch(); else if (a === 'leave') { if (this.watchOnly) LS.Custom.quit(); else this.leave(); } else if (a === 'prev') this.cycle(-1); else if (a === 'next') this.cycle(1);
     });
     window.addEventListener('keydown', e => {
       if (!this.active || LS.Game.state !== 'playing' || e.repeat || (LS.Console && LS.Console.open)) return;
       const c = e.code;
       if (c === 'Escape') { LS.Game.pause(); return; }
+      if (this.watchOnly) { if (c === 'KeyA' || c === 'ArrowLeft') this.cycle(-1); else if (c === 'KeyD' || c === 'ArrowRight') this.cycle(1); else if (c === 'Enter') LS.Custom.quit(); return; }
+      if (this.duel) { if (this.phase === 'spec' && (c === 'KeyA' || c === 'KeyD' || c === 'ArrowLeft' || c === 'ArrowRight')) this.cycle(1); return; }
       if (c === 'Enter' || c === 'NumpadEnter') { this.leave(); return; }
       if (this.phase === 'death') { if (c === 'Space' && this.shown) { e.preventDefault(); if (this.others().length) this.watch(); else this.leave(); } return; }
       if (this.phase !== 'spec') return;
@@ -272,6 +292,7 @@ LS.Spectate = {
   showDeath() {
     const G = LS.Game, P = G.player, I = this.info, K = this.killer, el = this.el.death, q = s => el.querySelector(s);
     q('.du-place b').textContent = '#' + I.place; q('.du-place span').textContent = 'DE ' + I.total;
+    if (this.duel) { const D = LS.Game.mode === 'custom' ? LS.Custom.cardInfo() : LS.Duel, ally = this.others().length; q('.du-rib').innerHTML = '<b>ELIMINADO</b><span>ROUND ' + D.round + ' · ' + D.score[0] + ' x ' + D.score[1] + (ally ? ' · seu parceiro ainda está vivo' : '') + '</span>'; }
     const card = q('.du-card'), face = q('.du-face img'), weap = q('.du-weap');
     card.classList.toggle('nokiller', !K);
     if (K) {

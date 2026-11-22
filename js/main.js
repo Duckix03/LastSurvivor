@@ -1,14 +1,14 @@
 // Menus, painéis de configuração e inicialização
 'use strict';
 LS.UI = {
-  screens: ['menu-main', 'lobby', 'panel-modes', 'panel-shop', 'panel-friends', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
+  screens: ['menu-main', 'lobby', 'panel-modes', 'panel-custom', 'panel-shop', 'panel-friends', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
   current: 'menu-main', backTo: 'menu-main',
 
   showScreen(id) {
     this.screens.forEach(s => document.getElementById(s).classList.toggle('active', s === id));
     this.current = id;
   },
-  subPanelOpen() { return ['panel-modes', 'panel-shop', 'panel-friends', 'panel-settings', 'panel-controls', 'panel-credits', 'panel-arsenal', 'panel-stats', 'panel-news'].includes(this.current); },
+  subPanelOpen() { return ['panel-modes', 'panel-custom', 'panel-shop', 'panel-friends', 'panel-settings', 'panel-controls', 'panel-credits', 'panel-arsenal', 'panel-stats', 'panel-news'].includes(this.current); },
   openPanel(id) { this.backTo = this.current; this.showScreen(id); },
   back() { this.showScreen(this.backTo || 'menu-main'); },
   updateMenuStats() {
@@ -83,6 +83,7 @@ LS.UI = {
       case 'shop': LS.Shop.open('shop'); break;
       case 'royale': LS.Shop.open('royale'); break;
       case 'friends': LS.Friends.open(); break;
+      case 'custom': LS.Custom.open(); break;
       case 'mute': LS.Menu.toggleMute(); break;
       case 'fullscreen': LS.Menu.toggleFullscreen(); break;
       case 'lobby-start': LS.Touch.goFull(); LS.Lobby.startSearch(); break;
@@ -124,7 +125,7 @@ window.addEventListener('load', () => {
   LS.Account.init(); // conta (se já entrou neste navegador)
   LS.Profile.init();
   LS.Conta.init(); // aba CONTA das configurações (e a página de login com Google aberta pelo app)
-  LS.Shop.init(); LS.Friends.init(); LS.Menu.initBanners();
+  LS.Shop.init(); LS.Friends.init(); LS.Custom.init(); LS.Menu.initBanners();
   LS.Menu.init();
   document.getElementById('arsenal-list').addEventListener('click', e => { const b = e.target.closest('[data-wpn]'); if (b) { LS.Audio.init(); LS.Audio.click(); LS.Menu.pickLobbyWeapon(b.dataset.wpn); } });
   LS.UI.bindSettings();
