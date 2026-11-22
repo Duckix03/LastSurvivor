@@ -1559,18 +1559,50 @@ body.mobile .lb-news::after, body.mobile .lb-play-btn::after { animation: none; 
 
 /* ---------- manutenção ---------- */
 #maint { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;
-  background: radial-gradient(ellipse at 50% 30%, #281e50, #06080f 75%); animation: mtIn 0.35s ease both; } /* opaco: não deixa ver o lobby/novidades atrás */
+  background: #07080f; animation: mtIn 0.35s ease both; } /* opaco: não deixa ver o lobby/novidades atrás */ /* opaco: não deixa ver o lobby/novidades atrás */
 body.ls-maint-login #panel-settings { z-index: 9100; } /* entrar na conta por cima da manutenção */
 .mt-warn { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; background: rgba(255, 50, 60, 0.14); border: 2px solid rgba(255, 70, 80, 0.7); color: #ffb3b8; }
 .mt-warn b { display: block; font-family: var(--display); font-weight: 400; font-size: 20px; letter-spacing: 0.5px; color: #ff5a64; }
 .mt-warn span { font-size: 13px; }
 @keyframes mtIn { from { opacity: 0; } }
-.mt-box { max-width: 520px; text-align: center; padding: 28px 30px 22px; border-radius: 22px; background: linear-gradient(180deg, #1e243c, #101424);
+.mt-box { position: relative; max-width: 520px; text-align: center; padding: 28px 30px 22px; border-radius: 22px; background: linear-gradient(180deg, #1e243c, #101424);
   border: 2px solid rgba(255, 197, 49, 0.45); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); }
-.mt-icon { width: 74px; height: 74px; margin: 0 auto 12px; border-radius: 22px; display: flex; align-items: center; justify-content: center; color: #2a1400; background: var(--grad);
-  box-shadow: 0 8px 24px rgba(255, 138, 31, 0.45); animation: mtSpin 3s ease-in-out infinite; }
-.mt-icon svg { width: 44px; height: 44px; }
-@keyframes mtSpin { 0%, 70%, 100% { transform: rotate(0); } 80% { transform: rotate(-18deg); } 90% { transform: rotate(14deg); } }
+/* ícone: engrenagens encaixadas + chave inglesa */
+.mt-icon { width: 128px; height: 128px; margin: -6px auto 6px; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 22px rgba(255, 150, 40, 0.25)); }
+.mt-gears { width: 100%; height: 100%; overflow: visible; }
+.mt-gears g { transform-box: fill-box; transform-origin: center; }
+.mt-g1 { animation: mtRot 6s linear infinite; }
+.mt-g2 { animation: mtRot 4s linear infinite reverse; } /* 8 dentes contra 12: 2/3 do tempo, gira ao contrário */
+.mt-gears .mt-wr { transform-box: view-box; transform-origin: 0 0; animation: mtTurn 2.4s cubic-bezier(.5, 0, .3, 1) infinite; } /* gira em volta da boca da chave */
+@keyframes mtRot { to { transform: rotate(360deg); } }
+@keyframes mtTurn { 0%, 12% { transform: rotate(-26deg); } 42%, 52% { transform: rotate(18deg); } 58% { transform: rotate(12deg); } 64% { transform: rotate(18deg); } 88%, 100% { transform: rotate(-26deg); } }
+/* fundo */
+.mt-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; background: radial-gradient(ellipse at 50% 42%, #22203f 0%, #12132a 45%, #07080f 100%); }
+#maint { isolation: isolate; }
+.mt-bgg { position: absolute; fill: rgba(140, 150, 210, 0.07); }
+.mt-bgg.a { width: 62vmin; left: -14vmin; top: -16vmin; animation: mtRot 60s linear infinite; }
+.mt-bgg.b { width: 40vmin; left: 30vmin; top: -12vmin; animation: mtRot 37.5s linear infinite reverse; opacity: 0.8; }
+.mt-bgg.c { width: 70vmin; right: -18vmin; bottom: -22vmin; animation: mtRot 70s linear infinite reverse; }
+.mt-scan i { position: absolute; top: -10%; bottom: -10%; width: 14vmin; transform: skewX(-18deg); background: linear-gradient(90deg, transparent, rgba(255, 180, 60, 0.07), transparent); animation: mtScan 7s linear infinite; }
+.mt-scan i:nth-child(2) { width: 6vmin; animation-duration: 9s; animation-delay: -3s; background: linear-gradient(90deg, transparent, rgba(120, 160, 255, 0.08), transparent); }
+.mt-scan i:nth-child(3) { width: 22vmin; animation-duration: 13s; animation-delay: -8s; }
+@keyframes mtScan { from { left: -30%; } to { left: 120%; } }
+/* faixas de obra: listras amarelo/preto nas bordas e o texto correndo */
+.mt-tape { position: absolute; left: -10%; width: 120%; height: 46px; display: flex; align-items: center; overflow: hidden; background: #ffb52a; color: #1a1206;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(0, 0, 0, 0.25); }
+.mt-tape::before, .mt-tape::after { content: ''; position: absolute; left: 0; right: 0; height: 9px; background: repeating-linear-gradient(-45deg, #15110a 0 12px, #ffb52a 12px 24px); background-size: 34px 100%; animation: mtStripe 1.2s linear infinite; }
+.mt-tape::before { top: 0; } .mt-tape::after { bottom: 0; animation-direction: reverse; }
+.mt-tape.t1 { top: 9%; transform: rotate(-5deg); }
+.mt-tape.t2 { bottom: 10%; transform: rotate(4deg); opacity: 0.92; }
+.mt-tape-in { display: flex; align-items: center; gap: 18px; white-space: nowrap; padding-left: 18px; animation: mtMarq 22s linear infinite; font-family: var(--display); font-size: 17px; letter-spacing: 2px; }
+.mt-tape.t2 .mt-tape-in { animation-direction: reverse; animation-duration: 26s; }
+.mt-tape-in i { width: 10px; height: 10px; background: #1a1206; transform: rotate(45deg); flex: none; }
+@keyframes mtStripe { to { background-position: 34px 0; } }
+@keyframes mtMarq { to { transform: translateX(-50%); } }
+.mt-vig { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.55) 100%); }
+body.mobile .mt-tape { height: 34px; } body.mobile .mt-tape-in { font-size: 13px; }
+body.mobile .mt-icon { width: 96px; height: 96px; }
+@media (prefers-reduced-motion: reduce) { #maint *, #maint *::before, #maint *::after { animation: none !important; } }
 .mt-box h1 { margin: 0 0 8px; font-family: var(--display); font-weight: 400; font-size: 30px; letter-spacing: 0.5px; }
 .mt-box p { margin: 0 0 12px; color: #c8d0e4; line-height: 1.5; }
 .mt-msg { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; background: rgba(255, 197, 49, 0.1); border: 1px solid rgba(255, 197, 49, 0.35); color: #ffe08a; font-weight: 700; }
