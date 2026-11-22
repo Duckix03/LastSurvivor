@@ -110,7 +110,7 @@ LS.HUD = {
     // mira dinâmica
     // mira dinâmica: a abertura mostra a dispersão de verdade (onde as balas podem cair na tela)
     const cam = LS.Game.camera, sp = d ? P.currentSpread() : 0.01;
-    const gapT = 3 + Math.tan(Math.min(sp, 0.35)) / Math.tan(cam.fov * Math.PI / 360) * (window.innerHeight / 2);
+    const gapT = 2 + Math.tan(Math.min(sp, 0.35)) / Math.tan(cam.fov * Math.PI / 360) * (window.innerHeight / 2);
     this._gap = this._gap === undefined ? gapT : LS.util.lerp(this._gap, gapT, Math.min(1, LS.Game.lastDt * (gapT > this._gap ? 30 : 12) || 1));
     { const gv = Math.min(90, this._gap).toFixed(1) + 'px'; if (E.crosshair._gap !== gv) { E.crosshair._gap = gv; E.crosshair.style.setProperty('--gap', gv); } }
     this._s(E.crosshair, 'visibility', P.state === 'ground' && P.alive ? 'visible' : 'hidden');

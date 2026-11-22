@@ -160,6 +160,7 @@ LS.Player = class extends LS.Fighter {
       // andando, vira para onde está andando; parado, fica virado como estava (a câmera gira livre)
       const attacking = !LS.Game.inventoryOpen && (I.mouse.left || this.fireCd > 0 && !!this.wdef());
       const lock = this.running || this.aiming || attacking;
+      this._aimLock = (this.aiming || attacking) && !!this.wdef(); // mirando/atirando com arma: a arma aponta pro crosshair
       const face = lock ? this.camYaw : wl > 0 ? Math.atan2(wx, wz) : this.yaw;
       if (!LS.Game.inventoryOpen && I.mouse.leftPressed) this.yaw = this.camYaw; // primeiro tiro/soco já sai pra frente
       else this.yaw += LS.util.angleDiff(this.yaw, face) * (1 - Math.exp(-(lock ? 22 : 10) * dt));
@@ -187,10 +188,12 @@ LS.Player = class extends LS.Fighter {
       }
       this.handleLoot();
     }
+    if (this.state !== 'ground') this._aimLock = false;
+    const fix = this.aimFix(dt);
     this.model.root.position.copy(this.pos);
-    this.model.root.rotation.y = this.yaw;
+    this.model.root.rotation.y = this.yaw + fix.yaw;
     this.model.animate({ dt, vy: this.vel.y, fall: this.state === 'fall', dive: this.dive, steer: this.steer, speed: Math.hypot(this.vel.x, this.vel.z), running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
-      chute: this.state === 'chute', aimPitch: this.camPitch + this.recoilY, armed: !!this.weapon(), armedAim: this.aiming || this.fireCd > 0, dead: !this.alive,
+      chute: this.state === 'chute', aimPitch: fix.pitch, armed: !!this.weapon(), armedAim: this.aiming || this.fireCd > 0, dead: !this.alive,
       reload: this.reloadT > 0 && this.wdef() ? 1 - this.reloadT / this.wdef().reload : -1, heal: this.healType });
     this.model.root.visible = this.state !== 'plane';
     this.updateCamera(dt, camera);
@@ -268,6 +271,29 @@ LS.Player = class extends LS.Fighter {
     const maxStep = (firing ? A.pull[0] : A.pull[1]) * Math.PI / 180 * dt * (0.4 + 0.6 * k);
     const step = Math.min(e.err * dt * (mob ? 3 : 1.5), maxStep), inv = e.err > 1e-5 ? step / e.err : 0;
     out.yaw = -e.ey * inv; out.pitch = e.ep * inv;
+    return out;
+  }
+  // a câmera fica no ombro (pro lado e acima do boneco): se a arma apontasse reto pra frente, paralela à câmera,
+  // ela miraria pro lado e abaixo do crosshair. Aqui ela aponta pro ponto exato que está no centro da tela.
+  aimFix(dt) {
+    const base = this.camPitch + this.recoilY, out = this._fix || (this._fix = { yaw: 0, pitch: 0 });
+    const want = this._aimLock && this.alive && !this.scopeUp ? 1 : 0;
+    this.aimFixK = LS.util.lerp(this.aimFixK || 0, want, 1 - Math.exp(-14 * dt));
+    out.yaw = 0; out.pitch = base;
+    if (this.aimFixK < 0.01 || !this.camPos) return out;
+    const o = this.camPos, d = this.aimDir;
+    let t = LS.World.raycast(o, d, 150);
+    const h = LS.Combat.hitFighter(o, d, t, this); if (h) t = h.t;
+    t = Math.max(t, 3);
+    const tx = o.x + d.x * t, ty = o.y + d.y * t, tz = o.z + d.z * t;
+    const dx = tx - this.pos.x, dz = tz - this.pos.z, D = Math.hypot(dx, dz);
+    if (D < 1.5) return out;
+    // a arma fica uns 16 cm à direita do centro do corpo: gira o corpo o suficiente pro cano (não o peito) passar no alvo
+    const want_ = Math.atan2(dx, dz) + Math.asin(Math.min(0.9, 0.16 / D));
+    const k = this.aimFixK;
+    out.yaw = LS.util.angleDiff(this.yaw, want_) * k;
+    const pivotY = this.pos.y + this.headY() - 0.25; // ombro
+    out.pitch = LS.util.lerp(base, Math.atan2(ty - pivotY, D), k);
     return out;
   }
   shotOrigin() {
