@@ -35,6 +35,10 @@
 //   POST /api/admin/codes/delete {code}        (só owner) apaga um codiguin
 //   POST /api/presence {sid}                   (público) "X jogando" + config do jogo: tema do lobby e manutenção
 //   POST /api/admin/game {theme?, maint?, msg?}   (só owner) tema do lobby pra todos e modo manutenção (só owner/dev entram)
+//   GET  /api/mail                             CORREIO: mensagens pra todos + as suas (convidado vê só as de todos)
+//   POST /api/mail/claim {id} · /api/mail/read {ids} · /api/mail/delete {id}   resgatar presentes (1 vez), marcar lida, apagar
+//   POST /api/admin/mail/send {to: 'all'|[ids], title, text, gifts:{items,coins,diamonds}, days}   (só owner)
+//   GET  /api/admin/mail · POST /api/admin/mail/delete {id}   (só owner) enviadas e apagar
 //   GET  /api/admin/cc-limits · POST /api/admin/cc-limits {...}   (só owner) limites dos codiguins dos criadores
 //   GET  /api/cc/codes                         (criador de conteúdo) seus codiguins + limites + quantos ainda pode criar
 //   POST /api/cc/codes/create {code?, item?, coins, diamonds, maxUses, days}   (criador) cria dentro dos limites
@@ -68,6 +72,8 @@ const CODE_RE = /^[A-Z0-9-]{4,20}$/, CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ2345678
 // codiguins dos criadores de conteúdo: o owner muda esses limites no painel ADMIN → CRIADORES
 // tema do lobby (iguais aos de js/lobbythemes.js) · manutenção: só owner e DEV entram no jogo
 const THEMES = ['auto', 'padrao', 'halloween', 'natal', 'anonovo', 'verao', 'junina'], STAFF = b => (b || []).includes('owner') || (b || []).includes('dev');
+// correio: até 12 itens por presente; mensagens valem no máximo 1 ano
+const MAIL_ITEMS = 12, MAIL_KEEP = 100;
 const CC_DEFAULT = { perWeek: 5, maxUses: 100, maxCoins: 5000, maxDiamonds: 0, maxDays: 30, items: true, legend: false, excl: false }, WEEK_MS = 7 * 864e5;
 // lendários do Gold Royale (iguais aos de raridade 3 em js/cosmetics.js): criador só dá se o owner liberar
 const ROYALE_LEGEND = new Set(['hat:coroa', 'hat:auréola', 'top:armadura', 'pattern:galáxia']);
@@ -124,7 +130,8 @@ export class Accounts {
     if (/^[a-z0-9]{10,32}$/.test(sid) && (P.has(sid) || P.size < 200000)) P.set(sid, now);
     if (!this.presT || now - this.presT > 10000) { this.presT = now; for (const [k, t] of P) if (now - t > 100000) P.delete(k); }
     const g = await this.gameCfg();
-    return { online: P.size, theme: g.theme, maint: g.maint, msg: g.msg };
+    if (this.mbT === undefined) { const all = (await this.st.get('mb:all')) || []; this.mbT = all.reduce((m, x) => Math.max(m, x.created), 0); }
+    return { online: P.size, theme: g.theme, maint: g.maint, msg: g.msg, mailT: this.mbT };
   }
   // config do jogo (fica na memória depois da 1ª leitura: o "X jogando" pede isso toda hora)
   async gameCfg() { return this.gcfg || (this.gcfg = Object.assign({ theme: 'auto', maint: false, msg: '' }, (await this.st.get('cfg:game')) || {})); }
@@ -149,6 +156,7 @@ export class Accounts {
       if (path === '/api/google') return await this.google(body, await this.auth(req, true));
       if (path === '/api/handoff/redeem') return await this.redeem(body);
       if (path === '/api/presence') return json(await this.presence(body)); // contador "X jogando" do lobby (sem conta: convidados contam também)
+      if (path === '/api/mail' && req.method === 'GET') return json(await this.mailList(await this.auth(req, true)));
       let m = path.match(/^\/api\/profile\/(\d{10})$/);
       if (m && req.method === 'GET') return await this.publicProfile(m[1], await this.auth(req, true));
       const me = await this.auth(req);
@@ -169,6 +177,15 @@ export class Accounts {
       if (path === '/api/redeem') return await this.redeemCode(me, body);
       if (path === '/api/buy') return await this.buyDiamond(me, body);
       if (path === '/api/daily') return await this.daily(me);
+      if (path === '/api/mail/claim') return await this.mailClaim(me, body);
+      if (path === '/api/mail/read') return await this.mailMark(me, 'read', Array.isArray(body.ids) ? body.ids : []);
+      if (path === '/api/mail/delete') return await this.mailMark(me, 'del', [body.id]);
+      if (path.startsWith('/api/admin/mail')) {
+        if (!me.badges.includes('owner')) return fail('Só o owner pode mandar correio.', 403);
+        if (path === '/api/admin/mail/send') return await this.mailSend(me, body);
+        if (path === '/api/admin/mail/delete') return await this.mailDelete(String(body.id || ''));
+        return json({ all: (await this.st.get('mb:all')) || [], log: (await this.st.get('mb:log')) || [] });
+      }
       if (path.startsWith('/api/cc/')) {
         if (!me.badges.includes('cc') && !me.badges.includes('owner')) return fail('Só criadores de conteúdo podem usar esse painel.', 403);
         if (path === '/api/cc/codes' && req.method === 'GET') return json(await this.ccState(me));
@@ -438,6 +455,74 @@ export class Accounts {
     await this.st.put('c:' + code, c);
     return json({ code: c });
   }
+  // ---------- CORREIO ----------
+  // a.mb = { read: [ids], del: [ids], got: [ids] } (só os últimos 300 de cada)
+  mailText(s, max) { return String(s == null ? '' : s).replace(/[<>`]/g, '').replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, max); }
+  mailGifts(g) {
+    g = g || {}; const items = [...new Set((Array.isArray(g.items) ? g.items : []).map(String).filter(i => ITEM_RE.test(i)))].slice(0, MAIL_ITEMS);
+    return { items, coins: nint(g.coins, 1e6), diamonds: nint(g.diamonds, 1e5) };
+  }
+  hasGift(m) { return !!(m.gifts && (m.gifts.items.length || m.gifts.coins || m.gifts.diamonds)); }
+  async mailOf(a) {
+    const now = Date.now(), all = ((await this.st.get('mb:all')) || []).filter(m => m.exp > now);
+    const mine = a ? ((await this.st.get('mb:u:' + a.id)) || []).filter(m => m.exp > now) : [];
+    return all.concat(mine);
+  }
+  async mailList(a) {
+    const mb = (a && a.mb) || {}, del = new Set(mb.del || []), read = new Set(mb.read || []), got = new Set(mb.got || []);
+    const list = (await this.mailOf(a)).filter(m => !del.has(m.id)).sort((x, y) => y.created - x.created)
+      .map(m => ({ id: m.id, title: m.title, text: m.text, gifts: m.gifts, created: m.created, exp: m.exp, personal: !!m.personal, read: read.has(m.id), got: got.has(m.id) }));
+    return { mail: list, logged: !!a };
+  }
+  async mailMark(a, kind, ids) {
+    const mb = a.mb || (a.mb = {}), set = mb[kind] || (mb[kind] = []);
+    for (const id of ids.slice(0, 100)) { const s = String(id || ''); if (s && !set.includes(s)) set.push(s); }
+    mb[kind] = set.slice(-300); delete a._token; await this.st.put('a:' + a.id, a);
+    return json(await this.mailList(a));
+  }
+  async mailClaim(a, b) {
+    const id = String(b.id || ''), m = (await this.mailOf(a)).find(x => x.id === id);
+    if (!m) return fail('Essa mensagem não existe mais (ou já venceu).');
+    if (!this.hasGift(m)) return fail('Essa mensagem não tem presente.');
+    const mb = a.mb || (a.mb = {}), got = mb.got || (mb.got = []);
+    if (got.includes(id)) return fail('Você já resgatou esse presente.');
+    got.push(id); mb.got = got.slice(-300); if (!(mb.read || []).includes(id)) (mb.read || (mb.read = [])).push(id);
+    const items = m.gifts.items.filter(it => this.giveItem(a, it));
+    a.diamonds = (a.diamonds || 0) + (m.gifts.diamonds || 0);
+    delete a._token; await this.st.put('a:' + a.id, a);
+    if (!m.personal) { const all = (await this.st.get('mb:all')) || [], x = all.find(y => y.id === id); if (x) { x.claims = (x.claims || 0) + 1; await this.st.put('mb:all', all); } }
+    // moedas: o jogo soma (as moedas ficam no aparelho e são salvas na conta pelo /api/stats), igual ao codiguin
+    return json({ account: this.mine(a), reward: { items: m.gifts.items, newItems: items, coins: m.gifts.coins || 0, diamonds: m.gifts.diamonds || 0 }, ...(await this.mailList(a)) });
+  }
+  async mailSend(me, b) {
+    const title = this.mailText(b.title, 60), text = this.mailText(b.text, 1000), gifts = this.mailGifts(b.gifts), days = Math.max(1, nint(b.days || 30, 365)), now = Date.now();
+    if (!title) return fail('Escreva um título.');
+    if (!text && !this.hasGift({ gifts })) return fail('Escreva um texto ou coloque um presente.');
+    const r = new Uint8Array(4); crypto.getRandomValues(r);
+    const msg = { id: 'm' + now.toString(36) + Array.from(r, x => x.toString(16).padStart(2, '0')).join(''), title, text, gifts, created: now, exp: now + days * 864e5, by: me.id, claims: 0 };
+    if (b.to === 'all') {
+      const all = ((await this.st.get('mb:all')) || []).filter(m => m.exp > now); all.push(msg);
+      await this.st.put('mb:all', all.slice(-MAIL_KEEP)); this.mbT = now;
+      return json({ sent: 'all', msg });
+    }
+    const ids = [...new Set((Array.isArray(b.to) ? b.to : String(b.to || '').split(/[\s,;]+/)).map(x => String(x).replace(/\D/g, '')).filter(x => x.length === 10))].slice(0, 200);
+    if (!ids.length) return fail('Coloque o ID (10 números) de quem vai receber, ou escolha TODOS.');
+    const ok = [], missing = [];
+    for (const id of ids) {
+      if (!(await this.st.get('a:' + id))) { missing.push(id); continue; }
+      const list = ((await this.st.get('mb:u:' + id)) || []).filter(m => m.exp > now); list.push(Object.assign({ personal: true }, msg));
+      await this.st.put('mb:u:' + id, list.slice(-50)); ok.push(id);
+    }
+    if (ok.length) { const log = (await this.st.get('mb:log')) || []; log.push(Object.assign({ to: ok }, msg)); await this.st.put('mb:log', log.slice(-MAIL_KEEP)); }
+    return json({ sent: ok.length, missing, msg });
+  }
+  async mailDelete(id) {
+    const all = (await this.st.get('mb:all')) || [], log = (await this.st.get('mb:log')) || [], p = log.find(m => m.id === id);
+    await this.st.put('mb:all', all.filter(m => m.id !== id));
+    if (p) { for (const uid of p.to || []) { const l = (await this.st.get('mb:u:' + uid)) || []; await this.st.put('mb:u:' + uid, l.filter(m => m.id !== id)); } await this.st.put('mb:log', log.filter(m => m.id !== id)); }
+    return json({ all: (await this.st.get('mb:all')) || [], log: (await this.st.get('mb:log')) || [] });
+  }
+
   // ---------- codiguins dos criadores ----------
   ccClean(b) { return { perWeek: nint(b.perWeek, 100), maxUses: nint(b.maxUses, 100000), maxCoins: nint(b.maxCoins, 1e6), maxDiamonds: nint(b.maxDiamonds, 1e5), maxDays: Math.max(1, nint(b.maxDays, 365)), items: !!b.items, legend: !!b.legend, excl: !!b.excl }; }
   async ccLimits() { return Object.assign({}, CC_DEFAULT, (await this.st.get('cfg:cc')) || {}); }

@@ -288,11 +288,14 @@ LS.Profile = {
       '<button class="' + (tab === 'codes' ? 'on' : '') + '" data-pf="adm-tab" data-v="codes">GERADOR DE CODIGUIN</button>' +
       '<button class="' + (tab === 'cc' ? 'on' : '') + '" data-pf="adm-tab" data-v="cc">CRIADORES</button>' +
       '<button class="' + (tab === 'theme' ? 'on' : '') + '" data-pf="adm-tab" data-v="theme">TEMAS</button>' +
-      '<button class="' + (tab === 'maint' ? 'on' : '') + '" data-pf="adm-tab" data-v="maint">MANUTENÇÃO</button></div>';
+      '<button class="' + (tab === 'maint' ? 'on' : '') + '" data-pf="adm-tab" data-v="maint">MANUTENÇÃO</button>' +
+      '<button class="' + (tab === 'mail' ? 'on' : '') + '" data-pf="adm-tab" data-v="mail">CORREIO</button></div>';
     if (tab === 'codes') { this.cgMode = 'admin'; return this.openCodes(tabs); }
+    this.cgMode = null;
     if (tab === 'cc') return this.openCcLimits(tabs);
     if (tab === 'theme') return this.openThemes(tabs);
     if (tab === 'maint') return this.openMaint(tabs);
+    if (tab === 'mail') { this.cgMode = 'mail'; return this.openMailAdm(tabs); }
     const on = LS.Console.dev;
     this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Dê ou tire selos de qualquer conta pelo ID.</p><div class="pf-row"><input id="pf-adm-id" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ID da conta"><button class="btn small" data-pf="adm-find">BUSCAR</button></div>' +
       '<div id="pf-adm-box"></div><p id="pf-err" class="pf-err hidden"></p>' +
@@ -365,14 +368,23 @@ LS.Profile = {
     const items = C.items.filter(i => ok(i) && T.test(i)).sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
     let pk = document.getElementById('cg-picker');
     if (!pk) { pk = document.createElement('div'); pk.id = 'cg-picker'; document.getElementById('pf-modal').appendChild(pk); } // fora da caixa que rola
-    pk.innerHTML = '<div class="cgp-head"><b>ESCOLHA O ITEM</b><button class="btn small" data-pf="cg-pclose">FECHAR</button></div>' +
+    pk.innerHTML = '<div class="cgp-head"><b>' + (this.cgMode === 'mail' ? 'ESCOLHA OS ITENS (' + this.mbDraft.items.length + '/12)' : 'ESCOLHA O ITEM') + '</b><button class="btn small" data-pf="cg-pclose">FECHAR</button></div>' +
       '<div class="cgp-tabs">' + TABS.map(t => '<button class="' + (t.id === T.id ? 'on' : '') + '" data-pf="cg-ptab" data-v="' + t.id + '">' + t.label + '</button>').join('') + '</div>' +
       '<div class="cgp-grid">' + items.map(it => { const R = C.RARITY[it.rarity];
-        return '<button class="wr-card' + (this.cgCur.item === it.id ? ' on' : '') + '" data-pf="cg-item" data-v="' + it.id + '" style="--rc:' + R.color + '"><div class="wr-img"><img alt="" data-tid="' + it.id + '"></div>' +
+        return '<button class="wr-card' + (this.cgPicked(it.id) ? ' on' : '') + '" data-pf="cg-item" data-v="' + it.id + '" style="--rc:' + R.color + '"><div class="wr-img"><img alt="" data-tid="' + it.id + '"></div>' +
           '<b>' + this.esc(it.name) + '</b><small>' + R.name + '</small></button>'; }).join('') + '</div>';
     pk.querySelectorAll('img[data-tid]').forEach(img => LS.Thumbs.into(img, C.byId[img.dataset.tid]));
   },
-  cgSelect(id) { this.cgCur.item = id; const pk = document.getElementById('cg-picker'); if (pk) pk.remove(); this.cgSel(); },
+  cgPicked(id) { return this.cgMode === 'mail' ? this.mbDraft.items.includes(id) : this.cgCur.item === id; },
+  cgSelect(id) {
+    if (this.cgMode === 'mail') { // correio: escolhe vários (clica de novo pra tirar), o seletor continua aberto
+      const L = this.mbDraft.items, i = L.indexOf(id);
+      if (i >= 0) L.splice(i, 1); else if (L.length < 12) L.push(id); else return LS.HUD.toast('No máximo 12 itens por presente.');
+      const b = document.querySelector('#cg-picker [data-v="' + id + '"]'); if (b) b.classList.toggle('on', L.includes(id));
+      const h = document.querySelector('#cg-picker .cgp-head b'); if (h) h.textContent = 'ESCOLHA OS ITENS (' + L.length + '/12)';
+      this.mbChips(); return;
+    }
+    this.cgCur.item = id; const pk = document.getElementById('cg-picker'); if (pk) pk.remove(); this.cgSel(); },
   async cgMake() {
     const cg = this.cgCur, cc = this.cgMode === 'cc', v = id => document.getElementById(id).value;
     cg.coins = +v('cg-coins') || 0; cg.diamonds = +v('cg-diamonds') || 0; cg.uses = +v('cg-uses') || 0; cg.days = +v('cg-days') || 0;
@@ -499,6 +511,61 @@ LS.Profile = {
       document.getElementById('mt-st').textContent = g.maint ? 'MANUTENÇÃO LIGADA' : 'Desligada · todo mundo pode jogar'; }
     catch (e) { this.modalError(e.message); }
   },
+  // ADMIN → CORREIO: aviso e/ou presente (vários itens + moedas + diamantes) pra todos ou pra IDs
+  openMailAdm(tabs) {
+    const D = this.mbDraft || (this.mbDraft = { to: 'all', ids: '', title: '', text: '', items: [], coins: 0, diamonds: 0, days: 30 });
+    this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Mande avisos e presentes. Aparece no <b>CORREIO</b> do lobby (com contador). Presente resgata uma vez por conta.</p>' +
+      '<div class="mb-adm"><div class="mb-to"><button class="' + (D.to === 'all' ? 'on' : '') + '" data-pf="mb-to" data-v="all">TODOS OS JOGADORES</button><button class="' + (D.to === 'ids' ? 'on' : '') + '" data-pf="mb-to" data-v="ids">CONTAS ESPECÍFICAS</button></div>' +
+      '<input id="mb-ids" class="mb-in' + (D.to === 'ids' ? '' : ' hidden') + '" placeholder="IDs separados por vírgula (ex: 4344646233, 1234567890)" value="' + this.esc(D.ids) + '">' +
+      '<input id="mb-title" class="mb-in" maxlength="60" placeholder="Título (ex: Presente de Natal!)" value="' + this.esc(D.title) + '">' +
+      '<textarea id="mb-text" class="mb-in" maxlength="1000" rows="4" placeholder="Mensagem (opcional se tiver presente)">' + this.esc(D.text) + '</textarea>' +
+      '<div class="mb-gh">' + LS.icon('gift') + 'PRESENTE <small>(opcional)</small></div>' +
+      '<button class="btn cg-pick" data-pf="cg-pick">ADICIONAR ITENS</button><div id="mb-chips" class="mb-chips"></div>' +
+      '<div class="cg-opts mb-opts"><label>' + LS.icon('coin', 'coin-i') + ' Moedas<input id="mb-coins" type="number" min="0" max="1000000" value="' + D.coins + '"></label>' +
+      '<label>' + LS.icon('gem', 'gem-i') + ' Diamantes<input id="mb-dia" type="number" min="0" max="100000" value="' + D.diamonds + '"></label>' +
+      '<label>Some em <small>(dias)</small><input id="mb-days" type="number" min="1" max="365" value="' + D.days + '"></label></div>' +
+      '<button class="btn btn-primary cg-make" data-pf="mb-send">ENVIAR</button><p id="pf-err" class="pf-err hidden"></p>' +
+      '<div class="cg-list-h">ENVIADAS</div><div id="mb-sent" class="cg-list"><p class="pf-hint">Carregando…</p></div></div>' +
+      '<div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>', 'adm wide');
+    this.mbChips(); this.mbSent();
+  },
+  mbSave() { const D = this.mbDraft, v = id => { const e = document.getElementById(id); return e ? e.value : ''; };
+    if (!document.getElementById('mb-title')) return D;
+    Object.assign(D, { ids: v('mb-ids'), title: v('mb-title'), text: v('mb-text'), coins: +v('mb-coins') || 0, diamonds: +v('mb-dia') || 0, days: +v('mb-days') || 30 }); return D; },
+  mbChips() {
+    const el = document.getElementById('mb-chips'); if (!el) return; const C = LS.Cosmetics;
+    el.innerHTML = this.mbDraft.items.map(id => { const it = C.byId[id], R = it && C.RARITY[it.rarity];
+      return '<span class="mb-chip" style="--rc:' + (R ? R.color : '#888') + '"><img alt="" data-tid="' + id + '">' + this.esc(it ? it.name : id) + '<button data-pf="mb-rm" data-v="' + id + '">✕</button></span>'; }).join('') || '<p class="pf-hint">Sem itens.</p>';
+    el.querySelectorAll('img[data-tid]').forEach(img => LS.Thumbs.into(img, C.byId[img.dataset.tid]));
+  },
+  async mbSend() {
+    const D = this.mbSave(), btn = document.querySelector('[data-pf="mb-send"]');
+    const o = { to: D.to === 'all' ? 'all' : D.ids, title: D.title, text: D.text, days: D.days, gifts: { items: D.items, coins: D.coins, diamonds: D.diamonds } };
+    if (D.to === 'all' && btn && !btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'ENVIAR PRA TODO MUNDO? TOQUE DE NOVO'; return; }
+    btn.disabled = true;
+    try {
+      const r = await LS.Account.adminMailSend(o);
+      this.mbDraft = null; this.openAdmin('mail');
+      setTimeout(() => { this.modalError(r.sent === 'all' ? 'Enviado pra todos os jogadores!' : 'Enviado pra ' + r.sent + ' conta(s).' + (r.missing.length ? ' Não achei: ' + r.missing.join(', ') : '')); document.getElementById('pf-err').classList.toggle('ok', r.sent === 'all' || !r.missing.length); }, 200);
+      LS.Mail.refresh();
+    } catch (e) { btn.disabled = false; btn.dataset.sure = ''; btn.textContent = 'ENVIAR'; this.modalError(e.message); }
+  },
+  mbGiftDesc(g) { const C = LS.Cosmetics, p = (g.items || []).map(id => this.esc(C.byId[id] ? C.byId[id].name : id));
+    if (g.coins) p.push(LS.icon('coin', 'coin-i') + g.coins.toLocaleString('pt-BR')); if (g.diamonds) p.push(LS.icon('gem', 'gem-i') + g.diamonds.toLocaleString('pt-BR')); return p.join(' + '); },
+  async mbSent() {
+    const el = document.getElementById('mb-sent'); if (!el) return;
+    try {
+      const d = await LS.Account.adminMail(), rows = d.all.map(m => Object.assign({ who: 'TODOS' }, m)).concat(d.log.map(m => Object.assign({ who: m.to.length + ' conta' + (m.to.length > 1 ? 's' : '') }, m))).sort((a, b) => b.created - a.created);
+      el.innerHTML = rows.length ? rows.map(m => { const dead = m.exp < Date.now(), g = this.mbGiftDesc(m.gifts || {});
+        return '<div class="cg-row' + (dead ? ' off' : '') + '"><b>' + this.esc(m.title) + ' <em class="cg-by mb-who">' + m.who + '</em></b><span>' + (g || '<i>só texto</i>') + '</span>' +
+          '<small>' + new Date(m.created).toLocaleDateString('pt-BR') + (m.who === 'TODOS' && g ? ' · ' + (m.claims || 0) + ' resgate(s)' : '') + (dead ? ' · <em class="cg-dead">vencida</em>' : ' · some ' + new Date(m.exp).toLocaleDateString('pt-BR')) + '</small>' +
+          '<button class="btn small cg-del" data-pf="mb-del" data-v="' + m.id + '">APAGAR</button></div>'; }).join('') : '<p class="pf-hint">Nada enviado ainda.</p>';
+    } catch (e) { el.innerHTML = '<p class="pf-err">' + this.esc(e.message) + '</p>'; }
+  },
+  async mbDel(id, b) {
+    if (b && !b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'CERTEZA?'; return; }
+    try { await LS.Account.adminMailDelete(id); this.mbSent(); LS.Mail.refresh(); } catch (e) { this.modalError(e.message); }
+  },
   devStatus() {
     const on = LS.Console.dev, chk = document.getElementById('pf-dev-chk'), st = document.getElementById('pf-dev-st');
     if (chk) chk.checked = on;
@@ -554,6 +621,10 @@ LS.Profile = {
         case 'th-prev': this.thPreview(el.dataset.v); break;
         case 'th-stop': LS.LobbyThemes.setPreview(null); this.openAdmin('theme'); break;
         case 'mt-save': this.mtSave(); break;
+        case 'mb-to': this.mbSave().to = el.dataset.v; document.querySelectorAll('.mb-to button').forEach(x => x.classList.toggle('on', x === el)); document.getElementById('mb-ids').classList.toggle('hidden', el.dataset.v !== 'ids'); break;
+        case 'mb-rm': { const L = this.mbDraft.items, i = L.indexOf(el.dataset.v); if (i >= 0) L.splice(i, 1); this.mbChips(); break; }
+        case 'mb-send': this.mbSend(); break;
+        case 'mb-del': this.mbDel(el.dataset.v, el); break;
         case 'adm-tab': this.openAdmin(el.dataset.v); break;
         case 'cg-pick': this.cgPicker(); break;
         case 'cg-ptab': this.cgPicker(el.dataset.v); break;
