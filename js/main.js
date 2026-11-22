@@ -153,6 +153,7 @@ window.addEventListener('load', () => {
   LS.Anim.initDrop(); // arrastar .glb/.fbx para a janela toca a animação no personagem
   LS.Modes.init();
   LS.Account.init(); // conta (se já entrou neste navegador)
+  LS.Presence.init(); // "X jogando" no lobby
   LS.Profile.init();
   LS.Conta.init(); // aba CONTA das configurações (e a página de login com Google aberta pelo app)
   LS.Shop.init(); LS.Friends.init(); LS.Custom.init(); LS.Menu.initBanners();

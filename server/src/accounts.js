@@ -105,6 +105,15 @@ const same = (a, b) => { if (a.length !== b.length) return false; let d = 0; for
 export class Accounts {
   constructor(state, env) { this.state = state; this.env = env; this.st = state.storage; this.fails = new Map(); }
 
+  // quem está com o jogo aberto: cada aba manda um sinal a cada ~40 s com um código aleatório (não identifica ninguém).
+  // Fica só na memória: se o servidor reiniciar, o número volta sozinho em menos de 1 minuto.
+  presence(b) {
+    const P = this.pres || (this.pres = new Map()), now = Date.now(), sid = String(b.sid || '');
+    if (/^[a-z0-9]{10,32}$/.test(sid) && (P.has(sid) || P.size < 200000)) P.set(sid, now);
+    if (!this.presT || now - this.presT > 10000) { this.presT = now; for (const [k, t] of P) if (now - t > 100000) P.delete(k); }
+    return { online: P.size };
+  }
+
   async fetch(req) {
     if (req.method === 'OPTIONS') return new Response(null, { headers: H });
     const url = new URL(req.url), path = url.pathname;
@@ -116,6 +125,7 @@ export class Accounts {
       if (path === '/api/login') return await this.login(body);
       if (path === '/api/google') return await this.google(body, await this.auth(req, true));
       if (path === '/api/handoff/redeem') return await this.redeem(body);
+      if (path === '/api/presence') return json(this.presence(body)); // contador "X jogando" do lobby (sem conta: convidados contam também)
       let m = path.match(/^\/api\/profile\/(\d{10})$/);
       if (m && req.method === 'GET') return await this.publicProfile(m[1], await this.auth(req, true));
       const me = await this.auth(req);
