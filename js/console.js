@@ -292,6 +292,12 @@ LS.Console = {
       if (id === 'vest' || id === 'helmet' || id === 'bag') return this.give(P, id, id, LS.util.clamp(Math.round(n || 3), 1, 3));
       throw new Error('Item desconhecido. Itens: ' + this.itemArgs().join(', '));
     } },
+    parede: { use: '[quebrar]', desc: 'cria uma parede de gel na sua frente (quebrar: estoura todas)', args: () => ['quebrar'], fn(a) {
+      if ((a[0] || '') === 'quebrar') { const n = LS.GelWall.list.length; LS.GelWall.list.slice().forEach(w => w.shatter()); return n + ' parede(s) estourada(s)'; }
+      const P = this.P(), y = P.camYaw, x = P.pos.x + Math.sin(y) * 3.2, z = P.pos.z + Math.cos(y) * 3.2;
+      new LS.GelWall(LS.Game.scene, x, LS.World.groundAt(x, z, P.pos.y + 1, 0.3), z, y + Math.PI);
+      return 'Parede de gel criada!';
+    } },
     heal: { desc: 'vida cheia e colete/capacete restaurados', fn() {
       const P = this.P(); P.hp = 100;
       for (const k of ['vest', 'helmet']) if (P[k].level) P[k].dur = LS.GEAR[k].levels[P[k].level].dur;
