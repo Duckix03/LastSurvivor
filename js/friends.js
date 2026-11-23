@@ -18,12 +18,14 @@ LS.Friends = {
     });
     document.getElementById('friends-body').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'fr-q') this.add(); });
     // avisa que está online e confere pedidos novos de tempos em tempos
-    setInterval(() => this.tick(), 60000);
+    setInterval(() => { if (!document.hidden) this.tick(); }, 60000); // aba escondida: não gasta pedido (e volta a avisar assim que você volta)
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && performance.now() - (this._tt || 0) > 20000) this.tick(); });
     setTimeout(() => this.tick(), 4000);
   },
   async tick() {
     if (!LS.Account.logged()) { this.badge(0); return; }
-    try { await LS.Account.api('/api/ping', {}); const d = await LS.Account.api('/api/friends'); this.data = d; this.badge(d.incoming.length); if (LS.UI.current === 'panel-friends') this.render(); } catch (e) { /* sem internet */ }
+    this._tt = performance.now();
+    try { const d = await LS.Account.api('/api/friends'); this.data = d; /* o servidor já marca "online" ao listar amigos: o /api/ping separado era um pedido a mais */ this.badge(d.incoming.length); if (LS.UI.current === 'panel-friends') this.render(); } catch (e) { /* sem internet */ }
   },
   badge(n) {
     const b = document.getElementById('lb-fr-badge'), d = document.getElementById('lb-fr-dot');
