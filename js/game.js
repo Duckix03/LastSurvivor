@@ -405,7 +405,7 @@ LS.Game = {
     const nowMs = performance.now();
     if (!(nowMs < this._sndT)) { this._sndT = nowMs + 400; if (LS.Music) LS.Music.sync(); if ((this.state === 'menu' || this.state === 'lobby') && LS.Lobby.built) LS.Lobby.applyTheme(); if (LS.Maint && LS.Maint.on) LS.Maint.sync(); if (LS.Audio.ctx) LS.Audio.setEnv(this.mode === 'duel' && this.state !== 'menu' && this.state !== 'lobby' ? 'hall' : 'open'); }
     this.fpsAcc += dt; this.fpsFrames++;
-    if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
+    if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS' + (LS.Net.online && LS.Net.rtt ? ' · ' + Math.round(LS.Net.rtt) + ' ms' : ''); this.fpsAcc = 0; this.fpsFrames = 0; }
     // atrás de um painel (loja, perfil, configurações...) ou da pausa/fim, a cena 3D fica parada: não redesenha à toa (pesava muito no celular)
     const U = LS.UI, covered = (U.subPanelOpen() || ['pause', 'endscreen', 'loading'].includes(U.current)) && !(this.state === 'paused' && LS.Net.online);
     if (covered && this._coveredDrawn) { LS.Input.endFrame(); return; }
