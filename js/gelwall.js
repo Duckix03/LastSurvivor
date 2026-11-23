@@ -15,13 +15,13 @@ LS.GelWall = class {
     const N = 11, R = 3.4, span = 1.15, blocks = [];
     for (let c = 0; c < N; c++) {
       const u = c / (N - 1) - 0.5, a = u * span, edge = Math.abs(u) * 2; // 0 no meio, 1 nas pontas
-      const cx = Math.sin(a) * R, cz = Math.cos(a) * R - R; // curva pra trás nas pontas
+      const cx = Math.sin(a) * R, cz = R - Math.cos(a) * R; // pontas curvam NA DIREÇÃO de quem está atrás: a parede abraça e protege
       const h = Math.max(3, Math.round(6 - edge * edge * 2 + (rnd() - 0.5) * 1.6)); // pontas mais baixas, topo irregular
       for (const row of [0, 1]) { // duas camadas: a de trás um pouco mais baixa (dá volume)
         const hh = row ? Math.max(2, h - 1 - (rnd() < 0.4 ? 1 : 0)) : h;
         for (let k = 0; k < hh; k++) {
           const top = k === hh - 1, j = (rnd() - 0.5) * 0.06;
-          blocks.push({ c, row, k, a, x: cx - Math.sin(a) * row * B * 0.9 + j, z: cz - Math.cos(a) * row * B * 0.9, y: k * B + B / 2,
+          blocks.push({ c, row, k, a: -a, x: cx + Math.sin(a) * row * B * 0.9 + j, z: cz - Math.cos(a) * row * B * 0.9, y: k * B + B / 2,
             s: top ? 0.9 + rnd() * 0.12 : 1, col: top ? 2 : rnd() < 0.18 ? 1 : rnd() < 0.12 ? 3 : 0, top, delay: edge * 0.22 + k * 0.035 + row * 0.05 });
         }
       }
@@ -51,6 +51,7 @@ LS.GelWall = class {
     LS.GelWall.list.push(this);
   }
   static get B() { return 0.42; }
+  static get GROW() { return 7; }
   // colisores: uma caixa por coluna (no mundo)
   addColliders() {
     const W = LS.World, B = LS.GelWall.B, g = this.group, v = new THREE.Vector3(); this.colliders = [];
@@ -98,8 +99,8 @@ LS.GelWall = class {
     if (this.life !== undefined && this.state !== 'shatter' && this.state !== 'dead') { this.life -= dt; if (this.life <= 0) this.shatter(); } // some sozinha depois de um tempo
     for (const m of this.bubbles) { const u = m.userData; u.y += u.sp * dt; if (u.y > u.top) u.y = 0.1; m.position.set(u.x, u.y, u.z); m.visible = this.state !== 'shatter'; }
     if (this.state === 'grow') {
-      this.place(this.t);
-      if (this.t > 0.9) { this.state = 'idle'; this.place(9); }
+      this.place(this.t * LS.GelWall.GROW); // GROW alto = brota rápido (7 ≈ 0,12 s)
+      if (this.t * LS.GelWall.GROW > 1.05) { this.state = 'idle'; this.place(9); }
     } else if (this.state === 'idle') {
       if (this.wobT > 0) { this.wobT = Math.max(0, this.wobT - dt); this.place(9); }
     } else if (this.state === 'shatter') {
