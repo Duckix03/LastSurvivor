@@ -24,11 +24,14 @@ LS.RemoteFighter = class extends LS.Fighter {
     else if (last && Math.hypot(s[1] - last.x, s[3] - last.z) + Math.abs(s[2] - last.y) > 12) b.length = 0; // teleporte: não interpola
     if (Array.isArray(s[9])) this.lastGear = s[9]; else if (this.lastGear) s[9] = this.lastGear; // o servidor só reenvia colete/capacete quando muda
     if (typeof tm === 'number') {
-      // ficou parado (o cliente só manda um sinal de vida a cada ~200 ms) e voltou a mexer: segura a posição antiga até um instante
-      // antes do pacote novo, senão o boneco "desliza" no começo do movimento. Só quando o salto é pequeno (parado de verdade).
+      if (s[12] > 0) tm -= s[12]; // s[12] = há quantos ms o servidor recebeu este estado: carimba com a hora REAL, não a do tick (tira o tremido de até 50 ms)
       const l = b[b.length - 1];
-      if (l && tm - l.tm > 120 && tm - l.tm < 3000 && Math.hypot(s[1] - l.x, s[3] - l.z) + Math.abs(s[2] - l.y) < 1.5) b.push({ tm: tm - 40, x: l.x, y: l.y, z: l.z, yaw: l.yaw, pitch: l.pitch });
-      b.push({ tm, x: s[1], y: s[2], z: s[3], yaw: s[4], pitch: s[5] }); if (b.length > 12) b.shift();
+      if (!l || tm > l.tm) { // (pacote repetido ou fora de ordem não entra)
+        // ficou parado (o cliente só manda um sinal de vida a cada ~200 ms) e voltou a mexer: segura a posição antiga até um instante
+        // antes do pacote novo, senão o boneco "desliza" no começo do movimento. Só quando o salto é pequeno (parado de verdade).
+        if (l && tm - l.tm > 120 && tm - l.tm < 3000 && Math.hypot(s[1] - l.x, s[3] - l.z) + Math.abs(s[2] - l.y) < 1.5) b.push({ tm: tm - 40, x: l.x, y: l.y, z: l.z, yaw: l.yaw, pitch: l.pitch });
+        b.push({ tm, x: s[1], y: s[2], z: s[3], yaw: s[4], pitch: s[5] }); if (b.length > 12) b.shift();
+      }
     }
     this.tgt = s; this.seenT = performance.now(); this.netHidden = false;
   }
@@ -97,7 +100,7 @@ LS.Net = {
   MAX_BUFFERED: 32768, // se o navegador já tem tanto na fila de envio (rede ruim), pula esta posição: a mais nova vale mais que a velha atrasada
   INTERP_MS: 100,     // atraso de interpolação inicial (ms)
   interpMs: 100, jit: 0, jitN: 0, snapRx: 0, snapTm: 0, // atraso de interpolação ADAPTATIVO: segue o jitter medido dos pacotes (75 a 220 ms)
-  _ls: {}, _qRtt: 0,
+  _ls: {}, _qRtt: 0, _opt: [],
   rtt: 0, tmOff: null, pingT: 0, lastRx: 0, matchId: null, matchToken: null, _reconn: false, _undo: {}, _undoKeys: [],
   srvNow() { return performance.now() - this.tmOff; }, // relógio do servidor (ms desde o começo da partida)
   configured() { return !!LS.NET_URL; },
@@ -197,7 +200,7 @@ LS.Net = {
   begin(d) {
     this.online = true; this.you = d.you; this.host = d.host; this.ents = {}; this.remotes = []; this.sendT = 0;
     this.tmOff = null; this.rtt = 0; this.pingT = 0; this.lastRx = performance.now(); this._reconn = false; this._undo = {}; this._undoKeys = [];
-    this.interpMs = this.INTERP_MS; this.jit = 0; this.jitN = 0; this.snapRx = 0; this.snapTm = 0; this._ls = {};
+    this.interpMs = this.INTERP_MS; this.jit = 0; this.jitN = 0; this.snapRx = 0; this.snapTm = 0; this._ls = {}; this._opt = [];
   },
   // guarda como desfazer a coleta de um item (se o servidor disser que outro jogador chegou primeiro)
   keepUndo(id, f, d) { this._undo[id] = { f, d }; this._undoKeys.push(id); if (this._undoKeys.length > 12) delete this._undo[this._undoKeys.shift()]; },
@@ -215,6 +218,10 @@ LS.Net = {
     if (f === LS.Game.player) LS.HUD.toast('Outro jogador pegou esse item primeiro');
   },
   register(f, id) { f.netId = id; this.ents[id] = f; if (f.remote) this.remotes.push(f); },
+  // marcador de acerto NA HORA (som + marcador na mira): o servidor ainda confere e manda o dano/número depois. Antes o feedback do tiro
+  // só aparecia depois de um ping inteiro. Se o servidor recusar o tiro (não chega 'dmg'), o registro expira em 1,2 s.
+  optHit(head) { this._opt.push(performance.now()); if (this._opt.length > 12) this._opt.shift(); LS.Game.onPlayerHit(!!head, false); },
+  takeOpt() { const t = performance.now(); while (this._opt.length && t - this._opt[0] > 1200) this._opt.shift(); return this._opt.length ? (this._opt.shift(), true) : false; },
   // jitter dos pacotes (como o RTCP: média do desvio entre o intervalo de chegada e o intervalo de envio do servidor).
   // Rede boa: o atraso cai pra ~75 ms (o boneco fica mais perto do tempo real); rede oscilando: sobe até 220 ms (sem engasgar).
   trackJitter(tm) {
@@ -295,7 +302,8 @@ LS.Net = {
         if (m.d > 0.5 && v.hp > 0) v.model.hit();
         G.onDamage(v, a, m.d, !!m.h);
         if (a && a === G.player) { // acertou alguém: marcador e número de dano (confirmados pelo servidor)
-          G.onPlayerHit(!!m.h, v.hp <= 0);
+          if (!this.takeOpt()) G.onPlayerHit(!!m.h, v.hp <= 0); // marcador já foi mostrado na hora do tiro
+          else if (v.hp <= 0) G.onPlayerHit(!!m.h, true);        // só falta o marcador de abate
           LS.Effects.damageNumber(new THREE.Vector3(v.pos.x, v.pos.y + 1.2, v.pos.z), m.d, !!m.h);
           if (m.ab > 0) LS.Audio.armorHit();
         }
