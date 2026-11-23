@@ -7,12 +7,13 @@
 'use strict';
 
 // ---------- jogador (ou bot) controlado por outro computador: só mostra o que chega pela rede ----------
+const RF_STATES = ['plane', 'fall', 'chute', 'ground'];
 LS.RemoteFighter = class extends LS.Fighter {
   constructor(name, look) {
     super(name, false, { look: look || undefined });
     this.remote = true; this.tgt = null; this.spd = 0;
   }
-  reset() { super.reset(); this.tgt = null; this.spd = 0; this.netFlags = 0; this.seenT = 0; this.netHidden = true; this.buf = []; this.lastGear = null; }
+  reset() { super.reset(); this.tgt = null; this.spd = 0; this.netFlags = 0; this.seenT = 0; this.netHidden = true; this.buf = []; this.lastGear = null; this._gk = -1; }
   // o servidor só manda quem dá pra ver: quem some do pacote fica escondido (e não leva tiro "fantasma")
   // tm = relógio do servidor deste pacote: os últimos pacotes ficam num buffer e o boneco é desenhado ~100 ms no passado,
   // interpolando entre dois pacotes (movimento liso mesmo com ping oscilando)
@@ -22,7 +23,13 @@ LS.RemoteFighter = class extends LS.Fighter {
     if (!this.tgt || this.netHidden) { this.pos.set(s[1], s[2], s[3]); this.yaw = s[4]; b.length = 0; }
     else if (last && Math.hypot(s[1] - last.x, s[3] - last.z) + Math.abs(s[2] - last.y) > 12) b.length = 0; // teleporte: não interpola
     if (Array.isArray(s[9])) this.lastGear = s[9]; else if (this.lastGear) s[9] = this.lastGear; // o servidor só reenvia colete/capacete quando muda
-    if (typeof tm === 'number') { b.push({ tm, x: s[1], y: s[2], z: s[3], yaw: s[4], pitch: s[5] }); if (b.length > 10) b.shift(); }
+    if (typeof tm === 'number') {
+      // ficou parado (o cliente só manda um sinal de vida a cada ~200 ms) e voltou a mexer: segura a posição antiga até um instante
+      // antes do pacote novo, senão o boneco "desliza" no começo do movimento. Só quando o salto é pequeno (parado de verdade).
+      const l = b[b.length - 1];
+      if (l && tm - l.tm > 120 && tm - l.tm < 3000 && Math.hypot(s[1] - l.x, s[3] - l.z) + Math.abs(s[2] - l.y) < 1.5) b.push({ tm: tm - 40, x: l.x, y: l.y, z: l.z, yaw: l.yaw, pitch: l.pitch });
+      b.push({ tm, x: s[1], y: s[2], z: s[3], yaw: s[4], pitch: s[5] }); if (b.length > 12) b.shift();
+    }
     this.tgt = s; this.seenT = performance.now(); this.netHidden = false;
   }
   // posição no instante rt (relógio do servidor): entre dois pacotes; depois do último, segue na mesma velocidade por até 150 ms
@@ -43,10 +50,9 @@ LS.RemoteFighter = class extends LS.Fighter {
   update(dt) {
     const s = this.tgt; if (!s) { this.model.root.visible = false; return; }
     if (this.alive && performance.now() - this.seenT > 700) { this.netHidden = true; this.model.root.visible = false; return; } // (corpo caído some pela própria animação)
-    const states = ['plane', 'fall', 'chute', 'ground'];
-    this.state = states[s[7]] || 'ground';
+    this.state = RF_STATES[s[7]] || 'ground';
     const k = 1 - Math.exp(-12 * dt), px = this.pos.x, pz = this.pos.z, N = LS.Net;
-    const iv = N.tmOff !== null && this.buf && this.buf.length ? this.interp(N.srvNow() - N.INTERP_MS) : null;
+    const iv = N.tmOff !== null && this.buf && this.buf.length ? this.interp(N.srvNow() - N.interpMs) : null;
     if (iv) { this.pos.set(iv.x, iv.y, iv.z); this.yaw = iv.yaw; this.pitch = iv.pitch; } // interpolado entre pacotes
     else { // sem relógio do servidor (servidor antigo): suaviza em direção ao último pacote, como antes
       const tv = (this._v || (this._v = new THREE.Vector3())).set(s[1], s[2], s[3]); // posição recebida
@@ -63,7 +69,8 @@ LS.RemoteFighter = class extends LS.Fighter {
     if ((this.weapons[0] && this.weapons[0].id) !== wid) { this.weapons = [wid ? { id: wid, mag: 99 } : null, null]; this.slot = 0; this.model.switchGun(wid); }
     const g = s[9] || [];
     this.vest = { level: g[0] | 0, dur: g[1] || 0 }; this.helmet = { level: g[2] | 0, dur: g[3] || 0 }; this.bag = g[4] | 0;
-    this.model.setGear(this.vest.level, this.helmet.level, this.bag);
+    const gk = this.vest.level + this.helmet.level * 64 + this.bag * 4096;
+    if (gk !== this._gk) { this._gk = gk; this.model.setGear(this.vest.level, this.helmet.level, this.bag); } // só quando muda (antes rodava todo quadro)
     if (this.alive) this.hp = s[10];
     this.model.root.position.copy(this.pos); this.model.root.rotation.y = this.yaw;
     this.model.root.visible = this.state !== 'plane';
@@ -74,10 +81,23 @@ LS.RemoteFighter = class extends LS.Fighter {
   }
 };
 
+// mesmo estado de antes? (posição/rotação já arredondadas, arma, colete/capacete e flags)
+const rowSame = (a, b) => {
+  for (let i = 1; i <= 8; i++) if (a[i] !== b[i]) return false;
+  if (a[10] !== b[10]) return false;
+  const g = a[9], h = b[9];
+  for (let i = 0; i < 5; i++) if (g[i] !== h[i]) return false;
+  return true;
+};
+
 LS.Net = {
   online: false, ws: null, you: null, host: null, ents: {}, remotes: [], sendT: 0, findWs: null,
-  SEND_HZ: 15,        // posições enviadas por segundo (o servidor repassa a 20 Hz)
-  INTERP_MS: 100,     // os jogadores remotos são desenhados 100 ms no passado (interpolação)
+  SEND_HZ: 20,        // posições enviadas por segundo: igual ao tick do servidor (20 Hz). Com 15 Hz os pacotes chegavam em intervalos de 50/50/100 ms (batimento 15 x 20) e o boneco "engasgava"
+  HEARTBEAT_MS: 200,  // personagem parado (mesmo estado): manda só um sinal de vida a cada tanto, em vez de 20x por segundo (economiza o limite do plano grátis)
+  MAX_BUFFERED: 32768, // se o navegador já tem tanto na fila de envio (rede ruim), pula esta posição: a mais nova vale mais que a velha atrasada
+  INTERP_MS: 100,     // atraso de interpolação inicial (ms)
+  interpMs: 100, jit: 0, jitN: 0, snapRx: 0, snapTm: 0, // atraso de interpolação ADAPTATIVO: segue o jitter medido dos pacotes (75 a 220 ms)
+  _ls: {}, _qRtt: 0,
   rtt: 0, tmOff: null, pingT: 0, lastRx: 0, matchId: null, matchToken: null, _reconn: false, _undo: {}, _undoKeys: [],
   srvNow() { return performance.now() - this.tmOff; }, // relógio do servidor (ms desde o começo da partida)
   configured() { return !!LS.NET_URL; },
@@ -97,12 +117,19 @@ LS.Net = {
     try { ws = new WebSocket(this.wsUrl('/ws/find')); } catch (e) { fail('erro'); return; }
     this.findWs = ws;
     const to = setTimeout(() => fail('sem resposta'), 45000);
-    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', proto: LS.NET_PROTO, ver: LS.VERSION, app: LS.IS_APP, name: LS.playerProfile.name, look: LS.playerProfile.look, auth: LS.Account && LS.Account.token }));
-    ws.onerror = () => { clearTimeout(to); fail('erro'); };
-    ws.onclose = () => { clearTimeout(to); if (!done && !this._matching) fail('fechou'); };
+    let pt = null; // ping enquanto procura: o servidor usa pra escolher como host (dono dos bots) quem tem o menor ping
+    const qping = () => { if (ws.readyState === 1) ws.send(JSON.stringify({ t: 'ping', c: performance.now(), r: Math.round(this._qRtt || 0) })); };
+    this._qRtt = 0;
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ t: 'hello', proto: LS.NET_PROTO, ver: LS.VERSION, app: LS.IS_APP, name: LS.playerProfile.name, look: LS.playerProfile.look, auth: LS.Account && LS.Account.token }));
+      qping(); pt = setInterval(qping, 1500);
+    };
+    ws.onerror = () => { clearTimeout(to); clearInterval(pt); fail('erro'); };
+    ws.onclose = () => { clearTimeout(to); clearInterval(pt); if (!done && !this._matching) fail('fechou'); };
     ws.onmessage = ev => {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.t === 'queue') cb.onQueue(m.n, m.left);
+      else if (m.t === 'pong') { const r = performance.now() - m.c; if (r >= 0 && r < 10000) this._qRtt = this._qRtt ? this._qRtt * 0.6 + r * 0.4 : r; }
       else if (m.t === 'nomatch') { clearTimeout(to); fail('nomatch'); }
       else if (m.t === 'outdated') { clearTimeout(to); fail('outdated'); }
       else if (m.t === 'maint') { clearTimeout(to); fail('maint'); LS.Maint && LS.Maint.recheck(); }
@@ -155,7 +182,7 @@ LS.Net = {
       let opened = false;
       ws.onopen = () => {
         if (!this.online || !this._reconn) { try { ws.close(); } catch (e) { } return; }
-        opened = true; this.ws = ws; this._reconn = false; this.lastRx = performance.now(); this.pingT = 0;
+        opened = true; this.ws = ws; this._reconn = false; this.lastRx = performance.now(); this.pingT = 0; this._ls = {};
         ws.onmessage = ev => { let d; try { d = JSON.parse(ev.data); } catch (e) { return; } this.onMsg(d); };
         ws.onclose = () => { if (this.online && ws === this.ws) this.lost(); };
         LS.HUD.centerMsg('RECONECTADO', '', 1.2);
@@ -170,6 +197,7 @@ LS.Net = {
   begin(d) {
     this.online = true; this.you = d.you; this.host = d.host; this.ents = {}; this.remotes = []; this.sendT = 0;
     this.tmOff = null; this.rtt = 0; this.pingT = 0; this.lastRx = performance.now(); this._reconn = false; this._undo = {}; this._undoKeys = [];
+    this.interpMs = this.INTERP_MS; this.jit = 0; this.jitN = 0; this.snapRx = 0; this.snapTm = 0; this._ls = {};
   },
   // guarda como desfazer a coleta de um item (se o servidor disser que outro jogador chegou primeiro)
   keepUndo(id, f, d) { this._undo[id] = { f, d }; this._undoKeys.push(id); if (this._undoKeys.length > 12) delete this._undo[this._undoKeys.shift()]; },
@@ -187,6 +215,19 @@ LS.Net = {
     if (f === LS.Game.player) LS.HUD.toast('Outro jogador pegou esse item primeiro');
   },
   register(f, id) { f.netId = id; this.ents[id] = f; if (f.remote) this.remotes.push(f); },
+  // jitter dos pacotes (como o RTCP: média do desvio entre o intervalo de chegada e o intervalo de envio do servidor).
+  // Rede boa: o atraso cai pra ~75 ms (o boneco fica mais perto do tempo real); rede oscilando: sobe até 220 ms (sem engasgar).
+  trackJitter(tm) {
+    const now = performance.now(), gTm = tm - this.snapTm, gRx = now - this.snapRx;
+    if (this.snapRx && gTm > 0 && gTm <= 150) { // intervalos longos = ninguém mudou (parado), não é jitter
+      this.jit += (Math.abs(gRx - gTm) - this.jit) / 16;
+      if (++this.jitN >= 20) {
+        const target = Math.max(75, Math.min(220, 60 + 3.5 * this.jit));
+        this.interpMs += (target - this.interpMs) * (target > this.interpMs ? 0.05 : 0.01); // sobe rápido, desce devagar
+      }
+    }
+    this.snapRx = now; this.snapTm = tm;
+  },
 
   // ---------- todo quadro ----------
   update(dt) {
@@ -196,17 +237,22 @@ LS.Net = {
     this.pingT -= dt; // ping a cada 2 s: mede o RTT, mantém a conexão viva e deixa o servidor saber que estamos aqui
     if (this.pingT <= 0) { this.pingT = 2; this.send({ t: 'ping', c: nowp, r: Math.round(this.rtt) }); }
     // nada vindo do servidor por 6 s: a conexão morreu em silêncio (comum no celular): tenta voltar
-    if (this.matchId && !this._reconn && this.lastRx && nowp - this.lastRx > 6000) { const old = this.ws; this.lost(); if (old) { try { old.close(); } catch (e) { } } }
+    if (this.matchId && !this._reconn && this.lastRx && nowp - this.lastRx > 5000) { const old = this.ws; this.lost(); if (old) { try { old.close(); } catch (e) { } } }
     this.sendT -= dt;
     if (this.sendT > 0) return;
     this.sendT += 1 / this.SEND_HZ; if (this.sendT < 0) this.sendT = 0; // soma (não zera): mantém a taxa certa mesmo com FPS baixo
-    const G = LS.Game, e = [];
+    if (this.ws && this.ws.bufferedAmount > this.MAX_BUFFERED) return; // rede entupida: não empilha posição velha
+    const G = LS.Game, e = [], ls = this._ls, now = nowp;
     const pack = (f, pitch) => {
       const w = f.weapon(), fl = (f.crouch ? 1 : 0) | (f.running ? 2 : 0) | (f.aiming || f.fireCd > 0 || f.ai === 'fight' ? 4 : 0) | (f.state === 'ground' && !f.onGround ? 8 : 0) |
         (f.reloadT > 0 ? 16 : 0) | (f.healType === 'medkit' ? 32 : 0) | (f.healType === 'bandage' ? 64 : 0) | (f.dive || f.diving ? 128 : 0);
       const r = v => Math.round(v * 100) / 100;
-      e.push([f.netId, r(f.pos.x), r(f.pos.y), r(f.pos.z), r(f.yaw), r(pitch), r(f.vel.y), { plane: 0, fall: 1, chute: 2, ground: 3 }[f.state] || 0,
-        w ? w.id : null, [f.vest.level, Math.round(f.vest.dur), f.helmet.level, Math.round(f.helmet.dur), f.bag], fl]);
+      const row = [f.netId, r(f.pos.x), r(f.pos.y), r(f.pos.z), r(f.yaw), r(pitch), r(f.vel.y), { plane: 0, fall: 1, chute: 2, ground: 3 }[f.state] || 0,
+        w ? w.id : null, [f.vest.level, Math.round(f.vest.dur), f.helmet.level, Math.round(f.helmet.dur), f.bag], fl];
+      const old = ls[f.netId];
+      if (old && now - old.t < this.HEARTBEAT_MS && rowSame(old.row, row)) return; // nada mudou: só o sinal de vida a cada HEARTBEAT_MS
+      ls[f.netId] = { row, t: now };
+      e.push(row);
     };
     if (G.player.alive) pack(G.player, G.player.camPitch);
     if (this.isHost()) for (const b of G.bots) if (b.alive && b.netId) pack(b, b.pitch);
@@ -220,6 +266,7 @@ LS.Net = {
     switch (m.t) {
       case 'snap': {
         if (typeof m.tm === 'number') { const o = performance.now() - m.tm; if (this.tmOff === null || o < this.tmOff) this.tmOff = o; else this.tmOff += (o - this.tmOff) * 0.01; } // relógio do servidor (segue o pacote mais rápido)
+        if (typeof m.tm === 'number') this.trackJitter(m.tm);
         for (const s of m.e) { const f = E(s[0]); if (f && f.remote) f.netTarget(s, m.tm); }
         break;
       }
