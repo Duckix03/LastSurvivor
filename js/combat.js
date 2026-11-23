@@ -325,7 +325,7 @@ LS.Combat = {
           LS.Game.onPlayerHit(hit.head, !hit.f.alive);
           LS.Effects.damageNumber(end, dealt, hit.head);
           if (armored) LS.Audio.armorHit();
-        }
+        } else if (shooter.isPlayer && hit.f.netId && hit.f.alive) LS.Net.optHit(hit.head); // online: marcador/som na hora; o dano e o número vêm do servidor
       } else if (wt < maxR) LS.Effects.impact(end, false, d);
     }
   }
