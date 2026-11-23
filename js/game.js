@@ -271,7 +271,7 @@ LS.Game = {
   setInventory(open) {
     this.inventoryOpen = open;
     document.getElementById('inventory').classList.toggle('hidden', !open);
-    if (open) { LS.HUD.renderInventory(); LS.Input.unlock(); }
+    if (open) { LS.HUD.invTab = 'weapons'; LS.HUD.renderInventory(); LS.Input.unlock(); const b = document.getElementById('inv-body'); if (b) b.scrollTop = 0; }
     else if (this.state === 'playing') LS.Input.lock();
   },
   pause() {
