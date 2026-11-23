@@ -184,7 +184,7 @@ export class Match {
     for (const r of this.roster) { const e = this.newEnt(r.pid, r.pid, r.name); if (num(r.rtt) > 0) e.rtt = Math.min(5000, num(r.rtt)); this.ents.set(r.pid, e); }
     this.joinTimer = setTimeout(() => this.start(), JOIN_MS);
   }
-  newEnt(id, owner, name) { return { id, owner, name, hp: 100, alive: true, st: null, pos: null, lastT: 0, vest: [0, 0], helmet: [0, 0], weapon: null, state: 0, shots: [], envT: 0, envAcc: 0, vel: null, ver: 0, gearVer: 0, gearS: '', stLite: null, rtt: 999, grace: false }; }
+  newEnt(id, owner, name) { return { id, owner, name, hp: 100, alive: true, st: null, pos: null, lastT: 0, vest: [0, 0], helmet: [0, 0], weapon: null, state: 0, shots: [], envT: 0, envAcc: 0, vel: null, ver: 0, gearVer: 0, gearS: '', stLite: null, rtt: 999, grace: false, fireCr: 3, fireT: 0 }; }
 
   start() {
     if (this.started || !this.roster) return;
@@ -314,8 +314,11 @@ export class Match {
       case 'fire': { // um disparo: guarda o "orçamento" de projéteis (pra validar os acertos) e repassa o efeito pros outros
         const ent = this.ents.get(String(m.i)), w = WEAPONS[m.w];
         if (!this.owns(pid, ent) || !ent.alive || !w || (m.w !== 'punch' && m.w !== ent.weapon)) return;
-        const now = Date.now(), minGap = 1000 / w.rate * 0.7, last = ent.shots[ent.shots.length - 1];
-        if (last && now - last.t < minGap) return; // mais rápido que a arma permite
+        const now = Date.now(), cap = w.rate > 3 ? 3 : 2;
+        // balde de fichas: enche na cadência da arma (+10%) e guarda até `cap` tiros. Aceita rajada curta (pacotes que chegam juntos por jitter/TCP) mas mantém a média da arma
+        ent.fireCr = Math.min(cap, ent.fireCr + (ent.fireT ? (now - ent.fireT) / 1000 * w.rate * 1.1 : 0)); ent.fireT = now;
+        if (ent.fireCr < 1) return; // mais rápido que a arma permite
+        ent.fireCr -= 1;
         let o = null, d = null;
         if (m.w !== 'punch') {
           o = Array.isArray(m.o) && m.o.length === 3 ? m.o.map(v => num(v)) : (ent.pos || [0, 0, 0]);
