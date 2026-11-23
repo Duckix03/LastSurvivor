@@ -1,3 +1,11 @@
 /version.json
   Access-Control-Allow-Origin: *
   Cache-Control: no-store
+
+# Arquivos que quase nunca mudam: o navegador guarda por muito tempo (menos pedidos na volta ao jogo)
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+/js/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/music/*
+  Cache-Control: public, max-age=2592000
