@@ -19,6 +19,8 @@ const MIN_PROTO = 1;
 const SEARCH_MS = 30000;   // tempo procurando jogadores
 const MAX_PLAYERS = 31;    // vagas da partida (jogadores + bots)
 const JOIN_MS = 12000;     // tempo pra todos entrarem na sala depois do matchmaking
+const READY_MS = 20000;    // depois do 'start', tempo máximo esperando todo mundo terminar de carregar o mapa (aí manda o 'go' de qualquer jeito)
+const DEFER_MS = 500, DEFER_MAX = 6; // fila: se alguém ainda está entrando (conferindo a conta) na hora de fechar a partida, espera até 3 s
 const TICK_MS = 1000 / 30; // envio de posições aos jogadores (30 por segundo; só vai o que mudou, então não pesa). Quanto menor, menos o estado espera o próximo tick
 const IDLE_MS = 15000;     // cliente novo que some por tanto tempo (sem nem o ping) é considerado caído
 const GRACE_MS = 8000;     // queda de conexão: o personagem espera tanto tempo pelo jogador voltar (reconexão)
@@ -80,7 +82,7 @@ export default {
 
 // ===================== Matchmaker: fila de 30 s =====================
 export class Matchmaker {
-  constructor(state, env) { this.state = state; this.env = env; this.queue = []; this.deadline = 0; this.timer = null; this.ticker = null; }
+  constructor(state, env) { this.state = state; this.env = env; this.queue = []; this.deadline = 0; this.timer = null; this.ticker = null; this.pending = 0; this.defers = 0; }
 
   async fetch(req) {
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('websocket esperado', { status: 426, headers: cors });
@@ -92,8 +94,9 @@ export class Matchmaker {
       if (m.t === 'hello' && !p.ready) {
         p.ready = true;
         if (num(m.proto) < MIN_PROTO) { send(server, { t: 'outdated', min: MIN_PROTO }); try { server.close(1000, 'outdated'); } catch (e) { } return; }
-        p.app = !!m.app; p.look = m.look && typeof m.look === 'object' ? m.look : null;
-        this.joinQueue(p, m);
+        p.app = !!m.app; p.look = m.look && typeof m.look === 'object' ? m.look : null; p.rdy = !!m.rdy; // rdy: cliente novo, que avisa quando terminou de carregar
+        this.pending++; // ainda conferindo a conta: o fechamento da fila espera esse jogador (senão 2 pessoas que entraram juntas caíam em filas separadas)
+        this.joinQueue(p, m).catch(() => { }).then(() => { this.pending = Math.max(0, this.pending - 1); });
       } else if (m.t === 'ping') { // ping na fila: responde e guarda o ping do jogador (vai escolher o host da partida)
         const r = num(m.r); if (r > 0) p.rtt = Math.min(5000, r);
         send(server, { t: 'pong', c: m.c });
@@ -128,12 +131,16 @@ export class Matchmaker {
     for (const q of this.queue) send(q.ws, { t: 'queue', n: this.queue.length, left, max: MAX_PLAYERS });
   }
   async flush() {
+    if (this.pending > 0 && this.defers < DEFER_MAX) { // tem gente quase entrando na fila: espera um pouquinho antes de fechar a partida
+      this.defers++; clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), DEFER_MS); return;
+    }
+    this.defers = 0;
     const group = this.queue.splice(0, MAX_PLAYERS);
     this.reset();
     if (this.queue.length) { this.armTimer(); this.broadcastQueue(); }
     if (group.length < 2) { for (const p of group) { send(p.ws, { t: 'nomatch' }); try { p.ws.close(1000, 'nomatch'); } catch (e) { } } return; }
     const id = rid(12), seed = Math.floor(Math.random() * 2 ** 31);
-    const roster = group.map((p, i) => ({ token: p.token, pid: 'p' + (i + 1), name: p.name, look: p.look, rtt: p.rtt || 0 }));
+    const roster = group.map((p, i) => ({ token: p.token, pid: 'p' + (i + 1), name: p.name, look: p.look, rtt: p.rtt || 0, rdy: !!p.rdy }));
     await this.env.MATCH.get(this.env.MATCH.idFromName(id), hint(this.env)).fetch('https://match/init', { method: 'POST', body: JSON.stringify({ id, seed, roster }) });
     for (const p of group) { send(p.ws, { t: 'match', id, token: p.token }); try { p.ws.close(1000, 'match'); } catch (e) { } }
   }
@@ -149,6 +156,7 @@ export class Match {
     clearInterval(this.idleT); this.idleT = null;
     this.seen = new Map(); this.pingers = new Set(); this.grace = new Map(); this.bye = new Set();
     this.killLog = []; this.dropped = new Set(); this.sent = new Map(); this.verSeq = 0;
+    clearTimeout(this.goTimer); this.goTimer = null; this.need = null; this.ready = new Set(); this.goSent = false;
   }
 
   async fetch(req) {
@@ -183,6 +191,7 @@ export class Match {
     const hp = []; for (const e of this.ents.values()) if (e.alive) hp.push([e.id, Math.round(e.hp)]);
     send(ws, { t: 'resync', hp, kills: this.killLog, picks: [...this.taken] });
     if (this.host !== pid) send(ws, { t: 'host', host: this.host });
+    if (this.goSent) send(ws, { t: 'go' });
   }
 
   init(d) {
@@ -211,9 +220,26 @@ export class Match {
     const names = BOT_NAMES.slice().sort(() => rnd() - 0.5);
     for (let i = 0; i < nBots; i++) { const id = 'b' + i; this.ents.set(id, this.newEnt(id, this.host, names[i % names.length])); bots.push({ id, name: names[i % names.length] }); }
     const players = humans.map(r => ({ pid: r.pid, name: r.name, look: r.look }));
-    for (const [pid, ws] of this.socks) send(ws, { t: 'start', you: pid, host: this.host, seed: this.seed, players, bots });
+    // BARREIRA DE CARREGAMENTO: cada navegador monta o mapa DEPOIS do 'start' (o 1º jogo da sessão leva alguns segundos).
+    // Antes, quem carregava mais rápido já jogava e, se o host dos bots demorava, os outros caíam numa cidade fantasma sem bots.
+    // Agora os clientes novos (rdy) avisam 'ready' quando terminam e todos começam juntos no 'go'. Cliente antigo não espera ninguém.
+    this.need = new Set(humans.filter(r => r.rdy).map(r => r.pid)); this.ready = new Set(); this.goSent = false;
+    const sync = this.need.size > 0 ? 1 : 0;
+    for (const [pid, ws] of this.socks) send(ws, { t: 'start', you: pid, host: this.host, seed: this.seed, players, bots, sync: sync && this.need.has(pid) ? 1 : 0 });
+    if (sync) this.goTimer = setTimeout(() => this.sendGo(), READY_MS); else this.goSent = true;
     this.tick = setInterval(() => this.broadcastSnap(), TICK_MS);
     this.idleT = setInterval(() => this.checkIdle(), 3000);
+  }
+  // todo mundo que ia esperar já terminou de carregar (ou saiu)? então libera a partida
+  checkGo() {
+    if (this.goSent || !this.need) return;
+    for (const pid of this.need) if (!this.ready.has(pid) && this.socks.has(pid)) return;
+    this.sendGo();
+  }
+  sendGo() {
+    if (this.goSent) return;
+    this.goSent = true; clearTimeout(this.goTimer); this.goTimer = null;
+    this.bcast({ t: 'go' });
   }
   // cliente novo (que manda ping) calado por muito tempo = conexão morta: derruba e abre a janela de reconexão
   checkIdle() {
@@ -401,6 +427,7 @@ export class Match {
       }
       case 'diff': if (pid === this.host) this.botDmg = Math.max(0.3, Math.min(1.2, num(m.dmg, 0.75))); break;
       case 'ping': { this.pingers.add(pid); const pe = this.ents.get(pid); if (pe && typeof m.r === 'number' && isFinite(m.r)) pe.rtt = Math.max(0, Math.min(5000, m.r)); send(this.socks.get(pid), { t: 'pong', c: m.c, tm: Date.now() - this.t0 }); break; }
+      case 'ready': if (this.need && this.need.has(pid)) { this.ready.add(pid); this.checkGo(); } break; // terminou de carregar o mapa
       case 'bye': this.bye.add(pid); break; // saiu de propósito: sem tempo de espera pra reconectar
     }
   }
@@ -434,6 +461,7 @@ export class Match {
     if (this.socks.get(pid) !== ws) return; // conexão antiga, que já foi trocada por uma nova
     this.socks.delete(pid);
     if (!this.started) return;
+    this.checkGo(); // quem caiu enquanto carregava não segura os outros
     const e = this.ents.get(pid);
     if (this.ended || !e || !e.alive || this.bye.has(pid)) { this.finalLeave(pid); return; }
     e.grace = true; clearTimeout(this.grace.get(pid));
