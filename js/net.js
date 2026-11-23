@@ -128,7 +128,7 @@ LS.Net = {
     const qping = () => { if (ws.readyState === 1) ws.send(JSON.stringify({ t: 'ping', c: performance.now(), r: Math.round(this._qRtt || 0) })); };
     this._qRtt = 0;
     ws.onopen = () => {
-      ws.send(JSON.stringify({ t: 'hello', proto: LS.NET_PROTO, ver: LS.VERSION, app: LS.IS_APP, name: LS.playerProfile.name, look: LS.playerProfile.look, auth: LS.Account && LS.Account.token }));
+      ws.send(JSON.stringify({ t: 'hello', proto: LS.NET_PROTO, ver: LS.VERSION, app: LS.IS_APP, rdy: 1, name: LS.playerProfile.name, look: LS.playerProfile.look, auth: LS.Account && LS.Account.token }));
       qping(); pt = setInterval(qping, 1500);
     };
     ws.onerror = () => { clearTimeout(to); clearInterval(pt); fail('erro'); };
@@ -157,12 +157,19 @@ LS.Net = {
       else this.onMsg(d);
     };
   },
+  // espera o 'go' do servidor (todos os jogadores carregaram o mapa). Sem resposta em maxMs, segue sozinho (servidor antigo/rede ruim)
+  waitGo(cb, maxMs) {
+    let done = false;
+    const fin = () => { if (done) return; done = true; clearTimeout(t); this._goCb = null; this.lastRx = performance.now(); cb(); };
+    const t = setTimeout(fin, maxMs); this._goCb = fin;
+  },
   cancel() {
     this._matching = false;
     if (this.findWs) { try { this.findWs.close(); } catch (e) { } this.findWs = null; }
     if (this.ws && !this.online) { try { this.ws.close(); } catch (e) { } this.ws = null; }
   },
   leave() {
+    this._goCb = null;
     const ws = this.ws; this.online = false; this.ws = null; this._reconn = false; this.matchId = null; this.matchToken = null;
     this.tmOff = null; this.rtt = 0; this.lastRx = 0;
     if (ws) { try { if (ws.readyState === 1) ws.send('{"t":"bye"}'); ws.close(); } catch (e) { } } // "bye": saída de propósito (sem tempo de espera no servidor)
@@ -350,6 +357,7 @@ LS.Net = {
         LS.GelBall.spawn(f, new THREE.Vector3(...m.o), new THREE.Vector3(...m.v)); break;
       }
       case 'fix': { const f = E(m.i); if (f && this.owns(f)) { f.pos.set(m.p[0], m.p[1], m.p[2]); f.vel.set(0, 0, 0); } break; }
+      case 'go': { const f = this._goCb; this._goCb = null; if (f) f(); break; } // todos terminaram de carregar: a partida começa
       case 'host': this.host = m.host; if (m.host === this.you) this.takeOverBots(); break;
       case 'end': {
         if (G.ended || G.state === 'ended') break;
