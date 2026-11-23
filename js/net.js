@@ -47,6 +47,7 @@ LS.RemoteFighter = class extends LS.Fighter {
     }
     const c = b[n - 1], a = b[n - 2];
     if (!a || c.tm <= a.tm) return lerpTo(c, c, 0);
+    LS.Net.exN++; // passou do último pacote: extrapolando
     const k = Math.min(rt - c.tm, 150) / (c.tm - a.tm);
     o.x = c.x + (c.x - a.x) * k; o.y = c.y; o.z = c.z + (c.z - a.z) * k; o.yaw = c.yaw; o.pitch = c.pitch; return o;
   }
@@ -55,7 +56,7 @@ LS.RemoteFighter = class extends LS.Fighter {
     if (this.alive && performance.now() - this.seenT > 700) { this.netHidden = true; this.model.root.visible = false; return; } // (corpo caído some pela própria animação)
     this.state = RF_STATES[s[7]] || 'ground';
     const k = 1 - Math.exp(-12 * dt), px = this.pos.x, pz = this.pos.z, N = LS.Net;
-    const iv = N.tmOff !== null && this.buf && this.buf.length ? this.interp(N.srvNow() - N.interpMs) : null;
+    const iv = N.tmOff !== null && this.buf && this.buf.length ? this.interp(N.srvNow() - N.interpMs - (this.netId && this.netId[0] === 'b' ? N.BOT_EXTRA_MS : 0)) : null;
     if (iv) { this.pos.set(iv.x, iv.y, iv.z); this.yaw = iv.yaw; this.pitch = iv.pitch; } // interpolado entre pacotes
     else { // sem relógio do servidor (servidor antigo): suaviza em direção ao último pacote, como antes
       const tv = (this._v || (this._v = new THREE.Vector3())).set(s[1], s[2], s[3]); // posição recebida
@@ -98,6 +99,9 @@ LS.Net = {
   SEND_HZ: 20,        // posições enviadas por segundo: igual ao tick do servidor (20 Hz). Com 15 Hz os pacotes chegavam em intervalos de 50/50/100 ms (batimento 15 x 20) e o boneco "engasgava"
   HEARTBEAT_MS: 200,  // personagem parado (mesmo estado): manda só um sinal de vida a cada tanto, em vez de 20x por segundo (economiza o limite do plano grátis)
   MAX_BUFFERED: 32768, // se o navegador já tem tanto na fila de envio (rede ruim), pula esta posição: a mais nova vale mais que a velha atrasada
+  BOT_EXTRA_MS: 50,   // bots chegam a 10 Hz: precisam de um pouco mais de atraso de interpolação
+  MIN_INTERP_MS: 75,  // piso do atraso adaptativo (suba pra 100 se o contador 'ex%' do canto passar de ~5%)
+  exN: 0, exT: 0,     // contador: quantas vezes o desenho precisou extrapolar (passou do último pacote)
   INTERP_MS: 100,     // atraso de interpolação inicial (ms)
   interpMs: 100, jit: 0, jitN: 0, snapRx: 0, snapTm: 0, // atraso de interpolação ADAPTATIVO: segue o jitter medido dos pacotes (75 a 220 ms)
   _ls: {}, _qRtt: 0, _opt: [],
@@ -229,7 +233,7 @@ LS.Net = {
     if (this.snapRx && gTm > 0 && gTm <= 150) { // intervalos longos = ninguém mudou (parado), não é jitter
       this.jit += (Math.abs(gRx - gTm) - this.jit) / 16;
       if (++this.jitN >= 20) {
-        const target = Math.max(75, Math.min(220, 60 + 3.5 * this.jit));
+        const target = Math.max(this.MIN_INTERP_MS, Math.min(220, 60 + 3.5 * this.jit));
         this.interpMs += (target - this.interpMs) * (target > this.interpMs ? 0.05 : 0.01); // sobe rápido, desce devagar
       }
     }
@@ -239,7 +243,7 @@ LS.Net = {
   // ---------- todo quadro ----------
   update(dt) {
     if (!this.online) return;
-    for (const r of this.remotes) r.update(dt);
+    for (const r of this.remotes) { this.exT++; r.update(dt); } // exT = quadros x remotos desenhados (base do contador)
     const nowp = performance.now();
     this.pingT -= dt; // ping a cada 2 s: mede o RTT, mantém a conexão viva e deixa o servidor saber que estamos aqui
     if (this.pingT <= 0) { this.pingT = 2; this.send({ t: 'ping', c: nowp, r: Math.round(this.rtt) }); }
@@ -262,7 +266,10 @@ LS.Net = {
       e.push(row);
     };
     if (G.player.alive) pack(G.player, G.player.camPitch);
-    if (this.isHost()) for (const b of G.bots) if (b.alive && b.netId) pack(b, b.pitch);
+    if (this.isHost()) { // bots: metade a cada envio (10 Hz cada), corta o upload do host quase pela metade; o cliente compensa com +BOT_EXTRA_MS de interpolação
+      this._bk = (this._bk | 0) ^ 1; let i = 0;
+      for (const b of G.bots) if (b.alive && b.netId && ((i++ & 1) === this._bk)) pack(b, b.pitch);
+    }
     if (e.length) this.send({ t: 'st', e });
   },
 
