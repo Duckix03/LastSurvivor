@@ -19,7 +19,7 @@ const MIN_PROTO = 1;
 const SEARCH_MS = 30000;   // tempo procurando jogadores
 const MAX_PLAYERS = 31;    // vagas da partida (jogadores + bots)
 const JOIN_MS = 12000;     // tempo pra todos entrarem na sala depois do matchmaking
-const TICK_MS = 1000 / 20; // envio de posições aos jogadores (20 por segundo; só vai o que mudou, então não pesa)
+const TICK_MS = 1000 / 30; // envio de posições aos jogadores (30 por segundo; só vai o que mudou, então não pesa). Quanto menor, menos o estado espera o próximo tick
 const IDLE_MS = 15000;     // cliente novo que some por tanto tempo (sem nem o ping) é considerado caído
 const GRACE_MS = 8000;     // queda de conexão: o personagem espera tanto tempo pelo jogador voltar (reconexão)
 const VIS_NEAR = 18;       // perto assim sempre aparece (passos, briga de perto)
@@ -225,6 +225,8 @@ export class Match {
   // cada jogador recebe só quem ele pode ver; o host recebe todos (os bots dele precisam enxergar os jogadores)
   broadcastSnap() {
     const now = Date.now(), tm = now - this.t0;
+    // hora real de cada estado: quantos ms atrás o servidor recebeu (cliente usa pra carimbar certo, em vez da hora do tick)
+    for (const x of this.ents.values()) if (x.st && x.stLite) { const a = Math.max(0, Math.min(250, now - x.lastT)); x.st[12] = a; x.stLite[12] = a; }
     for (const [pid, ws] of this.socks) {
       const e = this.snapFor(pid, now, pid === this.host, true);
       if (e.length) send(ws, { t: 'snap', e, tm }); // nada novo = nada enviado
