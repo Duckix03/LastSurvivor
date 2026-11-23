@@ -11,10 +11,13 @@ LS.HUD = {
     this.mm = this.el.minimap.getContext('2d');
     this.bm = this.el['bigmap-canvas'].getContext('2d');
     this.toasts = []; this.centerT = 0; this.dmgFlash = 0;
-    // clique nos botões do inventário
+    // clique nos botões do inventário (e fora do painel = fecha)
     this.el.inventory.addEventListener('click', e => {
+      if (e.target === this.el.inventory) { LS.Game.setInventory(false); return; } // tocou no fundo escuro
       const b = e.target.closest('button[data-inv]'); if (!b) return;
       const P = LS.Game.player, a = b.dataset.inv, v = b.dataset.v;
+      if (a === 'close') { LS.Audio.click(); LS.Game.setInventory(false); return; }
+      if (a === 'tab') { this.invTab = v; LS.Audio.click(); this.renderInventory(); return; }
       if (a === 'equip') P.switchWeapon(+v);
       else if (a === 'dropw') P.dropWeapon(+v);
       else if (a === 'reload') P.startReload();
@@ -308,35 +311,61 @@ LS.HUD = {
       if (s.fresh !== s.t) { s.fresh = s.t; s.el.classList.remove('pop'); void s.el.offsetWidth; s.el.classList.add('pop'); } // pulsa a cada tiro
     }
   },
+  // ---------- INVENTÁRIO ----------
+  invTab: 'weapons',
+  // layout compacto (celular, janela pequena): abas em vez de tudo de uma vez
+  invCompact() { return document.body.classList.contains('mobile') || window.innerWidth <= 780 || window.innerHeight <= 560; },
   renderInventory() {
-    const P = LS.Game.player, E = this.el;
+    const P = LS.Game.player, E = this.el, inv = E.inventory;
+    const compact = this.invCompact();
+    inv.classList.toggle('compact', compact);
+    const body = document.getElementById('inv-body'); if (body) body.dataset.tab = this.invTab;
+    document.querySelectorAll('#inv-tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === this.invTab));
+    // só mexe no HTML quando algo mudou: refazer a lista a cada 0,25 s "engolia" o toque do celular e perdia a rolagem
+    const set = (el, html) => { if (el._h !== html) { el._h = html; el.innerHTML = html; } };
+    const pct = (v, m) => Math.max(0, Math.min(100, m > 0 ? v / m * 100 : 0)).toFixed(0);
+    const bar = (v, m, txt, cls) => '<div class="ib ' + (cls || '') + '"><i style="width:' + pct(v, m) + '%"></i><span>' + txt + '</span></div>';
+    const ico = (t, id, lv, off) => '<div class="ico-box' + (off ? ' off' : '') + '">' + LS.Icons.img(t, id, lv, 'ico') + '</div>';
+    // --- vida e abates (cabeçalho) ---
+    const hp = Math.ceil(P.hp), hpc = hp > 60 ? '' : hp > 30 ? 'mid' : 'low';
+    set(E['inv-cap'], '<div class="hp ' + hpc + '"><i style="width:' + pct(P.hp, 100) + '%"></i><span>❤ ' + hp + ' / 100</span></div><div class="kills"><b>' + P.kills + '</b> abates</div>');
+    // --- armas ---
     let h = '';
     P.weapons.forEach((w, i) => {
-      if (!w) { h += '<div class="inv-item"><span>Slot ' + (i + 1) + ': vazio</span></div>'; return; }
-      const d = LS.WEAPONS[w.id];
-      h += '<div class="inv-item"><span>' + LS.Icons.img('weapon', w.id) + '<span>' + (i === P.slot ? '▶ ' : '') + '<b>' + d.name + '</b><span class="sub">' + LS.Items.RARITY_NAMES[d.rarity] + ' · ' + d.cat + ' · Dano ' + d.dmg + (d.pellets > 1 ? 'x' + d.pellets : '') +
-        ' · ' + d.rate + ' tiros/s · ' + w.mag + '/' + d.mag + ' · ' + LS.AMMO_TYPES[d.ammo].name + '</span></span></span><span class="btns">' +
-        (i !== P.slot ? '<button data-inv="equip" data-v="' + i + '">EQUIPAR</button>' : '<button data-inv="reload">RECARREGAR</button>') +
-        '<button class="sec" data-inv="dropw" data-v="' + i + '">LARGAR</button></span></div>';
+      if (!w) { h += '<div class="iw empty"><div class="iw-main"><b>Slot ' + (i + 1) + '</b><span class="sub">vazio · pegue uma arma no chão</span></div></div>'; return; }
+      const d = LS.WEAPONS[w.id], eq = i === P.slot, res = P.ammo[d.ammo] | 0;
+      h += '<div class="iw r' + d.rarity + (eq ? ' eq' : '') + '">' + ico('weapon', w.id) +
+        '<div class="iw-main"><div class="iw-top"><b>' + d.name + '</b>' + (eq ? '<em class="tag">NA MÃO</em>' : '') + '<span class="rar">' + LS.Items.RARITY_NAMES[d.rarity] + '</span></div>' +
+        '<div class="chips"><span>' + d.cat + '</span><span>Dano ' + d.dmg + (d.pellets > 1 ? 'x' + d.pellets : '') + '</span><span>' + d.rate + ' tiros/s</span></div>' +
+        bar(w.mag, d.mag, 'Pente ' + w.mag + ' / ' + d.mag, 'mag') +
+        '<span class="sub">Reserva ' + res + ' · ' + LS.AMMO_TYPES[d.ammo].name + '</span></div>' +
+        '<div class="btns">' + (eq ? '<button data-inv="reload">RECARREGAR</button>' : '<button data-inv="equip" data-v="' + i + '">EQUIPAR</button>') +
+        '<button class="sec" data-inv="dropw" data-v="' + i + '">LARGAR</button></div></div>';
     });
-    E['inv-weapons'].innerHTML = h;
+    set(E['inv-weapons'], h);
+    // --- munição ---
     h = '';
-    for (const t in P.ammo) h += '<div class="inv-item"><span>' + LS.Icons.img('ammo', t) + '<span>' + LS.AMMO_TYPES[t].name + '<span class="sub">' + P.ammo[t] + ' / ' + P.maxAmmo(t) + '</span></span></span>' +
-      (P.ammo[t] > 0 ? '<button class="sec" data-inv="dropa" data-v="' + t + '">LARGAR</button>' : '') + '</div>';
-    E['inv-ammo'].innerHTML = h;
-    const lv = l => l ? 'Nível ' + l : 'Nenhum';
-    E['inv-gear'].innerHTML =
-      '<div class="inv-item"><span>' + LS.Icons.img('vest', null, P.vest.level || 1, P.vest.level ? 'ico' : 'ico off') + '<span>Colete<span class="sub">' + lv(P.vest.level) + (P.vest.level ? ' · ' + Math.ceil(P.vest.dur) + ' durabilidade · -' + LS.GEAR.vest.levels[P.vest.level].red * 100 + '% dano' : '') + '</span></span></span></div>' +
-      '<div class="inv-item"><span>' + LS.Icons.img('helmet', null, P.helmet.level || 1, P.helmet.level ? 'ico' : 'ico off') + '<span>Capacete<span class="sub">' + lv(P.helmet.level) + (P.helmet.level ? ' · ' + Math.ceil(P.helmet.dur) + ' durabilidade' : '') + '</span></span></span></div>' +
-      '<div class="inv-item"><span>' + LS.Icons.img('bag', null, P.bag || 1, P.bag ? 'ico' : 'ico off') + '<span>Mochila<span class="sub">' + lv(P.bag) + ' · capacidade x' + P.bagMult() + '</span></span></span></div>';
+    for (const t in P.ammo) {
+      const mx = P.maxAmmo(t);
+      h += '<div class="it' + (P.ammo[t] ? '' : ' none') + '">' + ico('ammo', t) + '<div class="it-main"><b>' + LS.AMMO_TYPES[t].name + '</b>' + bar(P.ammo[t], mx, P.ammo[t] + ' / ' + mx) + '</div>' +
+        (P.ammo[t] > 0 ? '<div class="btns"><button class="sec" data-inv="dropa" data-v="' + t + '">LARGAR</button></div>' : '') + '</div>';
+    }
+    set(E['inv-ammo'], h);
+    // --- cura ---
     h = '';
     for (const t in P.meds) {
-      const m = LS.MEDS[t];
-      h += '<div class="inv-item"><span>' + LS.Icons.img('med', t) + '<span>' + m.name + '<span class="sub">' + P.meds[t] + ' / ' + P.maxMed(t) + ' · +' + m.heal + ' HP · ' + m.time + 's</span></span></span><span class="btns">' +
-        (P.meds[t] > 0 ? '<button data-inv="heal" data-v="' + t + '">USAR</button><button class="sec" data-inv="dropm" data-v="' + t + '">LARGAR</button>' : '') + '</span></div>';
+      const m = LS.MEDS[t], n = P.meds[t];
+      h += '<div class="it' + (n ? '' : ' none') + '">' + ico('med', t) + '<div class="it-main"><b>' + m.name + '</b>' + bar(n, P.maxMed(t), n + ' / ' + P.maxMed(t)) + '<span class="sub">+' + m.heal + ' HP · ' + m.time + 's</span></div>' +
+        (n > 0 ? '<div class="btns"><button data-inv="heal" data-v="' + t + '">USAR</button><button class="sec" data-inv="dropm" data-v="' + t + '">LARGAR</button></div>' : '') + '</div>';
     }
-    E['inv-meds'].innerHTML = h;
-    E['inv-cap'].innerHTML = '<div class="inv-item"><span>Vida<span class="sub">' + Math.ceil(P.hp) + ' / 100</span></span></div>' +
-      '<div class="inv-item"><span>Abates<span class="sub">' + P.kills + '</span></span></div>';
+    set(E['inv-meds'], h);
+    // --- equipamento ---
+    const piece = (k, name, g) => {
+      const L = g.level, def = L ? LS.GEAR[k].levels[L] : null;
+      return '<div class="it gear' + (L ? '' : ' none') + ' lv' + L + '">' + ico(k, null, L || 1, !L) + '<div class="it-main"><b>' + name + '</b><span class="sub">' + (L ? 'Nível ' + L + ' · -' + Math.round(def.red * 100) + '% dano' : 'nenhum') + '</span>' +
+        (L ? bar(g.dur, def.dur, Math.ceil(g.dur) + ' / ' + def.dur, 'dur') : '') + '</div></div>';
+    };
+    set(E['inv-gear'], piece('vest', 'Colete', P.vest) + piece('helmet', 'Capacete', P.helmet) +
+      '<div class="it gear' + (P.bag ? '' : ' none') + ' lv' + P.bag + '">' + ico('bag', null, P.bag || 1, !P.bag) + '<div class="it-main"><b>Mochila</b><span class="sub">' + (P.bag ? 'Nível ' + P.bag + ' · capacidade x' + P.bagMult() : 'nenhuma') + '</span></div></div>');
   }
 };
