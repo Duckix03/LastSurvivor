@@ -162,7 +162,7 @@ LS.Presence = {
   },
   async ping() {
     try {
-      const r = await fetch(LS.NET_URL.replace(/\/$/, '') + '/api/presence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sid: this.sid }) });
+      const r = await fetch(LS.NET_URL.replace(/\/$/, '') + '/api/presence', { method: 'POST', body: JSON.stringify({ sid: this.sid }) }); // sem cabeçalho customizado = pedido "simples": o navegador não faz o OPTIONS antes
       const j = await r.json();
       if (typeof j.online === 'number') this.show(Math.max(1, j.online)); // no mínimo você
       if (j.theme) LS.LobbyThemes.setServer(j.theme); // tema do lobby escolhido pelo dono do jogo
