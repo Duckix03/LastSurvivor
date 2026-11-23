@@ -19,7 +19,9 @@ const MIN_PROTO = 1;
 const SEARCH_MS = 30000;   // tempo procurando jogadores
 const MAX_PLAYERS = 31;    // vagas da partida (jogadores + bots)
 const JOIN_MS = 12000;     // tempo pra todos entrarem na sala depois do matchmaking
-const TICK_MS = 1000 / 12; // envio de posições (12 por segundo)
+const TICK_MS = 1000 / 20; // envio de posições aos jogadores (20 por segundo; só vai o que mudou, então não pesa)
+const IDLE_MS = 15000;     // cliente novo que some por tanto tempo (sem nem o ping) é considerado caído
+const GRACE_MS = 8000;     // queda de conexão: o personagem espera tanto tempo pelo jogador voltar (reconexão)
 const VIS_NEAR = 18;       // perto assim sempre aparece (passos, briga de perto)
 const VIS_MAX = 650;       // longe assim nunca aparece (some na neblina de qualquer jeito)
 const VIS_LINGER = 1000;   // depois de visto, continua aparecendo por 1 s (sem "piscar" na quina)
@@ -48,12 +50,17 @@ const cleanName = s => String(s || 'Jogador').replace(/[<>&"'`]/g, '').trim().sl
 const send = (ws, obj) => { try { ws.send(JSON.stringify(obj)); } catch (e) { /* conexão fechada */ } };
 const num = (v, d = 0) => (typeof v === 'number' && isFinite(v) ? v : d);
 const cors = { 'Access-Control-Allow-Origin': '*' };
+// Região dos Durable Objects: eles nascem perto de quem os cria 1ª vez. Sem dica, a partida pode abrir na Europa/EUA
+// mesmo com todo mundo no Brasil. LOC_HINT (wrangler.toml): sam, wnam, enam, weur, eeur, apac, oc, afr, me. Vazio = sem dica.
+const hintName = env => (env && env.LOC_HINT !== undefined ? String(env.LOC_HINT) : 'sam');
+const hint = env => { const h = hintName(env); return h ? { locationHint: h } : undefined; };
+const mmName = env => { const h = hintName(env); return h ? 'mm-' + h : 'global'; };
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === '/' || url.pathname === '/health') return new Response('Last Survivor server ok', { headers: cors });
-    if (url.pathname === '/ws/find') return env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')).fetch(req);
+    if (url.pathname === '/ws/find') return env.MATCHMAKER.get(env.MATCHMAKER.idFromName(mmName(env)), hint(env)).fetch(req);
     if (url.pathname.startsWith('/api/')) return env.ACCOUNTS.get(env.ACCOUNTS.idFromName('global')).fetch(req);
     if (url.pathname === '/room/new' || url.pathname === '/room/list') return roomRoutes(req, env, url); // salas personalizadas
     const rm = url.pathname.match(/^\/ws\/room\/(\d{7})$/);
@@ -117,7 +124,7 @@ export class Matchmaker {
     if (group.length < 2) { for (const p of group) { send(p.ws, { t: 'nomatch' }); try { p.ws.close(1000, 'nomatch'); } catch (e) { } } return; }
     const id = rid(12), seed = Math.floor(Math.random() * 2 ** 31);
     const roster = group.map((p, i) => ({ token: p.token, pid: 'p' + (i + 1), name: p.name, look: p.look }));
-    await this.env.MATCH.get(this.env.MATCH.idFromName(id)).fetch('https://match/init', { method: 'POST', body: JSON.stringify({ id, seed, roster }) });
+    await this.env.MATCH.get(this.env.MATCH.idFromName(id), hint(this.env)).fetch('https://match/init', { method: 'POST', body: JSON.stringify({ id, seed, roster }) });
     for (const p of group) { send(p.ws, { t: 'match', id, token: p.token }); try { p.ws.close(1000, 'match'); } catch (e) { } }
   }
 }
@@ -129,6 +136,9 @@ export class Match {
     this.roster = null; this.ents = new Map(); this.socks = new Map(); this.started = false; this.ended = false;
     this.killSeq = 0; this.taken = new Set(); this.host = null; this.tick = null; this.joinTimer = null; this.botDmg = 0.75; this.t0 = 0;
     this.vis = new Map();
+    clearInterval(this.idleT); this.idleT = null;
+    this.seen = new Map(); this.pingers = new Set(); this.grace = new Map(); this.bye = new Set();
+    this.killLog = []; this.dropped = new Set(); this.sent = new Map(); this.verSeq = 0;
   }
 
   async fetch(req) {
@@ -136,15 +146,33 @@ export class Match {
     if (url.pathname === '/init' && req.method === 'POST') { this.init(await req.json()); return new Response('ok'); }
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('websocket esperado', { status: 426, headers: cors });
     const r = this.roster && this.roster.find(x => x.token === url.searchParams.get('token'));
-    if (!r || this.started || this.socks.has(r.pid)) return new Response('sem vaga', { status: 403, headers: cors });
+    if (!r) return new Response('sem vaga', { status: 403, headers: cors });
+    // partida já começou: só entra de novo quem já era da partida (reconexão: o token é secreto de cada jogador)
+    const resume = this.started && !this.ended && this.ents.has(r.pid) && (this.grace.has(r.pid) || this.socks.has(r.pid));
+    if ((this.started && !resume) || (!resume && this.socks.has(r.pid))) return new Response('sem vaga', { status: 403, headers: cors });
     const [client, server] = Object.values(new WebSocketPair());
     server.accept();
-    this.socks.set(r.pid, server);
+    if (resume) {
+      clearTimeout(this.grace.get(r.pid)); this.grace.delete(r.pid);
+      const old = this.socks.get(r.pid); this.socks.delete(r.pid); // conexão antiga (meio-aberta): troca pela nova
+      if (old) { try { old.close(1000, 'reconectou'); } catch (e) { } }
+      const ent = this.ents.get(r.pid); if (ent) ent.grace = false;
+      this.sent.delete(r.pid); this.bye.delete(r.pid);
+    }
+    this.socks.set(r.pid, server); this.seen.set(r.pid, Date.now());
     server.addEventListener('message', ev => { try { this.onMsg(r.pid, JSON.parse(ev.data)); } catch (e) { /* mensagem inválida */ } });
-    const gone = () => this.onLeave(r.pid);
+    const gone = () => this.onSockGone(r.pid, server);
     server.addEventListener('close', gone); server.addEventListener('error', gone);
-    if (this.socks.size === this.roster.length) this.start();
+    if (resume) this.sendResync(r.pid);
+    else if (this.socks.size === this.roster.length) this.start();
     return new Response(null, { status: 101, webSocket: client });
+  }
+  // volta pro jogo depois de uma queda: manda o que ele perdeu (vida, mortes, itens pegos) pra ficar igual aos outros
+  sendResync(pid) {
+    const ws = this.socks.get(pid); if (!ws) return;
+    const hp = []; for (const e of this.ents.values()) if (e.alive) hp.push([e.id, Math.round(e.hp)]);
+    send(ws, { t: 'resync', hp, kills: this.killLog, picks: [...this.taken] });
+    if (this.host !== pid) send(ws, { t: 'host', host: this.host });
   }
 
   init(d) {
@@ -153,7 +181,7 @@ export class Match {
     for (const r of this.roster) this.ents.set(r.pid, this.newEnt(r.pid, r.pid, r.name));
     this.joinTimer = setTimeout(() => this.start(), JOIN_MS);
   }
-  newEnt(id, owner, name) { return { id, owner, name, hp: 100, alive: true, st: null, pos: null, lastT: 0, vest: [0, 0], helmet: [0, 0], weapon: null, state: 0, shots: [], envT: 0, envAcc: 0, vel: null }; }
+  newEnt(id, owner, name) { return { id, owner, name, hp: 100, alive: true, st: null, pos: null, lastT: 0, vest: [0, 0], helmet: [0, 0], weapon: null, state: 0, shots: [], envT: 0, envAcc: 0, vel: null, ver: 0, gearVer: 0, gearS: '', stLite: null, rtt: 999, grace: false }; }
 
   start() {
     if (this.started || !this.roster) return;
@@ -172,19 +200,46 @@ export class Match {
     const players = humans.map(r => ({ pid: r.pid, name: r.name, look: r.look }));
     for (const [pid, ws] of this.socks) send(ws, { t: 'start', you: pid, host: this.host, seed: this.seed, players, bots });
     this.tick = setInterval(() => this.broadcastSnap(), TICK_MS);
+    this.idleT = setInterval(() => this.checkIdle(), 3000);
+  }
+  // cliente novo (que manda ping) calado por muito tempo = conexão morta: derruba e abre a janela de reconexão
+  checkIdle() {
+    const now = Date.now();
+    for (const [pid, ws] of this.socks) {
+      if (this.pingers.has(pid) && now - (this.seen.get(pid) || now) > IDLE_MS) { try { ws.close(1000, 'idle'); } catch (e) { } this.onSockGone(pid, ws); }
+    }
+  }
+  // escolhe o host (dono dos bots) entre quem está conectado: o de menor ping
+  pickHost() {
+    let best = null, br = Infinity;
+    for (const pid of this.socks.keys()) { const e = this.ents.get(pid), r = e && typeof e.rtt === 'number' ? e.rtt : 999; if (r < br) { br = r; best = pid; } }
+    return best;
   }
 
   // cada jogador recebe só quem ele pode ver; o host recebe todos (os bots dele precisam enxergar os jogadores)
   broadcastSnap() {
     const now = Date.now(), tm = now - this.t0;
-    for (const [pid, ws] of this.socks) send(ws, { t: 'snap', e: this.snapFor(pid, now, pid === this.host), tm });
+    for (const [pid, ws] of this.socks) {
+      const e = this.snapFor(pid, now, pid === this.host, true);
+      if (e.length) send(ws, { t: 'snap', e, tm }); // nada novo = nada enviado
+    }
   }
-  snapFor(pid, now, full) {
+  // dedupe: só manda quem mudou desde o último envio pra esse jogador; colete/capacete (gear) só quando muda ou a cada 1 s
+  snapFor(pid, now, full, dedupe) {
     const me = this.ents.get(pid), e = [];
     let views = null; const getViews = () => views || (views = viewPoints(me.pos));
+    let sent = null; if (dedupe && this.pingers.has(pid)) { sent = this.sent.get(pid);  // só pra cliente novo (que manda ping): o antigo recebe tudo, como antes
+      if (!sent) this.sent.set(pid, sent = new Map()); }
     for (const x of this.ents.values()) {
       if (!x.st || x.owner === pid) continue;
-      if (full || (me && !me.alive) || this.visible(pid, me, x, now, getViews)) e.push(x.st); // morto (espectador) vê todo mundo
+      const show = full || (me && !me.alive) || this.visible(pid, me, x, now, getViews); // morto (espectador) vê todo mundo
+      if (!show) { if (sent) sent.delete(x.id); continue; } // sumiu de vista: quando voltar, é reenviado por inteiro
+      if (!sent) { e.push(x.st); continue; }
+      const c = sent.get(x.id);
+      if (c && c.v === x.ver) continue;
+      const gear = !c || c.g !== x.gearVer || now - c.t > 1000;
+      e.push(gear ? x.st : x.stLite);
+      sent.set(x.id, { v: x.ver, g: gear ? x.gearVer : c.g, t: gear ? now : c.t });
     }
     return e;
   }
@@ -220,6 +275,7 @@ export class Match {
 
   onMsg(pid, m) {
     if (!this.started || this.ended) return;
+    this.seen.set(pid, Date.now());
     switch (m.t) {
       case 'st': { // posições/estado dos personagens deste jogador (o próprio + bots, se for o host)
         if (!Array.isArray(m.e)) return;
@@ -240,7 +296,10 @@ export class Match {
           ent.weapon = typeof s[8] === 'string' && WEAPONS[s[8]] ? s[8] : null;
           const g = Array.isArray(s[9]) ? s[9] : [];
           ent.vest = [Math.min(3, num(g[0]) | 0), num(g[1])]; ent.helmet = [Math.min(3, num(g[2]) | 0), num(g[3])];
-          ent.st = [ent.id, x, y, z, num(s[4]), num(s[5]), num(s[6]), state, ent.weapon, g.slice(0, 5), Math.round(ent.hp), s[10] | 0];
+          const gs = g.slice(0, 5), gj = JSON.stringify(gs); if (gj !== ent.gearS) { ent.gearS = gj; ent.gearVer++; }
+          ent.st = [ent.id, x, y, z, num(s[4]), num(s[5]), num(s[6]), state, ent.weapon, gs, Math.round(ent.hp), s[10] | 0];
+          ent.stLite = ent.st.slice(); ent.stLite[9] = null; // versão sem colete/capacete (o cliente guarda o último que recebeu)
+          ent.ver = ++this.verSeq;
         }
         break;
       }
@@ -249,11 +308,14 @@ export class Match {
         if (!this.owns(pid, ent) || !ent.alive || !w || (m.w !== 'punch' && m.w !== ent.weapon)) return;
         const now = Date.now(), minGap = 1000 / w.rate * 0.7, last = ent.shots[ent.shots.length - 1];
         if (last && now - last.t < minGap) return; // mais rápido que a arma permite
-        ent.shots.push({ t: now, w: m.w, left: w.pellets }); if (ent.shots.length > 6) ent.shots.shift();
+        let o = null, d = null;
         if (m.w !== 'punch') {
-          const o = Array.isArray(m.o) && m.o.length === 3 ? m.o.map(v => num(v)) : (ent.pos || [0, 0, 0]);
-          let d = Array.isArray(m.d) && m.d.length === 3 ? m.d.map(v => num(v)) : [0, 0, 1];
+          o = Array.isArray(m.o) && m.o.length === 3 ? m.o.map(v => num(v)) : (ent.pos || [0, 0, 0]);
+          d = Array.isArray(m.d) && m.d.length === 3 ? m.d.map(v => num(v)) : [0, 0, 1];
           const dl = Math.hypot(d[0], d[1], d[2]) || 1; d = d.map(v => v / dl);
+        }
+        ent.shots.push({ t: now, w: m.w, left: w.pellets, o, d }); if (ent.shots.length > 6) ent.shots.shift();
+        if (m.w !== 'punch') {
           const msg = JSON.stringify({ t: 'fire', i: ent.id, o, d, w: m.w });
           for (const [rp, ws] of this.socks) if (rp !== pid && this.hears(rp, ent, o, d, w.range)) { try { ws.send(msg); } catch (e) { } }
         }
@@ -261,11 +323,18 @@ export class Match {
       }
       case 'hit': { // acerto informado por quem atirou: o servidor confere e calcula o dano
         const a = this.ents.get(String(m.a)), v = this.ents.get(String(m.v));
-        if (!this.owns(pid, a) || !a.alive || !v || !v.alive || a === v || !a.pos || !v.pos) return;
+        if (!this.owns(pid, a) || !a.alive || !v || !v.alive || v.grace || a === v || !a.pos || !v.pos) return;
         const now = Date.now(), shot = [...a.shots].reverse().find(s => s.left > 0 && now - s.t < 600 && s.w === m.w);
         if (!shot) return;
         const w = WEAPONS[shot.w], dist = Math.hypot(a.pos[0] - v.pos[0], a.pos[1] - v.pos[1], a.pos[2] - v.pos[2]);
         if (dist > w.range * 1.6 + 4) return;
+        if (shot.o && shot.d && v.state === 3) { // a bala tem que ter passado perto do alvo (folga grande: lag, interpolação e espalhamento)
+          const vx = v.pos[0] - shot.o[0], vy = v.pos[1] + 1.1 - shot.o[1], vz = v.pos[2] - shot.o[2];
+          const t = vx * shot.d[0] + vy * shot.d[1] + vz * shot.d[2];
+          if (t < -3) return;
+          const perp = Math.hypot(vx - shot.d[0] * t, vy - shot.d[1] * t, vz - shot.d[2] * t);
+          if (perp > 4.5 + Math.max(0, t) * 0.08) return;
+        }
         shot.left--;
         const head = !!m.h && shot.w !== 'punch';
         const fall = dist > w.range ? Math.max(0.25, Math.min(1, 1 - (dist - w.range) / (w.range * 0.6))) : 1;
@@ -292,6 +361,7 @@ export class Match {
       }
       case 'pick': { // item do chão: o primeiro que pegar leva
         const id = String(m.id).slice(0, 24);
+        if (!this.owns(pid, this.ents.get(String(m.by))) || this.taken.size > 5000) return;
         if (this.taken.has(id)) { send(this.socks.get(pid), { t: 'nopick', id }); return; }
         this.taken.add(id); this.bcast({ t: 'pick', id, by: String(m.by || '') }, pid);
         break;
@@ -305,11 +375,15 @@ export class Match {
       }
       case 'drops': { // o que um personagem deixou cair ao morrer (quem era dono dele manda a lista)
         if (!Array.isArray(m.items)) return;
-        this.bcast({ t: 'drops', k: m.k | 0, items: m.items.slice(0, 20) }, pid);
+        const k = m.k | 0, kr = this.killLog.find(x => x.k === k);
+        if (!kr || this.dropped.has(k) || !this.owns(pid, this.ents.get(kr.v))) return; // só quem era dono do morto, e só uma vez
+        this.dropped.add(k);
+        this.bcast({ t: 'drops', k, items: m.items.slice(0, 20) }, pid);
         break;
       }
       case 'diff': if (pid === this.host) this.botDmg = Math.max(0.3, Math.min(1.2, num(m.dmg, 0.75))); break;
-      case 'ping': send(this.socks.get(pid), { t: 'pong', c: m.c, tm: Date.now() - this.t0 }); break;
+      case 'ping': { this.pingers.add(pid); const pe = this.ents.get(pid); if (pe && typeof m.r === 'number' && isFinite(m.r)) pe.rtt = Math.max(0, Math.min(5000, m.r)); send(this.socks.get(pid), { t: 'pong', c: m.c, tm: Date.now() - this.t0 }); break; }
+      case 'bye': this.bye.add(pid); break; // saiu de propósito: sem tempo de espera pra reconectar
     }
   }
 
@@ -328,7 +402,8 @@ export class Match {
     v.alive = false; v.hp = 0; this.killSeq++;
     if (v.st) v.st[10] = 0;
     const left = this.aliveCount();
-    this.bcast({ t: 'kill', v: v.id, a: a ? a.id : null, w: weapon, h: head ? 1 : 0, k: this.killSeq, pl: left + 1, p: v.pos });
+    const km = { t: 'kill', v: v.id, a: a ? a.id : null, w: weapon, h: head ? 1 : 0, k: this.killSeq, pl: left + 1, p: v.pos };
+    this.killLog.push(km); this.bcast(km);
     if (left <= 1 && !this.ended) {
       this.ended = true;
       let winner = null; for (const e of this.ents.values()) if (e.alive) winner = e.id;
@@ -336,24 +411,37 @@ export class Match {
       setTimeout(() => this.close(), 15000);
     }
   }
-  onLeave(pid) {
-    if (!this.socks.has(pid)) return;
+  // a conexão de um jogador caiu. Em partida normal ele ganha GRACE_MS pra reconectar antes de ser eliminado
+  onSockGone(pid, ws) {
+    if (this.socks.get(pid) !== ws) return; // conexão antiga, que já foi trocada por uma nova
     this.socks.delete(pid);
     if (!this.started) return;
+    const e = this.ents.get(pid);
+    if (this.ended || !e || !e.alive || this.bye.has(pid)) { this.finalLeave(pid); return; }
+    e.grace = true; clearTimeout(this.grace.get(pid));
+    this.grace.set(pid, setTimeout(() => { this.grace.delete(pid); this.finalLeave(pid); }, GRACE_MS));
+  }
+  onLeave(pid) { this.socks.delete(pid); this.finalLeave(pid); }
+  finalLeave(pid) {
+    this.socks.delete(pid); clearTimeout(this.grace.get(pid)); this.grace.delete(pid);
+    if (!this.started) return;
     const me = this.ents.get(pid);
+    if (me) me.grace = false;
     if (me && me.alive && !this.ended) this.kill(me, null, 'Saiu', false);
-    // o host saiu: outro jogador assume os bots
+    // o host saiu: assume quem tem o menor ping
     if (pid === this.host && this.socks.size) {
-      this.host = this.socks.keys().next().value;
+      this.host = this.pickHost();
       // o novo host recebe a posição de todo mundo antes de assumir os bots (não estavam todos no pacote dele)
-      send(this.socks.get(this.host), { t: 'snap', e: this.snapFor(this.host, Date.now(), true), tm: Date.now() - this.t0 });
+      send(this.socks.get(this.host), { t: 'snap', e: this.snapFor(this.host, Date.now(), true, false), tm: Date.now() - this.t0 });
+      this.sent.delete(this.host);
       for (const e of this.ents.values()) if (e.id[0] === 'b') e.owner = this.host;
       this.bcast({ t: 'host', host: this.host });
     }
-    if (!this.socks.size) this.close();
+    if (!this.socks.size && !this.grace.size) this.close();
   }
   close() {
-    clearInterval(this.tick); clearTimeout(this.joinTimer);
+    clearInterval(this.tick); clearInterval(this.idleT); clearTimeout(this.joinTimer);
+    for (const t of this.grace.values()) clearTimeout(t);
     for (const ws of this.socks.values()) { try { ws.close(1000, 'fim'); } catch (e) { } }
     this.reset();
   }
@@ -382,7 +470,7 @@ export async function roomRoutes(req, env, url) {
   if (url.pathname === '/room/list') return dir.fetch('https://dir/list', { method: 'POST', body: JSON.stringify({ me: acc.id, friends: acc.friends || [] }) });
   // nova sala
   const d = await (await dir.fetch('https://dir/alloc', { method: 'POST', body: JSON.stringify({ hostAcc: acc.id, hostName: acc.name }) })).json();
-  await env.ROOM.get(env.ROOM.idFromName(d.id)).fetch('https://room/init', { method: 'POST', body: JSON.stringify({ id: d.id, hostAcc: acc.id, hostName: acc.name }) });
+  await env.ROOM.get(env.ROOM.idFromName(d.id), hint(env)).fetch('https://room/init', { method: 'POST', body: JSON.stringify({ id: d.id, hostAcc: acc.id, hostName: acc.name }) });
   return jsonR({ id: d.id });
 }
 
@@ -552,7 +640,7 @@ export class Room extends Match {
         if ([...this.ents.values()].every(x => x.gone || x.ready)) { clearTimeout(this.phT); this.phaseDone(); }
         return;
       }
-      case 'ping': send(m.ws, { t: 'pong', c: d.c }); return;
+      case 'ping': this.pingers.add(pid); send(m.ws, { t: 'pong', c: d.c }); return;
       case 'loaded': {
         if (this.ph !== 'starting' || !this.loaded) return;
         this.loaded.add(pid);
@@ -577,7 +665,7 @@ export class Room extends Match {
   // ---------- partida ----------
   startGame() {
     clearInterval(this.tick);
-    this.ents = new Map(); this.vis = new Map(); this.taken = new Set(); this.killSeq = 0;
+    this.ents = new Map(); this.vis = new Map(); this.sent = new Map(); this.taken = new Set(); this.killSeq = 0;
     this.seed = Math.floor(Math.random() * 2 ** 31); this.round = 0; this.score = [0, 0];
     for (const o of this.members.values()) if (o.slot.t === 'a' || o.slot.t === 'b') {
       const e = this.newEnt(o.pid, o.pid, o.name); e.team = o.slot.t; e.idx = o.slot.i; e.picks = null; e.load = ['ak47', 'm1887']; this.ents.set(o.pid, e);
@@ -635,11 +723,11 @@ export class Room extends Match {
   }
   backToLobby(silent) {
     clearInterval(this.tick); clearTimeout(this.phT); this.tick = null;
-    this.started = false; this.ended = true; this.ents = new Map(); this.ph = 'lobby'; this.round = 0;
+    this.started = false; this.ended = true; this.ents = new Map(); this.sent = new Map(); this.ph = 'lobby'; this.round = 0;
     if (!silent) { this.bcast({ t: 'lobby' }); this.sendRoom(); }
   }
   // espectador (quem não joga) recebe todo mundo
-  snapFor(pid, now, full) { return super.snapFor(pid, now, full || !this.ents.has(pid)); }
+  snapFor(pid, now, full, dedupe) { return super.snapFor(pid, now, full || !this.ents.has(pid), dedupe); }
   onLeave() { /* a sala cuida (leave) */ }
   close() { /* a partida não fecha a sala */ }
 }
