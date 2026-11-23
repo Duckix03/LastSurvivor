@@ -136,7 +136,7 @@ LS.Shop = {
     if (!C.pay(n)) { this.modal('<h3 class="sh-h">MOEDAS INSUFICIENTES</h3><p class="sh-sub">Você precisa de ' + LS.icon('coin', 'coin-i') + ' ' + (n > 1 ? C.ROYALE_10 : C.ROYALE_COST).toLocaleString('pt-BR') + ' e tem ' + LS.icon('coin', 'coin-i') + ' ' + this.coins() + '. Jogue partidas pra ganhar mais!</p><div class="pf-modal-btns"><button class="btn btn-primary" data-sh="close">OK</button></div>'); return; }
     const res = []; for (let i = 0; i < n; i++) res.push(C.spin());
     LS.Menu.render();
-    document.querySelector('#panel-shop .sh-coins b').textContent = this.coins();
+    document.querySelector('#panel-shop .sh-coins:not(.gem) b').textContent = this.coins();
     // animação: a luz passeia pelos itens e para no prêmio (no 10+1, no melhor deles)
     const best = res.slice().sort((a, b) => b.item.rarity - a.item.rarity)[0];
     const cells = [...document.querySelectorAll('#panel-shop .gr-cell')], target = cells.findIndex(c => c.dataset.v === best.item.id);
