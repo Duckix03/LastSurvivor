@@ -87,6 +87,9 @@ export class Matchmaker {
         if (num(m.proto) < MIN_PROTO) { send(server, { t: 'outdated', min: MIN_PROTO }); try { server.close(1000, 'outdated'); } catch (e) { } return; }
         p.app = !!m.app; p.look = m.look && typeof m.look === 'object' ? m.look : null;
         this.joinQueue(p, m);
+      } else if (m.t === 'ping') { // ping na fila: responde e guarda o ping do jogador (vai escolher o host da partida)
+        const r = num(m.r); if (r > 0) p.rtt = Math.min(5000, r);
+        send(server, { t: 'pong', c: m.c });
       }
     });
     const drop = () => { p.gone = true; const i = this.queue.indexOf(p); if (i >= 0) { this.queue.splice(i, 1); this.broadcastQueue(); } if (!this.queue.length) this.reset(); };
@@ -123,7 +126,7 @@ export class Matchmaker {
     if (this.queue.length) { this.armTimer(); this.broadcastQueue(); }
     if (group.length < 2) { for (const p of group) { send(p.ws, { t: 'nomatch' }); try { p.ws.close(1000, 'nomatch'); } catch (e) { } } return; }
     const id = rid(12), seed = Math.floor(Math.random() * 2 ** 31);
-    const roster = group.map((p, i) => ({ token: p.token, pid: 'p' + (i + 1), name: p.name, look: p.look }));
+    const roster = group.map((p, i) => ({ token: p.token, pid: 'p' + (i + 1), name: p.name, look: p.look, rtt: p.rtt || 0 }));
     await this.env.MATCH.get(this.env.MATCH.idFromName(id), hint(this.env)).fetch('https://match/init', { method: 'POST', body: JSON.stringify({ id, seed, roster }) });
     for (const p of group) { send(p.ws, { t: 'match', id, token: p.token }); try { p.ws.close(1000, 'match'); } catch (e) { } }
   }
@@ -178,7 +181,7 @@ export class Match {
   init(d) {
     this.reset();
     this.id = d.id; this.seed = d.seed | 0; this.roster = d.roster;
-    for (const r of this.roster) this.ents.set(r.pid, this.newEnt(r.pid, r.pid, r.name));
+    for (const r of this.roster) { const e = this.newEnt(r.pid, r.pid, r.name); if (num(r.rtt) > 0) e.rtt = Math.min(5000, num(r.rtt)); this.ents.set(r.pid, e); }
     this.joinTimer = setTimeout(() => this.start(), JOIN_MS);
   }
   newEnt(id, owner, name) { return { id, owner, name, hp: 100, alive: true, st: null, pos: null, lastT: 0, vest: [0, 0], helmet: [0, 0], weapon: null, state: 0, shots: [], envT: 0, envAcc: 0, vel: null, ver: 0, gearVer: 0, gearS: '', stLite: null, rtt: 999, grace: false }; }
@@ -191,7 +194,10 @@ export class Match {
     const humans = this.roster.filter(r => this.socks.has(r.pid));
     if (!humans.length) { this.reset(); return; }
     this.started = true; this.t0 = Date.now();
-    this.host = humans[0].pid;
+    // host = quem tem o menor ping medido na fila (os bots rodam no navegador dele: o ping dele vira atraso dos bots pra todos). Sem medida: o primeiro.
+    let hostR = humans[0], hostRtt = Infinity;
+    for (const r of humans) { const e = this.ents.get(r.pid), rt = e && e.rtt > 0 ? e.rtt : 999; if (rt < hostRtt) { hostRtt = rt; hostR = r; } }
+    this.host = hostR.pid;
     const nBots = Math.max(0, MAX_PLAYERS - humans.length), bots = [];
     // nomes dos bots embaralhados pela semente (iguais pra todos)
     let s = this.seed || 1; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
