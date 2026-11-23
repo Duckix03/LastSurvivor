@@ -7,6 +7,7 @@ O site continua no GitHub Pages; só a parte online fica na Cloudflare.
 
 1. Quem clica em **JOGAR** entra numa fila e fica **até 30 segundos procurando jogadores**.
 2. Se achar 2 ou mais, abre uma partida: os jogadores reais + **bots completando as 31 vagas**.
+   Cada jogador monta o mapa no próprio aparelho, então a partida só **começa quando todos terminam de carregar** (o servidor manda o `go`, no máximo 20 s de espera). Assim ninguém cai numa ilha sem bots porque o host dos bots demorou a carregar.
 3. Se não achar ninguém, o jogo começa **contra bots**, como antes.
 
 Na partida, o **servidor é a autoridade**:
