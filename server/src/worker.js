@@ -54,14 +54,21 @@ const cors = { 'Access-Control-Allow-Origin': '*' };
 // mesmo com todo mundo no Brasil. LOC_HINT (wrangler.toml): sam, wnam, enam, weur, eeur, apac, oc, afr, me. Vazio = sem dica.
 const hintName = env => (env && env.LOC_HINT !== undefined ? String(env.LOC_HINT) : 'sam');
 const hint = env => { const h = hintName(env); return h ? { locationHint: h } : undefined; };
+// Contas e diretório de salas também usam a dica de região (vale quando o objeto é criado; depois disso a Cloudflare ignora)
+const accountsDO = env => env.ACCOUNTS.get(env.ACCOUNTS.idFromName('global'), hint(env));
+const roomDirDO = env => env.ROOMDIR.get(env.ROOMDIR.idFromName('global'), hint(env));
+// Preflight do CORS respondido AQUI, na borda: não acorda o Durable Object e o navegador guarda a resposta por até 2 h
+// (sem Max-Age o Chrome repete o OPTIONS a cada ~5 s, dobrando os pedidos e somando um ping inteiro em cada chamada)
+const PREFLIGHT = Object.assign({ 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Max-Age': '7200' }, cors);
 const mmName = env => { const h = hintName(env); return h ? 'mm-' + h : 'global'; };
 
 export default {
   async fetch(req, env) {
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: PREFLIGHT });
     const url = new URL(req.url);
     if (url.pathname === '/' || url.pathname === '/health') return new Response('Last Survivor server ok', { headers: cors });
     if (url.pathname === '/ws/find') return env.MATCHMAKER.get(env.MATCHMAKER.idFromName(mmName(env)), hint(env)).fetch(req);
-    if (url.pathname.startsWith('/api/')) return env.ACCOUNTS.get(env.ACCOUNTS.idFromName('global')).fetch(req);
+    if (url.pathname.startsWith('/api/')) return accountsDO(env).fetch(req);
     if (url.pathname === '/room/new' || url.pathname === '/room/list') return roomRoutes(req, env, url); // salas personalizadas
     const rm = url.pathname.match(/^\/ws\/room\/(\d{7})$/);
     if (rm) return env.ROOM.get(env.ROOM.idFromName(rm[1])).fetch(req);
@@ -100,7 +107,7 @@ export class Matchmaker {
   async joinQueue(p, m) {
     p.name = cleanName(m.name);
     try {
-      const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('global')).fetch('https://accounts/internal/resolve', { method: 'POST', body: JSON.stringify({ token: m.auth, name: p.name }) });
+      const r = await accountsDO(this.env).fetch('https://accounts/internal/resolve', { method: 'POST', body: JSON.stringify({ token: m.auth, name: p.name }) });
       const d = await r.json(); if (d && d.name) { p.name = cleanName(d.name); p.accId = d.id || null; p.badges = d.badges || []; }
       if (d && d.maint) { send(p.ws, { t: 'maint' }); try { p.ws.close(1000, 'maint'); } catch (e) { } return; } // manutenção: só owner/DEV jogam
     } catch (e) { /* contas fora do ar: segue com o nome mandado */ }
@@ -468,7 +475,7 @@ const RM_TEAM = 10, RM_SPEC = 10, RM_SHOP = 15, RM_COUNT = 4, RM_END = 4.5, RM_O
 const RM_WEAPONS = Object.keys(WEAPONS).filter(w => w !== 'punch');
 const jsonR = o => new Response(JSON.stringify(o), { headers: Object.assign({ 'Content-Type': 'application/json' }, cors) });
 async function resolveAcc(env, token) {
-  try { const r = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('global')).fetch('https://accounts/internal/resolve', { method: 'POST', body: JSON.stringify({ token, name: 'x' }) }); return await r.json(); }
+  try { const r = await accountsDO(env).fetch('https://accounts/internal/resolve', { method: 'POST', body: JSON.stringify({ token, name: 'x' }) }); return await r.json(); }
   catch (e) { return {}; }
 }
 export async function roomRoutes(req, env, url) {
@@ -477,7 +484,7 @@ export async function roomRoutes(req, env, url) {
   const acc = await resolveAcc(env, b.auth);
   if (acc.maint) return jsonR({ err: 'O jogo está em manutenção. Volte daqui a pouquinho!' });
   if (!acc.id) return jsonR({ err: 'Entre na sua conta pra usar salas personalizadas (são só com amigos).' });
-  const dir = env.ROOMDIR.get(env.ROOMDIR.idFromName('global'));
+  const dir = roomDirDO(env);
   if (url.pathname === '/room/list') return dir.fetch('https://dir/list', { method: 'POST', body: JSON.stringify({ me: acc.id, friends: acc.friends || [] }) });
   // nova sala
   const d = await (await dir.fetch('https://dir/alloc', { method: 'POST', body: JSON.stringify({ hostAcc: acc.id, hostName: acc.name }) })).json();
@@ -547,7 +554,7 @@ export class Room extends Match {
     const isHost = acc.id === this.hostAcc;
     if (!isHost) {
       let fr = [];
-      try { const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('global')).fetch('https://accounts/internal/friends', { method: 'POST', body: JSON.stringify({ id: this.hostAcc }) }); fr = (await r.json()).friends || []; } catch (e) { }
+      try { const r = await accountsDO(this.env).fetch('https://accounts/internal/friends', { method: 'POST', body: JSON.stringify({ id: this.hostAcc }) }); fr = (await r.json()).friends || []; } catch (e) { }
       if (!fr.includes(acc.id)) return this.deny(m, 'Só amigos de ' + this.hostName + ' podem entrar nessa sala.');
       if (this.cfg.pass && String(d.pass || '') !== this.cfg.pass) return this.deny(m, d.pass ? 'Senha errada.' : 'Essa sala tem senha.');
     }
@@ -583,13 +590,13 @@ export class Room extends Match {
     if (!this.id) return;
     const info = { name: this.cfg.name, hasPass: !!this.cfg.pass, n: this.members.size, max: this.cfg.size * 2, size: this.cfg.size, rounds: this.cfg.rounds, state: this.ph === 'lobby' ? 'lobby' : 'game',
       hostName: (this.members.get(this.owner) || {}).name || this.hostName };
-    const dir = this.env.ROOMDIR.get(this.env.ROOMDIR.idFromName('global'));
+    const dir = roomDirDO(this.env);
     this.state.waitUntil ? this.state.waitUntil(dir.fetch('https://dir/update', { method: 'POST', body: JSON.stringify({ id: this.id, info }) }).catch(() => { })) : dir.fetch('https://dir/update', { method: 'POST', body: JSON.stringify({ id: this.id, info }) }).catch(() => { });
   }
   closeRoom() {
     this.alive = false; clearInterval(this.beat); clearTimeout(this.idle); clearInterval(this.tick); clearTimeout(this.phT);
     for (const o of this.members.values()) { try { o.ws.close(1000, 'fim'); } catch (e) { } }
-    this.env.ROOMDIR.get(this.env.ROOMDIR.idFromName('global')).fetch('https://dir/remove', { method: 'POST', body: JSON.stringify({ id: this.id }) }).catch(() => { });
+    roomDirDO(this.env).fetch('https://dir/remove', { method: 'POST', body: JSON.stringify({ id: this.id }) }).catch(() => { });
     this.reset();
   }
   leave(pid) {
