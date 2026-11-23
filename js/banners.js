@@ -105,13 +105,13 @@ LS.Banners = {
     sea.position.y = -6; sc.add(sea);
     const land = (x, z, r, h, col) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 12), new THREE.MeshLambertMaterial({ color: col })); m.scale.y = h / r; m.position.set(x, -6, z); sc.add(m); return m; };
     land(-40, -120, 70, 14, 0x4a8a3a); land(60, -150, 60, 10, 0x3f7a34);
-    const mtn = new THREE.Mesh(new THREE.ConeGeometry(34, 46, 7), new THREE.MeshLambertMaterial({ color: 0x8a8378, flatShading: true })); mtn.position.set(-10, 14, -130); sc.add(mtn);
-    const snow = new THREE.Mesh(new THREE.ConeGeometry(11, 15, 7), new THREE.MeshLambertMaterial({ color: 0xf4f6fa, flatShading: true })); snow.position.set(-10, 31, -130); sc.add(snow);
+    const mtn = new THREE.Mesh(new THREE.ConeGeometry(34, 46, 7), new THREE.MeshLambertMaterial({ color: 0x8a8378 })); mtn.position.set(-10, 14, -130); sc.add(mtn);
+    const snow = new THREE.Mesh(new THREE.ConeGeometry(11, 15, 7), new THREE.MeshLambertMaterial({ color: 0xf4f6fa })); snow.position.set(-10, 31, -130); sc.add(snow);
     // morro do herói (grama com textura do jogo), pedras e árvores
     const hill = new THREE.Mesh(new THREE.SphereGeometry(16, 40, 20), LS.Tex.material(0x5fae3f, 'grass')); hill.scale.y = 0.22; hill.position.set(2, -3.5, 0); hill.receiveShadow = true; sc.add(hill);
-    const rockM = new THREE.MeshLambertMaterial({ color: 0x8a8378, flatShading: true });
+    const rockM = new THREE.MeshLambertMaterial({ color: 0x8a8378 });
     [[3.6, -0.3, 1.6, 1.1], [-1.5, -0.6, 2.4, 0.8], [5.5, -1.2, -1, 1.4]].forEach(([x, y, z, s]) => { const r = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rockM); r.position.set(x, y, z); r.rotation.set(s, s * 2, 0); r.castShadow = r.receiveShadow = true; sc.add(r); });
-    const trunk = new THREE.MeshLambertMaterial({ color: 0x6b4a2a }), leaf = new THREE.MeshLambertMaterial({ color: 0x3f8a34, flatShading: true });
+    const trunk = new THREE.MeshLambertMaterial({ color: 0x6b4a2a }), leaf = new THREE.MeshLambertMaterial({ color: 0x3f8a34 });
     [[-7, -1.2, -6, 1.2], [9, -1.6, -8, 1.4], [-11, -2.2, -12, 1.6], [13, -2.6, -14, 1.5]].forEach(([x, y, z, s]) => {
       const t = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * s, 0.25 * s, 1.6 * s, 6), trunk); t.position.set(x, y + 0.8 * s, z); sc.add(t);
       for (let i = 0; i < 3; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry((1.4 - i * 0.3) * s, 1.6 * s, 7), leaf); c.position.set(x, y + (1.9 + i * 0.9) * s, z); c.castShadow = true; sc.add(c); }
