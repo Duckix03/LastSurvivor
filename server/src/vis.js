@@ -58,7 +58,7 @@ export function blocked(ax, ay, az, bx, by, bz) {
   dx /= len; dy /= len; dz /= len;
   const maxT = len - 0.35;
   // relevo (com folga de 25 cm pra não esconder quem está deitado no topo do morro)
-  for (let t = 2; t < maxT; t += 2) {
+  for (let t = 2; t < maxT; t += Math.max(2, t * 0.02)) { // passo cresce com a distância (menos CPU; na dúvida, fica visível)
     if (ay + dy * t < heightAt(ax + dx * t, az + dz * t) - 0.25) return true;
   }
   // caixas: percorre as células da grade ao longo do raio
