@@ -78,7 +78,7 @@ const CC_DEFAULT = { perWeek: 5, maxUses: 100, maxCoins: 5000, maxDiamonds: 0, m
 // lendários do Gold Royale (iguais aos de raridade 3 em js/cosmetics.js): criador só dá se o owner liberar
 const ROYALE_LEGEND = new Set(['hat:coroa', 'hat:auréola', 'top:armadura', 'pattern:galáxia']);
 
-const H = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Content-Type': 'application/json' };
+const H = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Max-Age': '7200', 'Content-Type': 'application/json' };
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: H });
 const fail = (msg, status = 400) => json({ error: msg }, status);
 const hex = buf => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
@@ -585,7 +585,8 @@ export class Accounts {
 
   // ---------- amizades ----------
   // guardado na própria conta: friends (amigos), fin (pedidos recebidos), fout (pedidos enviados)
-  async seen(a) { await this.st.put('s:' + a.id, Date.now()); }
+  // "visto por último": no máximo 1 escrita a cada 30 s por conta (o ONLINE_MS é de 2,5 min, então ninguém percebe) — poupa escritas do plano grátis
+  async seen(a) { const now = Date.now(), L = this.seenAt || (this.seenAt = new Map()); if (now - (L.get(a.id) || 0) < 30000) return; if (L.size > 5000) L.clear(); L.set(a.id, now); await this.st.put('s:' + a.id, now); }
   lists(a) { a.friends = a.friends || []; a.fin = a.fin || []; a.fout = a.fout || []; return a; }
   async card(id) {
     const a = await this.st.get('a:' + id); if (!a) return null;
