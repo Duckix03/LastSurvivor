@@ -290,20 +290,6 @@ body.mobile .lb-online span { font-size: 10px; }
 #bigmap p { font-family: var(--display); letter-spacing: 1px; }
 
 /* ---------- inventário ---------- */
-#inventory { background: radial-gradient(ellipse at center, rgba(20, 16, 48, 0.55), rgba(4, 6, 14, 0.85)); backdrop-filter: blur(5px); }
-.inv-col h3 { font-family: var(--display); font-weight: 400; letter-spacing: 1px; font-size: 16px; color: var(--accent2); border-bottom: 2px solid var(--line); }
-.inv-item { border-radius: 12px; border: 2px solid var(--line); background: rgba(255, 255, 255, 0.04); transition: border-color 0.15s, background 0.15s, transform 0.15s var(--pop); }
-.inv-item:hover { border-color: rgba(255, 138, 31, 0.45); background: rgba(255, 138, 31, 0.07); transform: translateX(2px); }
-.inv-item b { font-family: var(--display); font-weight: 400; letter-spacing: 0.4px; font-size: 16px; }
-.inv-item .ico { border-radius: 10px; }
-.inv-item button { border-radius: 8px; font-family: var(--display); font-weight: 400; letter-spacing: 0.4px; font-size: 13px; padding: 5px 10px; background: var(--grad); color: #2a1400; box-shadow: 0 2px 0 #a8500a; transition: transform 0.15s var(--pop); }
-.inv-item button:hover { transform: translateY(-1px); filter: brightness(1.1); }
-.inv-item button.sec { background: rgba(255, 255, 255, 0.12); color: #fff; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4); }
-.inv-item > span:first-child { flex: 1; min-width: 0; }
-.inv-item > span:first-child > span { flex: 1; min-width: 0; line-height: 1.25; }
-.inv-item .btns, .inv-item > button { flex: none; }
-.inv-cols { grid-template-columns: 1.5fr 1fr 1fr; }
-.inv-panel { width: min(980px, 94vw); }
 
 /* ==========================================================================
    CONSOLE DE DESENVOLVEDOR (tecla ' ou F2)
@@ -943,7 +929,7 @@ body.mobile #bottom-right #weapon-slots { margin: 0; }
 body.mobile #slot-0, body.mobile #slot-1 { pointer-events: auto; }
 body.mobile #meds { display: none; }
 body.mobile #victory .vic-band, body.mobile #victory .vic-sub, body.mobile #victory .vic-back { zoom: var(--hz, 1); }
-body.mobile #inventory .inv-panel, body.mobile .shop-box { zoom: var(--uiz, 1); }
+body.mobile .shop-box { zoom: var(--uiz, 1); }
 body.mobile .shop-box { max-height: calc(96vh / var(--uiz, 1)); overflow-y: auto; }
 body.mobile #bigmap { zoom: var(--hz, 1); }
 
@@ -1689,3 +1675,131 @@ body.mobile .mail-list, body.mobile .mail-view { max-height: 52vh; }
 .mb-opts label { flex-direction: column; }
 .mb-opts .svgi { width: 14px; height: 14px; vertical-align: -2px; margin: 0; }
 .mb-who { background: #3a6ad8 !important; }
+
+/* =====================================================================
+   INVENTÁRIO (Tab) — refeito. PC: 2 colunas (armas | munição, cura, equipamento).
+   Celular / janela pequena (.compact): painel que cabe na tela, com ABAS, botão ✕ sempre à vista, rolagem própria e toque fora = fecha.
+   ===================================================================== */
+#inventory {
+  position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
+  padding: max(10px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
+  background: radial-gradient(ellipse at center, rgba(20, 16, 48, 0.55), rgba(4, 6, 14, 0.88)); backdrop-filter: blur(5px);
+  -webkit-tap-highlight-color: transparent;
+}
+#inventory.hidden { display: none; }
+.inv-panel { width: min(1000px, 100%); max-height: 100%; display: flex; flex-direction: column; padding: 18px 22px 20px; }
+.inv-head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; flex: none; }
+.inv-panel h2 { margin: 0; font-size: 32px; flex: none; }
+.inv-vitals { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.inv-vitals .hp { position: relative; flex: 1; max-width: 300px; height: 26px; border-radius: 13px; background: rgba(255, 255, 255, 0.08); overflow: hidden; border: 2px solid var(--line); }
+.inv-vitals .hp i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #3fd06a, #8cf060); transition: width 0.25s; }
+.inv-vitals .hp.mid i { background: linear-gradient(90deg, #ffb020, #ffd34d); }
+.inv-vitals .hp.low i { background: linear-gradient(90deg, #ff3b5c, #ff7a59); }
+.inv-vitals .hp span { position: relative; display: block; text-align: center; line-height: 22px; font-weight: 800; font-size: 13px; text-shadow: 0 1px 2px #000; }
+.inv-vitals .kills { color: var(--mut); font-size: 13px; white-space: nowrap; } .inv-vitals .kills b { color: var(--accent2); font-family: var(--display); font-weight: 400; font-size: 20px; }
+.inv-close {
+  flex: none; margin-left: auto; min-width: 46px; height: 42px; padding: 0 14px; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.18); cursor: pointer;
+  background: linear-gradient(180deg, rgba(255, 77, 109, 0.9), rgba(200, 40, 70, 0.9)); color: #fff; font-family: var(--display); font-size: 20px; line-height: 1;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45); transition: transform 0.12s var(--pop), filter 0.12s;
+}
+.inv-close small { font-family: var(--body); font-size: 10px; font-weight: 700; opacity: 0.75; margin-left: 4px; }
+.inv-close:hover { filter: brightness(1.12); transform: translateY(-1px); } .inv-close:active { transform: translateY(1px); }
+.inv-tabs { display: none; gap: 6px; margin-bottom: 10px; flex: none; }
+.inv-body { overflow-y: auto; overflow-x: hidden; min-height: 0; flex: 1; display: grid; grid-template-columns: 1.15fr 1fr; grid-template-areas: "w a" "w m" "w g"; gap: 4px 22px; align-content: start;
+  touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-right: 2px; }
+.inv-sec.s-weapons { grid-area: w; } .inv-sec.s-ammo { grid-area: a; } .inv-sec.s-meds { grid-area: m; } .inv-sec.s-gear { grid-area: g; }
+.inv-sec h3 { font-family: var(--display); font-weight: 400; letter-spacing: 1px; font-size: 16px; color: var(--accent2); border-bottom: 2px solid var(--line); padding-bottom: 4px; margin: 4px 0 8px; }
+.inv-list { display: flex; flex-direction: column; gap: 8px; }
+.inv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.inv-grid .it:nth-child(3):last-child { grid-column: 1 / -1; }
+.inv-body .ico { width: 44px; height: 44px; display: block; border-radius: 10px; }
+.ico-box { flex: none; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); border: 2px solid var(--line); }
+.ico-box.off { opacity: 0.3; filter: grayscale(1); }
+.inv-body .sub { display: block; font-size: 11.5px; color: var(--mut); line-height: 1.3; }
+.inv-body b { font-family: var(--display); font-weight: 400; letter-spacing: 0.4px; font-size: 16px; }
+/* cartão de arma */
+.iw, .it { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 14px; border: 2px solid var(--line); background: rgba(255, 255, 255, 0.04); transition: border-color 0.15s, background 0.15s; min-width: 0; }
+.iw:hover, .it:hover { border-color: rgba(255, 138, 31, 0.4); background: rgba(255, 138, 31, 0.06); }
+.iw { --rc: #c9d3ea; padding: 12px; } .iw.r1 { --rc: #5be37d; } .iw.r2 { --rc: #b57aff; } .iw.r3 { --rc: #ffc531; }
+.iw .ico-box { width: 64px; height: 64px; border-color: var(--rc); box-shadow: inset 0 0 14px color-mix(in srgb, var(--rc) 25%, transparent); } .iw .ico { width: 52px; height: 52px; }
+.iw.eq { border-color: var(--accent); background: linear-gradient(135deg, rgba(255, 138, 31, 0.14), rgba(255, 197, 49, 0.04)); }
+.iw.empty { justify-content: center; text-align: center; min-height: 64px; border-style: dashed; opacity: 0.7; }
+.iw-main, .it-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.iw-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .iw-top b { font-size: 19px; }
+.rar { font-size: 11px; font-weight: 800; color: var(--rc); letter-spacing: 0.5px; text-transform: uppercase; }
+.tag { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; padding: 2px 7px; border-radius: 8px; background: var(--grad); color: #2a1400; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; } .chips span { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.09); color: #dfe6fa; }
+.ib { position: relative; height: 16px; border-radius: 8px; background: rgba(255, 255, 255, 0.09); overflow: hidden; }
+.ib i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #ff8a1f, #ffc531); transition: width 0.25s; }
+.ib.mag i { background: linear-gradient(90deg, #2fd6ff, #7be8ff); } .ib.dur i { background: linear-gradient(90deg, #6fa8ff, #b57aff); }
+.ib span { position: relative; display: block; text-align: center; font-size: 10.5px; font-weight: 800; line-height: 16px; text-shadow: 0 1px 2px #000; }
+.it.none { opacity: 0.55; } .it.none .ib i { width: 0 !important; }
+.it.gear.lv1 .ico-box { border-color: #9fd0ff; } .it.gear.lv2 .ico-box { border-color: #c08cff; } .it.gear.lv3 .ico-box { border-color: #ffc531; }
+/* botões */
+.btns { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.it { flex-wrap: wrap; } .it .ico-box { width: 48px; height: 48px; } .it .btns { flex: 1 0 100%; flex-direction: row; } .it .btns button { flex: 1; }
+.it-main { flex: 1 1 90px; }
+.inv-body button, .inv-tabs button {
+  border: none; cursor: pointer; border-radius: 10px; font-family: var(--display); font-weight: 400; letter-spacing: 0.4px; font-size: 13px; padding: 8px 12px; min-height: 36px;
+  background: var(--grad); color: #2a1400; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4); transition: transform 0.12s var(--pop), filter 0.12s; white-space: nowrap;
+}
+.inv-body button.sec { background: rgba(255, 255, 255, 0.13); color: #fff; }
+.inv-body button:hover, .inv-tabs button:hover { transform: translateY(-1px); filter: brightness(1.1); } .inv-body button:active { transform: translateY(1px); box-shadow: none; }
+
+/* ----- compacto: celular / janela pequena ----- */
+#inventory.compact { align-items: stretch; }
+#inventory.compact .inv-panel { width: 100%; max-width: 760px; margin: 0 auto; padding: 10px 12px 12px; border-radius: 16px; }
+#inventory.compact .inv-head { gap: 8px; margin-bottom: 8px; }
+#inventory.compact .inv-panel h2 { font-size: 22px; }
+#inventory.compact .inv-vitals .hp { height: 22px; } #inventory.compact .inv-vitals .hp span { line-height: 18px; font-size: 12px; }
+#inventory.compact .inv-vitals .kills { font-size: 11px; } #inventory.compact .inv-vitals .kills b { font-size: 16px; }
+#inventory.compact .inv-close { min-width: 52px; height: 46px; font-size: 22px; } #inventory.compact .inv-close small { display: none; }
+#inventory.compact .inv-tabs { display: flex; }
+#inventory.compact .inv-tabs button { flex: 1; padding: 9px 4px; min-height: 42px; font-size: 13px; background: rgba(255, 255, 255, 0.1); color: #fff; }
+#inventory.compact .inv-tabs button.on { background: var(--grad); color: #2a1400; }
+#inventory.compact .inv-body { display: block; }
+#inventory.compact .inv-sec { display: none; } #inventory.compact .inv-sec h3 { display: none; }
+#inventory.compact .inv-body[data-tab="weapons"] .s-weapons, #inventory.compact .inv-body[data-tab="ammo"] .s-ammo,
+#inventory.compact .inv-body[data-tab="meds"] .s-meds, #inventory.compact .inv-body[data-tab="gear"] .s-gear { display: block; }
+#inventory.compact .inv-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+#inventory.compact .inv-body button { min-height: 42px; font-size: 14px; padding: 8px 12px; }
+@media (max-width: 560px) {
+  #inventory.compact .iw { flex-wrap: wrap; } #inventory.compact .iw .btns { flex: 1 0 100%; flex-direction: row; } #inventory.compact .iw .btns button { flex: 1; }
+  #inventory.compact .iw-main { flex: 1 1 140px; } #inventory.compact .inv-grid { grid-template-columns: 1fr; } #inventory.compact .inv-vitals .kills { display: none; } }
+/* celular deitado (pouca altura): tudo mais enxuto, botões ao lado */
+@media (max-height: 460px) {
+  #inventory.compact .inv-panel { padding: 8px 10px 10px; } #inventory.compact .inv-head { margin-bottom: 6px; }
+  #inventory.compact .inv-tabs { margin-bottom: 6px; } #inventory.compact .inv-tabs button { min-height: 36px; padding: 6px 4px; }
+  #inventory.compact .iw { padding: 8px; } #inventory.compact .iw .ico-box { width: 52px; height: 52px; } #inventory.compact .iw .ico { width: 42px; height: 42px; }
+  #inventory.compact .iw-top b { font-size: 16px; } #inventory.compact .inv-body button { min-height: 38px; }
+  
+}
+
+/* ----- celular DEITADO (o jogo é horizontal): tudo à vista em 3 colunas, sem abas ----- */
+@media (orientation: landscape) and (max-height: 600px) {
+  #inventory.compact { align-items: center; }
+  #inventory.compact .inv-panel { max-width: 980px; padding: 8px 12px 10px; max-height: 100%; }
+  #inventory.compact .inv-head { margin-bottom: 6px; } #inventory.compact .inv-panel h2 { font-size: 20px; }
+  #inventory.compact .inv-close { height: 38px; min-width: 46px; }
+  #inventory.compact .inv-tabs { display: none; }
+  #inventory.compact .inv-body { display: grid; grid-template-columns: 1.15fr 1fr 1fr; grid-template-areas: "w a m" "w a g"; gap: 0 12px; align-content: start; }
+  #inventory.compact .inv-sec { display: block; } #inventory.compact .inv-sec h3 { display: block; font-size: 13px; margin: 0 0 5px; padding-bottom: 2px; }
+  #inventory.compact .inv-sec.s-meds { margin-bottom: 6px; }
+  #inventory.compact .inv-grid { grid-template-columns: 1fr; gap: 5px; } #inventory.compact .inv-list { gap: 6px; }
+  /* cartões enxutos */
+  #inventory.compact .it { flex-wrap: nowrap; padding: 5px 7px; gap: 7px; border-radius: 11px; }
+  #inventory.compact .it .ico-box { width: 36px; height: 36px; border-radius: 9px; } #inventory.compact .it .ico { width: 28px; height: 28px; }
+  #inventory.compact .it-main { flex: 1 1 0; gap: 2px; } #inventory.compact .it b { font-size: 13px; line-height: 1.1; }
+  #inventory.compact .it .btns { flex: none; flex-direction: row; gap: 4px; } #inventory.compact .it .btns button { flex: none; min-height: 32px; padding: 4px 9px; font-size: 12px; }
+  #inventory.compact .ib { height: 13px; } #inventory.compact .ib span { font-size: 9.5px; line-height: 13px; }
+  #inventory.compact .inv-body .sub { font-size: 10px; }
+  #inventory.compact .iw { flex-wrap: wrap; padding: 7px; gap: 6px; } #inventory.compact .iw .ico-box { width: 50px; height: 50px; } #inventory.compact .iw .ico { width: 40px; height: 40px; }
+  #inventory.compact .iw-main { flex: 1 1 100px; gap: 3px; } #inventory.compact .iw-top b { font-size: 15px; }
+  #inventory.compact .iw .btns { flex: 1 0 100%; flex-direction: row; gap: 6px; } #inventory.compact .iw .btns button { flex: 1; min-height: 34px; padding: 4px 8px; }
+  #inventory.compact .chips span { font-size: 10px; padding: 1px 6px; }
+  #inventory.compact .iw.empty { min-height: 48px; }
+}
+@media (orientation: landscape) and (max-height: 600px) and (max-width: 720px) {
+  #inventory.compact .it .btns { flex-direction: column; gap: 3px; } #inventory.compact .it .btns button { min-height: 28px; padding: 3px 8px; font-size: 11.5px; }
+  #inventory.compact .it b { font-size: 12px; } #inventory.compact .inv-body { grid-template-columns: 1.1fr 1fr 1fr; gap: 0 8px; }
+}
