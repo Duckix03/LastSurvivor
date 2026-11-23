@@ -165,6 +165,7 @@ window.addEventListener('load', () => {
   LS.UI.bindSettings();
   LS.UIKit.init(); // caixas de seleção, números, sliders e animações próprias (js/uikit.js)
   LS.UI.updateMenuStats();
+  LS.Audio.armUnlock(); // música do lobby toca assim que carrega (ou no 1º toque, onde o navegador exige)
   // tela de carregamento some depois que o lobby já foi desenhado (2 quadros)
   if (window.__bootP) { window.__bootP(0.92, 'QUASE LÁ…'); requestAnimationFrame(() => requestAnimationFrame(() => window.__bootP(1, 'PRONTO!'))); }
   document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => LS.UI.onAction(b.dataset.action)));
