@@ -46,6 +46,20 @@ LS.Audio = {
     if (LS.Music) LS.Music.init(c, this.master);
     if (this.prepGuns) this.prepGuns(); // tiros pré-renderizados (js/gunsound.js)
   },
+  // Música já no lobby: cria o áudio assim que o jogo carrega (no app/Android toca direto) e, no navegador, que bloqueia som
+  // antes do primeiro toque, destrava no PRIMEIRO toque/clique/tecla em qualquer lugar (não só em botões de menu).
+  armUnlock() {
+    try { this.init(); } catch (e) { /* sem áudio: segue sem */ }
+    const evs = ['pointerdown', 'touchstart', 'touchend', 'mousedown', 'click', 'keydown'];
+    const off = () => evs.forEach(e => window.removeEventListener(e, go, true));
+    const go = () => {
+      try { this.init(); } catch (e) { /* ok */ }
+      if (this.ctx && this.ctx.state === 'running') { off(); if (LS.Music) LS.Music.sync(); }
+      else if (this.ctx && this.ctx.state === 'suspended' && !document.hidden) this.ctx.resume().then(() => { if (this.ctx.state === 'running') { off(); if (LS.Music) LS.Music.sync(); } }, () => {});
+    };
+    evs.forEach(e => window.addEventListener(e, go, true));
+    if (this.ctx) this.ctx.onstatechange = () => { if (LS.Music) LS.Music.sync(); };
+  },
   setVolume(v) { if (this.master) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.03); },
   // ambiente do reverb: 'open' (ilha) ou 'hall' (galpão do duelo)
   setEnv(e) {
