@@ -133,13 +133,24 @@ LS.Game = {
       this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
       this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
       document.getElementById('killfeed').innerHTML = '';
-      LS.UI.showScreen(null); LS.HUD.show(true); this.setInventory(false);
-      document.getElementById('bigmap').classList.add('hidden');
-      this.state = 'playing'; LS.Input.enabled = true; LS.Input.lock();
-      LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
-      const humans = d.players.length;
-      LS.HUD.centerMsg('PARTIDA ONLINE', humans + ' jogadores + ' + d.bots.length + ' bots · ' + (LS.Touch.active ? 'toque no ⬆ pra saltar' : 'ESPAÇO para saltar'), 4);
-      LS.stats.games++; LS.saveStats();
+      const tip = document.getElementById('loading-tip'), tipTxt = tip ? tip.textContent : '';
+      const go = () => {
+        if (this._onlineGo !== go || !N.online) return; // partida cancelada (saiu) / outra começou
+        this._onlineGo = null; if (tip) tip.textContent = tipTxt;
+        this.time = 0; // o avião só anda depois daqui: sai no mesmo instante pra todo mundo (o 'go' do servidor)
+        LS.UI.showScreen(null); LS.HUD.show(true); this.setInventory(false);
+        document.getElementById('bigmap').classList.add('hidden');
+        this.state = 'playing'; LS.Input.enabled = true; LS.Input.lock();
+        LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
+        const humans = d.players.length;
+        LS.HUD.centerMsg('PARTIDA ONLINE', humans + ' jogadores + ' + d.bots.length + ' bots · ' + (LS.Touch.active ? 'toque no ⬆ pra saltar' : 'ESPAÇO para saltar'), 4);
+        LS.stats.games++; LS.saveStats();
+      };
+      this._onlineGo = go;
+      if (d.sync) { // servidor novo: carreguei o mapa; espera os outros jogadores carregarem também (senão o host dos bots podia chegar depois e deixar os outros numa ilha vazia)
+        if (tip) tip.textContent = 'Aguardando os outros jogadores carregarem…';
+        N.waitGo(go, 30000); N.send({ t: 'ready' });
+      } else go();
     });
   },
 
