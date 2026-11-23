@@ -87,7 +87,7 @@ Depois, no console do jogo (tecla `'`; no localhost ele sempre abre), digite `LS
 
 ## Limites do plano grátis
 
-- **100.000 requisições por dia.** Cada mensagem que chega do jogador conta como uma fração de requisição, e o jogo manda 12 posições por segundo. Dá pra muitas partidas por dia entre amigos.
+- **100.000 requisições por dia.** Cada mensagem que chega do jogador conta como uma fração de requisição, e o jogo manda até 20 posições por segundo. Dá pra muitas partidas por dia entre amigos.
 - Se o jogo crescer muito, a Cloudflare tem o plano pago (Workers Paid).
 
 ## O que ainda dá pra trapacear (e como melhorar depois)
