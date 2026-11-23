@@ -43,3 +43,6 @@ new_sqlite_classes = ["Room", "RoomDir"]
 # login com Google: o mesmo ID de cliente OAuth que está em LS.GOOGLE_CLIENT_ID (js/config.js). Vazio = desligado.
 [vars]
 GOOGLE_CLIENT_ID = ""
+
+# região dos Durable Objects (partidas, salas, fila): "sam" = América do Sul. Outras: wnam enam weur eeur apac oc afr me. Vazio = sem dica.
+LOC_HINT = "sam"
