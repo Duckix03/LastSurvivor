@@ -10,8 +10,8 @@
 <title>LAST SURVIVOR</title>
 <link rel="preconnect" href="https://lastsurvivor.lastsurvivorbr.workers.dev" crossorigin>
 <link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=92">
-<link rel="stylesheet" href="css/ui.css?v=92">
+<link rel="stylesheet" href="css/style.css?v=93">
+<link rel="stylesheet" href="css/ui.css?v=93">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
 <style>
@@ -445,27 +445,25 @@
   <button class="vic-back">VOLTAR <b>(10s)</b></button>
 </div>
 
-<!-- INVENTÁRIO -->
+<!-- INVENTÁRIO (Tab / botão da mochila) -->
 <div id="inventory" class="hidden">
-  <div class="inv-panel">
-    <h2>INVENTÁRIO <small>[Tab] fechar</small></h2>
-    <div class="inv-cols">
-      <div class="inv-col">
-        <h3>ARMAS</h3>
-        <div id="inv-weapons"></div>
-      </div>
-      <div class="inv-col">
-        <h3>MUNIÇÃO</h3>
-        <div id="inv-ammo"></div>
-        <h3>EQUIPAMENTO</h3>
-        <div id="inv-gear"></div>
-      </div>
-      <div class="inv-col">
-        <h3>CURA</h3>
-        <div id="inv-meds"></div>
-        <h3>CAPACIDADE</h3>
-        <div id="inv-cap"></div>
-      </div>
+  <div class="inv-panel" role="dialog" aria-label="Inventário">
+    <div class="inv-head">
+      <h2>INVENTÁRIO</h2>
+      <div id="inv-cap" class="inv-vitals"></div>
+      <button class="inv-close" data-inv="close" aria-label="Fechar inventário">✕ <small>Tab</small></button>
+    </div>
+    <div class="inv-tabs" id="inv-tabs">
+      <button data-inv="tab" data-v="weapons">ARMAS</button>
+      <button data-inv="tab" data-v="ammo">MUNIÇÃO</button>
+      <button data-inv="tab" data-v="meds">CURA</button>
+      <button data-inv="tab" data-v="gear">EQUIP.</button>
+    </div>
+    <div class="inv-body" id="inv-body" data-tab="weapons">
+      <section class="inv-sec s-weapons"><h3>ARMAS</h3><div id="inv-weapons" class="inv-list"></div></section>
+      <section class="inv-sec s-ammo"><h3>MUNIÇÃO</h3><div id="inv-ammo" class="inv-grid"></div></section>
+      <section class="inv-sec s-meds"><h3>CURA</h3><div id="inv-meds" class="inv-grid"></div></section>
+      <section class="inv-sec s-gear"><h3>EQUIPAMENTO</h3><div id="inv-gear" class="inv-grid"></div></section>
     </div>
   </div>
 </div>
@@ -504,62 +502,62 @@
 </div>
 
 <script src="js/vendor/three.min.js"></script>
-<script src="js/config.js?v=92"></script>
-<script src="js/icons.js?v=92"></script>
-<script src="js/post.js?v=92"></script>
-<script src="js/console.js?v=92"></script>
-<script src="js/audio.js?v=92"></script>
-<script src="js/gunsound.js?v=92"></script>
-<script src="js/music.js?v=92"></script>
-<script src="js/input.js?v=92"></script>
-<script src="js/pixicons.js?v=92"></script>
-<script src="js/touch.js?v=92"></script>
-<script src="js/world.js?v=92"></script>
-<script src="js/sky.js?v=92"></script>
-<script src="js/worldbuild.js?v=92"></script>
-<script src="js/housekit.js?v=92"></script>
-<script src="js/houses.js?v=92"></script>
-<script src="js/skin.js?v=92"></script>
-<script src="js/character.js?v=92"></script>
-<script src="js/animlib.js?v=92"></script>
-<script src="js/itemmodels.js?v=92"></script>
-<script src="js/itemicons.js?v=92"></script>
-<script src="js/textures.js?v=92"></script>
-<script src="js/flora.js?v=92"></script>
-<script src="js/effects.js?v=92"></script>
-<script src="js/gelwall.js?v=92"></script>
-<script src="js/loot.js?v=92"></script>
-<script src="js/combat.js?v=92"></script>
-<script src="js/player.js?v=92"></script>
-<script src="js/bot.js?v=92"></script>
-<script src="js/zone.js?v=92"></script>
-<script src="js/plane.js?v=92"></script>
-<script src="js/net.js?v=92"></script>
-<script src="js/duel.js?v=92"></script>
-<script src="js/custommap.js?v=92"></script>
-<script src="js/hud.js?v=92"></script>
-<script src="js/victory.js?v=92"></script>
-<script src="js/esp.js?v=92"></script>
-<script src="js/lobbyscene.js?v=92"></script>
-<script src="js/lobbythemes.js?v=92"></script>
-<script src="js/lobby.js?v=92"></script>
-<script src="js/banners.js?v=92"></script>
-<script src="js/account.js?v=92"></script>
-<script src="js/mail.js?v=92"></script>
-<script src="js/cosmetics.js?v=92"></script>
-<script src="js/thumbs.js?v=92"></script>
-<script src="js/wardrobe.js?v=92"></script>
-<script src="js/shop.js?v=92"></script>
-<script src="js/friends.js?v=92"></script>
-<script src="js/profile.js?v=92"></script>
-<script src="js/conta.js?v=92"></script>
-<script src="js/modes.js?v=92"></script>
-<script src="js/menu.js?v=92"></script>
-<script src="js/spectate.js?v=92"></script>
-<script src="js/custom.js?v=92"></script>
-<script src="js/game.js?v=92"></script>
-<script src="js/app.js?v=92"></script>
-<script src="js/uikit.js?v=92"></script>
-<script src="js/main.js?v=92"></script>
+<script src="js/config.js?v=93"></script>
+<script src="js/icons.js?v=93"></script>
+<script src="js/post.js?v=93"></script>
+<script src="js/console.js?v=93"></script>
+<script src="js/audio.js?v=93"></script>
+<script src="js/gunsound.js?v=93"></script>
+<script src="js/music.js?v=93"></script>
+<script src="js/input.js?v=93"></script>
+<script src="js/pixicons.js?v=93"></script>
+<script src="js/touch.js?v=93"></script>
+<script src="js/world.js?v=93"></script>
+<script src="js/sky.js?v=93"></script>
+<script src="js/worldbuild.js?v=93"></script>
+<script src="js/housekit.js?v=93"></script>
+<script src="js/houses.js?v=93"></script>
+<script src="js/skin.js?v=93"></script>
+<script src="js/character.js?v=93"></script>
+<script src="js/animlib.js?v=93"></script>
+<script src="js/itemmodels.js?v=93"></script>
+<script src="js/itemicons.js?v=93"></script>
+<script src="js/textures.js?v=93"></script>
+<script src="js/flora.js?v=93"></script>
+<script src="js/effects.js?v=93"></script>
+<script src="js/gelwall.js?v=93"></script>
+<script src="js/loot.js?v=93"></script>
+<script src="js/combat.js?v=93"></script>
+<script src="js/player.js?v=93"></script>
+<script src="js/bot.js?v=93"></script>
+<script src="js/zone.js?v=93"></script>
+<script src="js/plane.js?v=93"></script>
+<script src="js/net.js?v=93"></script>
+<script src="js/duel.js?v=93"></script>
+<script src="js/custommap.js?v=93"></script>
+<script src="js/hud.js?v=93"></script>
+<script src="js/victory.js?v=93"></script>
+<script src="js/esp.js?v=93"></script>
+<script src="js/lobbyscene.js?v=93"></script>
+<script src="js/lobbythemes.js?v=93"></script>
+<script src="js/lobby.js?v=93"></script>
+<script src="js/banners.js?v=93"></script>
+<script src="js/account.js?v=93"></script>
+<script src="js/mail.js?v=93"></script>
+<script src="js/cosmetics.js?v=93"></script>
+<script src="js/thumbs.js?v=93"></script>
+<script src="js/wardrobe.js?v=93"></script>
+<script src="js/shop.js?v=93"></script>
+<script src="js/friends.js?v=93"></script>
+<script src="js/profile.js?v=93"></script>
+<script src="js/conta.js?v=93"></script>
+<script src="js/modes.js?v=93"></script>
+<script src="js/menu.js?v=93"></script>
+<script src="js/spectate.js?v=93"></script>
+<script src="js/custom.js?v=93"></script>
+<script src="js/game.js?v=93"></script>
+<script src="js/app.js?v=93"></script>
+<script src="js/uikit.js?v=93"></script>
+<script src="js/main.js?v=93"></script>
 </body>
 </html>
