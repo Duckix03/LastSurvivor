@@ -156,7 +156,7 @@ export class Match {
     clearInterval(this.idleT); this.idleT = null;
     this.seen = new Map(); this.pingers = new Set(); this.grace = new Map(); this.bye = new Set();
     this.killLog = []; this.dropped = new Set(); this.sent = new Map(); this.verSeq = 0;
-    clearTimeout(this.goTimer); this.goTimer = null; this.need = null; this.ready = new Set(); this.goSent = false;
+    clearTimeout(this.goTimer); this.goTimer = null; this.need = null; this.ready = new Set(); this.goSent = false; this.goTm = null;
   }
 
   async fetch(req) {
@@ -191,7 +191,7 @@ export class Match {
     const hp = []; for (const e of this.ents.values()) if (e.alive) hp.push([e.id, Math.round(e.hp)]);
     send(ws, { t: 'resync', hp, kills: this.killLog, picks: [...this.taken] });
     if (this.host !== pid) send(ws, { t: 'host', host: this.host });
-    if (this.goSent) send(ws, { t: 'go' });
+    if (this.goSent) send(ws, { t: 'go', tm: this.goTm }); // tm = hora do servidor em que a partida começou (o avião e a zona andam por ela)
   }
 
   init(d) {
@@ -226,7 +226,7 @@ export class Match {
     this.need = new Set(humans.filter(r => r.rdy).map(r => r.pid)); this.ready = new Set(); this.goSent = false;
     const sync = this.need.size > 0 ? 1 : 0;
     for (const [pid, ws] of this.socks) send(ws, { t: 'start', you: pid, host: this.host, seed: this.seed, players, bots, sync: sync && this.need.has(pid) ? 1 : 0 });
-    if (sync) this.goTimer = setTimeout(() => this.sendGo(), READY_MS); else this.goSent = true;
+    if (sync) this.goTimer = setTimeout(() => this.sendGo(), READY_MS); else { this.goSent = true; this.goTm = Date.now() - this.t0; }
     this.tick = setInterval(() => this.broadcastSnap(), TICK_MS);
     this.idleT = setInterval(() => this.checkIdle(), 3000);
   }
@@ -239,7 +239,8 @@ export class Match {
   sendGo() {
     if (this.goSent) return;
     this.goSent = true; clearTimeout(this.goTimer); this.goTimer = null;
-    this.bcast({ t: 'go' });
+    this.goTm = Date.now() - this.t0; // mesma régua do 'tm' dos snaps e dos pongs: todos os clientes calculam "há quanto tempo a partida começou" a partir dela
+    this.bcast({ t: 'go', tm: this.goTm });
   }
   // cliente novo (que manda ping) calado por muito tempo = conexão morta: derruba e abre a janela de reconexão
   checkIdle() {
