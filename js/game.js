@@ -108,8 +108,11 @@ LS.Game = {
     this.build(() => {
       LS.Duel.exit(); this.mode = 'br'; this.lastKiller = null; LS.HUD.clearShots(); LS.Victory.hide();
       const N = LS.Net; N.begin(d);
+      // o gerador da zona tem que existir ANTES do reset(): o reset já sorteia o 1º círculo. Antes ele era trocado só depois, então quem tinha jogado
+      // outra partida online antes usava o gerador velho (já "gasto") da partida anterior e via o 1º círculo em OUTRO lugar que os demais jogadores.
+      this.zone.rng = LS.util.seeded(d.seed + 7);
       LS.util.withSeed(d.seed, () => { LS.Loot.spawnAll(); this.plane.reset(); this.zone.reset(); });
-      this.zone.rng = LS.util.seeded(d.seed + 7); LS.Effects.clear();
+      LS.Effects.clear();
       // tira da cena os bots que não vão jogar
       for (const b of this.botPool) { b.reset(); b.netId = null; if (b.model.root.parent) b.model.root.parent.remove(b.model.root); }
       this.player.reset(); this.player.name = LS.playerProfile.name; this.player.model.applyLook(LS.playerProfile.look);
@@ -439,8 +442,10 @@ LS.Game = {
     this.time += dt;
     const P = this.player;
     const duel = this.mode === 'duel', custom = this.mode === 'custom', arena = duel || custom;
+    // online (battle royale): avião e zona andam pelo relógio da partida (servidor), não pelo dt deste aparelho. null = sem relógio: dt local, como antes
+    const mt = !arena && LS.Net.online ? LS.Net.matchTime() : null;
     if (!arena) {
-      this.plane.update(dt);
+      if (mt !== null) this.plane.sync(mt, dt); else this.plane.update(dt);
       if (!this.plane.active || this.plane.progress > 0.97) {
         for (const f of this.fighters) if (f.state === 'plane' && !f.remote) this.jumpFromPlane(f);
       }
@@ -451,7 +456,8 @@ LS.Game = {
       else b.update(dt);
     }
     LS.Net.update(dt); // online: jogadores remotos + envio da posição
-    this.zone.update((duel && !LS.Duel.fighting()) || (custom && !LS.Custom.fighting) ? 0 : dt, this.fighters); // duelo/sala: o gás só anda durante a luta
+    if (mt !== null) this.zone.syncTo(mt, this.fighters);
+    else this.zone.update((duel && !LS.Duel.fighting()) || (custom && !LS.Custom.fighting) ? 0 : dt, this.fighters); // duelo/sala: o gás só anda durante a luta
     if (duel) LS.Duel.update(dt);
     if (custom) LS.Custom.update(dt);
     const focus = P.state === 'plane' ? this.plane.mesh.position : P.pos;
