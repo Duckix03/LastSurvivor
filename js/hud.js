@@ -88,7 +88,12 @@ LS.HUD = {
     // ícones gerados por código: só troca a imagem quando o item muda
     const setImg = (img, src) => { if (img.dataset.k !== src) { img.dataset.k = src; img.src = src || ''; } };
     const gear = (el, kind, lv, dur, max) => {
-      this._c(el, 'gear-item' + (lv ? ' l' + lv : '')); this._t(el.querySelector('span'), lv ? 'Nv.' + lv + (max ? ' ' + Math.ceil(dur / max * 100) + '%' : '') : '-');
+      const pc = max ? Math.ceil(dur / max * 100) : 100;
+      this._c(el, 'gear-item' + (lv ? ' l' + lv : ''));
+      if (LS.Touch && LS.Touch.active) { // celular: só "Nv.2" + barrinha de durabilidade embaixo (--d)
+        this._t(el.querySelector('span'), lv ? 'Nv.' + lv : '-');
+        if (el._pc !== pc) { el._pc = pc; el.style.setProperty('--d', pc + '%'); }
+      } else this._t(el.querySelector('span'), lv ? 'Nv.' + lv + (max ? ' ' + pc + '%' : '') : '-');
       setImg(el.querySelector('img'), LS.Icons.get(kind, null, lv || 1));
     };
     gear(E['gear-vest'], 'vest', P.vest.level, P.vest.dur, vd);
