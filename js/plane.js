@@ -245,6 +245,19 @@ LS.Plane = class {
   canJump() { return this.active && this.progress > 0.08 && this.progress < 0.97; }
   // ponto de saída: atrás da rampa
   exitPoint(out) { this.mesh.updateMatrixWorld(); return out.copy(this.model.exitLocal).applyMatrix4(this.mesh.matrixWorld); }
+  // ONLINE: o avião NÃO anda mais só com o dt do aparelho (celular a 20 FPS, aba em segundo plano, câmera lenta da morte... cada um acabava com o
+  // avião num lugar diferente, e os bots/jogadores "saltavam do nada"). A posição certa vem do relógio da partida (LS.Net.matchTime(), em segundos
+  // desde o 'go' do servidor): progresso = velocidade * tempo / comprimento. O dt local só suaviza (PLL): anda com o dt e é puxado pro valor certo.
+  sync(matchT, dt) {
+    if (!this.active) return;
+    const want = this.speed * matchT / this.length, err = want - this.progress;
+    this.t += dt;
+    if (Math.abs(err) * this.length > 40) this.progress = want;                 // longe demais (aba voltou, reconectou): vai direto pro lugar certo
+    else this.progress += this.speed * dt / this.length + err * Math.min(1, dt * 4); // perto: anda e é puxado de leve (sem tranco na câmera)
+    this.mesh.position.lerpVectors(this.start, this.end, Math.min(1, Math.max(0, this.progress)));
+    LS.PlaneModel.animate(this.model, this.t, dt, this.progress > 0.04 && this.progress < 1.0);
+    if (this.progress >= 1.1) { this.active = false; this.mesh.visible = false; }
+  }
   update(dt) {
     if (!this.active) return;
     this.t += dt;
