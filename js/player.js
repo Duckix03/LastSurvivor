@@ -223,53 +223,74 @@ LS.Player = class extends LS.Fighter {
     this.shake = Math.max(0, this.shake - dt * 5);
   }
 
-  // ---------- assistência de mira (bem leve, quase imperceptível) ----------
-  // só quando está atirando ou mirando e o inimigo já está quase na mira (cone de 2–3°):
-  // a sensibilidade cai um pouco em cima dele (fica "grudento") e a mira escorrega devagar pro peito.
-  // Nunca puxa de longe, nunca trava e não atravessa parede.
-  // No CELULAR é bem mais forte (dedo é menos preciso que mouse, como nos jogos de celular): cone maior,
-  // gruda mais, puxa mais rápido e ajuda um pouco até na luneta.
+  // ---------- assistência de mira ----------
+  // PC: bem leve (cone de 2–3°, a mira fica só um pouco "grudenta" no inimigo). Nunca trava e não atravessa parede.
+  // CELULAR (estilo Free Fire): dedo é impreciso, então a ajuda é forte:
+  //  - cone grande (11° atirando · 8° mirando) e alcance longo, escolhe o inimigo mais perto da mira
+  //  - ao APERTAR o tiro, dá um "snap" rápido pro peito/pescoço do alvo (pull bem forte nos primeiros 0,2 s)
+  //  - GRUDA no alvo: continua puxando enquanto ele corre e a sensibilidade cai (até ~65%) em cima dele
+  //  - o alvo é "pegajoso": não troca de inimigo toda hora (só se aparecer um bem mais perto da mira)
+  //  - dá pra escapar: se o dedo arrasta pra longe do alvo, a ajuda afrouxa na hora (nunca briga com o jogador)
+  //  - na luneta ajuda menos (sniper precisa de pontaria)
   aimAssist(dt) {
     const out = this._aa || (this._aa = { slow: 1, yaw: 0, pitch: 0 });
     out.slow = 1; out.yaw = 0; out.pitch = 0;
     const d = this.wdef(), I = LS.Input;
     const mob = !!(LS.Touch && LS.Touch.active);
-    const A = mob ? { cone: [4.5, 6.5], slow: 0.45, pull: [4.5, 2.6], range: 220 } : { cone: [2.2, 3.0], slow: 0.16, pull: [1.2, 0.6], range: 160 };
-    if (LS.settings.aimAssist === false || !this.alive || this.state !== 'ground' || !d || this.reloadT > 0 || this.healType || (this.scopeUp && !mob)) return out;
-    if (this.scopeUp) { A.cone = [1.6, 1.6]; A.slow = 0.3; A.pull = [1.0, 0.6]; A.range = d.range; } // celular na luneta: só um pouquinho
+    // cone: [mirando, atirando] em graus · pull: velocidade máxima da puxada em °/s · gain: força da puxada (por segundo)
+    const A = mob ? { cone: [8, 11], slow: 0.65, pull: [60, 100], gain: 11, range: 260, aimY: [1.3, 1.0] }
+                  : { cone: [2.2, 3.0], slow: 0.16, pull: [0.6, 1.2], gain: 1.5, range: 160, aimY: [1.1, 0.8] };
+    if (LS.settings.aimAssist === false || !this.alive || this.state !== 'ground' || !d || this.reloadT > 0 || this.healType || (this.scopeUp && !mob)) { this._aaTarget = null; this._wasFiring = false; return out; }
+    if (this.scopeUp) { A.cone = [3.2, 3.2]; A.slow = 0.4; A.pull = [14, 14]; A.gain = 5; A.range = d.range; } // celular na luneta: só um pouco
     const firing = I.mouse.left;
-    if (!firing && !this.aiming) { this._aaTarget = null; return out; }
+    if (!firing && !this.aiming) { this._aaTarget = null; this._wasFiring = false; return out; }
+    if (firing && !this._wasFiring) this._aaSnap = 0.22; // acabou de apertar o tiro: snap
+    this._wasFiring = firing; this._aaSnap = Math.max(0, (this._aaSnap || 0) - dt);
     const cone = (this.aiming ? A.cone[0] : A.cone[1]) * Math.PI / 180;
     const eye = this.camPos, aim = this.aimDir;
+    const yawA = Math.atan2(aim.x, aim.z), pitchA = Math.asin(LS.util.clamp(aim.y, -1, 1)), cpA = Math.cos(pitchA);
     const errOf = f => {
-      const ty = f.pos.y + (f.crouch ? 0.8 : 1.1), dx = f.pos.x - eye.x, dy = ty - eye.y, dz = f.pos.z - eye.z;
+      const ty = f.pos.y + (f.crouch ? A.aimY[1] : A.aimY[0]), dx = f.pos.x - eye.x, dy = ty - eye.y, dz = f.pos.z - eye.z;
       const len = Math.hypot(dx, dy, dz); if (len < 0.5) return null;
       const yawT = Math.atan2(dx, dz), pitchT = Math.asin(dy / len);
-      const yawA = Math.atan2(aim.x, aim.z), pitchA = Math.asin(LS.util.clamp(aim.y, -1, 1));
       const ey = LS.util.angleDiff(yawA, yawT), ep = pitchT - pitchA;
-      return { ey, ep, err: Math.hypot(ey * Math.cos(pitchA), ep), len, ty };
+      return { ey, ep, err: Math.hypot(ey * cpA, ep), len, ty };
     };
+    const losOk = (f, e) => LS.World.hasLOS(this._w.copy(eye).addScaledVector(aim, 0.6), new THREE.Vector3(f.pos.x, e.ty, f.pos.z));
     this._aaT -= dt;
-    if (this._aaT <= 0) { // escolhe o alvo ~10x por segundo
-      this._aaT = 0.1; this._aaTarget = null;
+    if (this._aaT <= 0) { // reavalia o alvo ~10x por segundo
+      this._aaT = 0.1;
       const maxD = Math.min(d.range, A.range), cands = [];
       for (const f of LS.Game.fighters) {
         if (f === this || !f.alive || f.netHidden || f.state !== 'ground' || LS.sameTeam(this, f)) continue;
         if (f.pos.distanceToSquared(this.pos) > maxD * maxD) continue;
         const e = errOf(f); if (e && e.err < cone * 1.3) cands.push({ f, e });
       }
-      cands.sort((a, b) => a.e.err - b.e.err);
-      for (const c of cands.slice(0, 3)) {
-        if (LS.World.hasLOS(this._w.copy(eye).addScaledVector(aim, 0.6), new THREE.Vector3(c.f.pos.x, c.e.ty, c.f.pos.z))) { this._aaTarget = c.f; break; }
+      // peso: quem está mais perto da mira ganha, e perto de você desempata (inimigo colado é mais urgente)
+      cands.sort((a, b) => (a.e.err + a.e.len * 0.00035) - (b.e.err + b.e.len * 0.00035));
+      let pick = null;
+      for (const c of cands.slice(0, 3)) if (losOk(c.f, c.e)) { pick = c; break; }
+      const cur = this._aaTarget;
+      if (cur && cur.alive && !cur.netHidden && cur.state === 'ground') { // pegajoso: mantém o alvo atual enquanto ele ainda está perto da mira
+        const ce = errOf(cur);
+        if (ce && ce.err < cone * 1.5 && (!pick || pick.f === cur || pick.e.err > ce.err * 0.5) && losOk(cur, ce)) pick = null; // continua nele
+        else if (!pick || (ce && ce.err >= cone * 1.5)) this._aaTarget = null;
       }
+      if (pick) this._aaTarget = pick.f;
     }
     const f = this._aaTarget; if (!f || !f.alive || f.netHidden) return out;
-    const e = errOf(f); if (!e || e.err > cone) return out;
-    const k = 1 - e.err / cone; // 0 na borda do cone, 1 no centro
-    out.slow = 1 - A.slow * k;  // menos sensível em cima do alvo (16% no PC, 45% no celular)
-    // escorrega pro peito: no PC no máximo ~1,2°/s atirando e ~0,6°/s mirando; no celular ~4,5°/s e ~2,6°/s
-    const maxStep = (firing ? A.pull[0] : A.pull[1]) * Math.PI / 180 * dt * (0.4 + 0.6 * k);
-    const step = Math.min(e.err * dt * (mob ? 3 : 1.5), maxStep), inv = e.err > 1e-5 ? step / e.err : 0;
+    const e = errOf(f); if (!e || e.err > cone * 1.5) { this._aaTarget = null; return out; }
+    const k = LS.util.clamp(1 - e.err / cone, 0, 1); // 0 na borda do cone, 1 no centro
+    out.slow = 1 - A.slow * Math.max(0.35, k);       // menos sensível em cima do alvo (gruda)
+    // o jogador arrastando o dedo pra longe do alvo manda mais: afrouxa a puxada (pode escapar / trocar de alvo)
+    let free = 1;
+    if (mob) {
+      const m = Math.hypot(I.mouse.dx, I.mouse.dy);
+      if (m > 6 && ((-I.mouse.dx) * e.ey + (-I.mouse.dy) * e.ep) < 0) free = Math.max(0, 1 - m / 45);
+    }
+    const snap = mob && this._aaSnap > 0 ? 1.9 : 1; // primeiros 0,2 s do tiro: puxa quase o dobro
+    const maxStep = (firing ? A.pull[1] : A.pull[0]) * Math.PI / 180 * dt * (0.5 + 0.5 * Math.max(k, 0.3)) * snap * free;
+    const step = Math.min(e.err, e.err * Math.min(1, dt * A.gain * snap) * free, maxStep), inv = e.err > 1e-5 ? step / e.err : 0;
     out.yaw = -e.ey * inv; out.pitch = e.ep * inv;
     return out;
   }
