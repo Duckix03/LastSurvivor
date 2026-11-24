@@ -53,7 +53,7 @@ LS.Zone = class {
   reset() {
     this.center = new THREE.Vector2(0, 0); this.radius = 430;
     this.startC = this.center.clone(); this.startR = this.radius;
-    this.phase = 0; this.shrinking = false; this.timer = this.phases[0].wait; this.dmgT = 1; this.finished = false;
+    this.phase = 0; this.shrinking = false; this.timer = this.phases[0].wait; this.dmgT = 1; this.finished = false; this._mt = 0;
     this.pickNext();
   }
   pickNext() {
@@ -72,12 +72,21 @@ LS.Zone = class {
   get dps() { return this.phases[Math.min(this.phase, this.phases.length - 1)].dps; }
   isOutside(pos) { return Math.hypot(pos.x - this.center.x, pos.z - this.center.y) > this.radius; }
 
+  // ONLINE: a zona anda pelo relógio da partida (segundos desde o 'go' do servidor), não pelo dt do aparelho. Assim a zona está no mesmo
+  // tamanho/lugar pra todo mundo (antes cada aparelho encolhia no seu ritmo: o dano fora da zona e o círculo no mapa não batiam).
+  // Os passos são de no máximo 0,25 s: a lógica de fases é a mesma, só roda em pedaços.
+  syncTo(matchT, fighters) {
+    let d = matchT - this._mt; this._mt = Math.max(this._mt, matchT);
+    if (!(d > 0)) { this.update(0, fighters); return; }
+    // salto grande (voltou de uma queda de conexão, aba voltou): recupera o estado da zona SEM aplicar de uma vez todo o dano do tempo perdido
+    while (d > 1e-6) { const st = Math.min(d, 0.25); this.update(st, d > 2 ? [] : fighters); d -= st; }
+  }
   update(dt, fighters) {
     if (!this.finished) {
       this.timer -= dt;
       const ph = this.phases[this.phase];
       if (!this.shrinking && this.timer <= 0) {
-        this.shrinking = true; this.timer = ph.shrink;
+        this.shrinking = true; this.timer = ph.shrink + this.timer; // (+ this.timer: leva a sobra do passo pra próxima fase. Sem isso cada troca de fase perdia até um quadro e o resultado dependia do FPS)
         this.startC = this.center.clone(); this.startR = this.radius;
         LS.HUD.centerMsg(this.msgTitle || 'A ZONA ESTÁ ENCOLHENDO!', this.msgSub || 'Vá para a área segura', 3); LS.Audio.alert();
       } else if (this.shrinking) {
@@ -87,7 +96,7 @@ LS.Zone = class {
         if (this.timer <= 0) {
           this.shrinking = false; this.phase++;
           if (this.phase >= this.phases.length) { this.finished = true; this.phase = this.phases.length - 1; this.timer = 0; }
-          else { this.timer = this.phases[this.phase].wait; this.pickNext(); }
+          else { this.timer = this.phases[this.phase].wait + this.timer; this.pickNext(); } // (sobra do passo: mesma razão acima)
         }
       }
     }
