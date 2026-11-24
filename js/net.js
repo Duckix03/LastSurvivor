@@ -33,6 +33,7 @@ LS.RemoteFighter = class extends LS.Fighter {
         b.push({ tm, x: s[1], y: s[2], z: s[3], yaw: s[4], pitch: s[5] }); if (b.length > 12) b.shift();
       }
     }
+    if (this.netHidden) this.netJustShown = true;
     this.tgt = s; this.seenT = performance.now(); this.netHidden = false;
   }
   // posição no instante rt (relógio do servidor): entre dois pacotes; depois do último, segue na mesma velocidade por até 150 ms
@@ -45,11 +46,34 @@ LS.RemoteFighter = class extends LS.Fighter {
       const a = b[i - 1], c = b[i];
       if (a.tm <= rt && rt <= c.tm) return lerpTo(a, c, c.tm > a.tm ? (rt - a.tm) / (c.tm - a.tm) : 1);
     }
-    const c = b[n - 1], a = b[n - 2];
-    if (!a || c.tm <= a.tm) return lerpTo(c, c, 0);
-    LS.Net.exN++; // passou do último pacote: extrapolando
-    const k = Math.min(rt - c.tm, 150) / (c.tm - a.tm);
-    o.x = c.x + (c.x - a.x) * k; o.y = c.y; o.z = c.z + (c.z - a.z) * k; o.yaw = c.yaw; o.pitch = c.pitch; return o;
+    // passou do último pacote: continua na mesma velocidade, mas com 3 travas (antes qualquer pacote "colado" no anterior dava uma velocidade
+    // absurda e o boneco era lançado metros pra frente, atravessando parede):
+    //  1) a velocidade vem de uma amostra com pelo menos 60 ms de distância (pacotes que chegam juntos por jitter não contam);
+    //  2) a velocidade é limitada ao máximo que o personagem consegue de verdade naquele estado;
+    //  3) só extrapola por até EXTRAP_MS (e a colisão do boneco, em update(), segura o resto).
+    const c = b[n - 1]; let a = null;
+    for (let i = n - 2; i >= 0; i--) if (c.tm - b[i].tm >= 60) { a = b[i]; break; }
+    if (!a) return lerpTo(c, c, 0);
+    LS.Net.exN++; // extrapolando
+    const sec = (c.tm - a.tm) / 1000, over = Math.min(rt - c.tm, LS.Net.EXTRAP_MS) / 1000;
+    let vx = (c.x - a.x) / sec, vz = (c.z - a.z) / sec;
+    const sp = Math.hypot(vx, vz), vmax = this.state === 'ground' ? LS.Net.MAXV_GROUND : LS.Net.MAXV_AIR;
+    if (sp > vmax) { vx *= vmax / sp; vz *= vmax / sp; }
+    o.x = c.x + vx * over; o.y = c.y; o.z = c.z + vz * over; o.yaw = c.yaw; o.pitch = c.pitch; return o;
+  }
+  // desenha o boneco SEM atravessar paredes. A posição de verdade já veio válida do dono (que colide no computador dele), mas entre dois pacotes
+  // o boneco anda em linha reta (e depois do último pacote, extrapolando), e uma linha reta corta quina e entra em parede.
+  // Aqui ele anda do ponto onde estava até o novo em passos de 15 cm, com a mesma colisão do jogador. Se mesmo assim ficou longe do ponto
+  // certo (perdeu um pedaço do caminho: lag, parede que só existe pra um dos lados), pula direto pro ponto certo em vez de ficar preso.
+  collideTo(px, pz, tx, tz, y) {
+    const W = LS.World, dx = tx - px, dz = tz - pz, dist = Math.hypot(dx, dz), o = this._co || (this._co = { x: 0, z: 0 });
+    o.x = tx; o.z = tz;
+    if (dist < 1e-3 || dist > LS.Net.COLLIDE_MAX_STEP) return o; // parado, ou salto grande (teleporte/reapareceu): não mexe
+    const p = this._cp || (this._cp = new THREE.Vector3()), pv = this._cv || (this._cv = { x: 0, z: 0 }), steps = Math.min(40, Math.ceil(dist / 0.15));
+    p.set(px, y, pz); W._rockBudget = Infinity;
+    for (let i = 0; i < steps; i++) { pv.x = p.x; pv.z = p.z; p.x += dx / steps; p.z += dz / steps; W.collideCircle(p, 0.38, 1.8, pv); }
+    if (Math.hypot(p.x - tx, p.z - tz) > LS.Net.COLLIDE_SNAP) return o; // preso longe do ponto certo: segue o ponto certo
+    o.x = p.x; o.z = p.z; return o;
   }
   update(dt) {
     const s = this.tgt; if (!s) { this.model.root.visible = false; return; }
@@ -57,7 +81,12 @@ LS.RemoteFighter = class extends LS.Fighter {
     this.state = RF_STATES[s[7]] || 'ground';
     const k = 1 - Math.exp(-12 * dt), px = this.pos.x, pz = this.pos.z, N = LS.Net;
     const iv = N.tmOff !== null && this.buf && this.buf.length ? this.interp(N.srvNow() - N.interpMs - (this.netId && this.netId[0] === 'b' ? N.BOT_EXTRA_MS : 0)) : null;
-    if (iv) { this.pos.set(iv.x, iv.y, iv.z); this.yaw = iv.yaw; this.pitch = iv.pitch; } // interpolado entre pacotes
+    if (iv) { // interpolado entre pacotes
+      let nx = iv.x, nz = iv.z;
+      if (this.state === 'ground' && this.alive && !this.netJustShown && N.COLLIDE_PUPPETS) { const c = this.collideTo(px, pz, nx, nz, iv.y); nx = c.x; nz = c.z; }
+      this.netJustShown = false;
+      this.pos.set(nx, iv.y, nz); this.yaw = iv.yaw; this.pitch = iv.pitch;
+    }
     else { // sem relógio do servidor (servidor antigo): suaviza em direção ao último pacote, como antes
       const tv = (this._v || (this._v = new THREE.Vector3())).set(s[1], s[2], s[3]); // posição recebida
       if (this.pos.distanceTo(tv) > 12) this.pos.copy(tv);
@@ -104,9 +133,38 @@ LS.Net = {
   exN: 0, exT: 0,     // contador: quantas vezes o desenho precisou extrapolar (passou do último pacote)
   INTERP_MS: 100,     // atraso de interpolação inicial (ms)
   interpMs: 100, jit: 0, jitN: 0, snapRx: 0, snapTm: 0, // atraso de interpolação ADAPTATIVO: segue o jitter medido dos pacotes (75 a 220 ms)
+  EXTRAP_MS: 100,     // quanto tempo (no máximo) o boneco remoto pode ser extrapolado depois do último pacote (antes 150, sem limite de velocidade)
+  MAXV_GROUND: 9.5,   // m/s: corrida é 7,6; folga pra jitter. Acima disso a extrapolação é cortada
+  MAXV_AIR: 28,       // m/s horizontal no ar (mergulho do paraquedas é 24)
+  COLLIDE_PUPPETS: true, // bonecos remotos (jogadores e bots) respeitam as paredes ao serem desenhados
+  COLLIDE_MAX_STEP: 6,   // m: deslocamento maior que isso num quadro = teleporte, não varre
+  COLLIDE_SNAP: 1.5,     // m: se a colisão deixar o boneco mais longe que isso do ponto de verdade, ele pula pro ponto de verdade
+  // RELÓGIO DA PARTIDA: o avião, a zona (e tudo que andava com o dt do aparelho) passam a andar por um relógio único, o do servidor.
+  // goTm = hora do servidor em que o 'go' foi dado; clkOff = diferença entre o performance.now() daqui e a hora do servidor (medida no pong, estilo NTP)
+  goTm: null, clkOff: null, clkRtt: Infinity, clkT: 0, _goSeen: false, _ckIv: null,
   _ls: {}, _qRtt: 0, _opt: [],
   rtt: 0, tmOff: null, pingT: 0, lastRx: 0, matchId: null, matchToken: null, _reconn: false, _undo: {}, _undoKeys: [],
   srvNow() { return performance.now() - this.tmOff; }, // relógio do servidor (ms desde o começo da partida)
+  // segundos desde o 'go' do servidor, pela hora do servidor: igual em todos os aparelhos, não importa FPS, aba em segundo plano ou câmera lenta.
+  // null = ainda sem relógio (servidor antigo, ou os primeiros instantes): quem chama anda pelo dt local, como antes.
+  matchTime() {
+    if (!this.online || this.goTm === null || this.clkOff === null) return null;
+    return Math.max(0, (performance.now() - this.clkOff - this.goTm) / 1000);
+  },
+  // amostra de relógio vinda de um pong: o servidor carimbou 'tm' mais ou menos na METADE da viagem (c + rtt/2). Vale a amostra de menor RTT (a mais confiável).
+  clockSample(c, rtt, tm) {
+    const off = c + rtt / 2 - tm, now = performance.now();
+    if (this.clkOff !== null && rtt > this.clkRtt * 1.15 + 3 && now - this.clkT < 15000) return; // amostra pior que a que já temos: ignora (até ela ficar velha)
+    if (this.clkOff === null || rtt < this.clkRtt * 0.7 || Math.abs(off - this.clkOff) > 150) this.clkOff = off; // bem melhor, ou o relógio andou muito: confia direto
+    else this.clkOff += (off - this.clkOff) * 0.25;                                                              // parecida: suaviza (sem salto no avião)
+    this.clkRtt = rtt; this.clkT = now;
+  },
+  // pings rápidos logo que a sala abre: o relógio já está acertado quando o 'go' chega (o loop do jogo ainda não está rodando e não pinga)
+  startClockSync() {
+    clearInterval(this._ckIv); let n = 0;
+    const ping = () => { if (!this.online || !this.ws) { clearInterval(this._ckIv); return; } this.send({ t: 'ping', c: performance.now(), r: Math.round(this.rtt) }); if (++n >= 10) clearInterval(this._ckIv); };
+    ping(); this._ckIv = setInterval(ping, 250);
+  },
   configured() { return !!LS.NET_URL; },
   isHost() { return this.online && this.host === this.you; },
   // este computador controla esse personagem? (o próprio jogador; os bots se for o host)
@@ -148,6 +206,7 @@ LS.Net = {
     try { ws = new WebSocket(this.wsUrl('/ws/match/' + m.id + '?token=' + m.token)); } catch (e) { fail('erro'); return; }
     this.ws = ws;
     this.matchId = m.id; this.matchToken = m.token; // guardados pra reconectar se a conexão cair no meio da partida
+    this.goTm = null; this.clkOff = null; this.clkRtt = Infinity; this._goSeen = false; // relógio da partida nova (o 'go' pode chegar antes de o mapa terminar de carregar)
     const to = setTimeout(() => fail('sala não começou'), 20000);
     ws.onerror = () => { clearTimeout(to); fail('erro'); };
     ws.onclose = () => { clearTimeout(to); if (this.online) { if (ws === this.ws) this.lost(); } else fail('fechou'); };
@@ -162,6 +221,7 @@ LS.Net = {
     let done = false;
     const fin = () => { if (done) return; done = true; clearTimeout(t); this._goCb = null; this.lastRx = performance.now(); cb(); };
     const t = setTimeout(fin, maxMs); this._goCb = fin;
+    if (this._goSeen) fin(); // o 'go' chegou enquanto este aparelho ainda montava o mapa (antes ficava esperando até 30 s por um 'go' que já tinha passado)
   },
   cancel() {
     this._matching = false;
@@ -171,7 +231,8 @@ LS.Net = {
   leave() {
     this._goCb = null;
     const ws = this.ws; this.online = false; this.ws = null; this._reconn = false; this.matchId = null; this.matchToken = null;
-    this.tmOff = null; this.rtt = 0; this.lastRx = 0;
+    this.tmOff = null; this.rtt = 0; this.lastRx = 0; clearInterval(this._ckIv);
+    this.goTm = null; this.clkOff = null; this.clkRtt = Infinity; this._goSeen = false;
     if (ws) { try { if (ws.readyState === 1) ws.send('{"t":"bye"}'); ws.close(); } catch (e) { } } // "bye": saída de propósito (sem tempo de espera no servidor)
     for (const r of this.remotes) if (r.model.root.parent) r.model.root.parent.remove(r.model.root);
     this.remotes = []; this.ents = {};
@@ -212,6 +273,7 @@ LS.Net = {
     this.online = true; this.you = d.you; this.host = d.host; this.ents = {}; this.remotes = []; this.sendT = 0;
     this.tmOff = null; this.rtt = 0; this.pingT = 0; this.lastRx = performance.now(); this._reconn = false; this._undo = {}; this._undoKeys = [];
     this.interpMs = this.INTERP_MS; this.jit = 0; this.jitN = 0; this.snapRx = 0; this.snapTm = 0; this._ls = {}; this._opt = [];
+    this.startClockSync();
   },
   // guarda como desfazer a coleta de um item (se o servidor disser que outro jogador chegou primeiro)
   keepUndo(id, f, d) { this._undo[id] = { f, d }; this._undoKeys.push(id); if (this._undoKeys.length > 12) delete this._undo[this._undoKeys.shift()]; },
@@ -274,8 +336,10 @@ LS.Net = {
     };
     if (G.player.alive) pack(G.player, G.player.camPitch);
     if (this.isHost()) { // bots: metade a cada envio (10 Hz cada), corta o upload do host quase pela metade; o cliente compensa com +BOT_EXTRA_MS de interpolação
-      this._bk = (this._bk | 0) ^ 1; let i = 0;
-      for (const b of G.bots) if (b.alive && b.netId && ((i++ & 1) === this._bk)) pack(b, b.pitch);
+      this._bk = (this._bk | 0) ^ 1;
+      // a metade de cada vez é decidida pelo número do bot (fixo). Antes era pela posição na lista de vivos: quando um bot morria, os seguintes
+      // trocavam de metade e alguns ficavam 150 ms sem pacote (o boneco extrapolava e engasgava)
+      for (const b of G.bots) if (b.alive && b.netId && ((parseInt(b.netId.slice(1), 10) & 1) === this._bk)) pack(b, b.pitch);
     }
     if (e.length) this.send({ t: 'st', e });
   },
@@ -291,7 +355,7 @@ LS.Net = {
         for (const s of m.e) { const f = E(s[0]); if (f && f.remote) f.netTarget(s, m.tm); }
         break;
       }
-      case 'pong': { const r = performance.now() - m.c; if (r >= 0 && r < 10000) this.rtt = this.rtt ? this.rtt * 0.7 + r * 0.3 : r; break; }
+      case 'pong': { const r = performance.now() - m.c; if (r >= 0 && r < 10000) { this.rtt = this.rtt ? this.rtt * 0.7 + r * 0.3 : r; if (typeof m.tm === 'number') this.clockSample(m.c, r, m.tm); } break; }
       case 'nopick': this.undoPick(m.id); break; // outro jogador pegou antes: desfaz a coleta aqui
       case 'resync': { // voltou de uma queda de conexão: acerta vida, mortes e itens que perdeu
         for (const h of m.hp || []) { const v = E(h[0]); if (v && v.alive) v.hp = h[1]; }
@@ -357,7 +421,11 @@ LS.Net = {
         LS.GelBall.spawn(f, new THREE.Vector3(...m.o), new THREE.Vector3(...m.v)); break;
       }
       case 'fix': { const f = E(m.i); if (f && this.owns(f)) { f.pos.set(m.p[0], m.p[1], m.p[2]); f.vel.set(0, 0, 0); } break; }
-      case 'go': { const f = this._goCb; this._goCb = null; if (f) f(); break; } // todos terminaram de carregar: a partida começa
+      case 'go': { // todos terminaram de carregar: a partida começa
+        if (typeof m.tm === 'number') this.goTm = m.tm; // (servidor antigo não manda: matchTime() fica null e tudo anda pelo dt local, como antes)
+        this._goSeen = true;
+        const f = this._goCb; this._goCb = null; if (f) f(); break;
+      }
       case 'host': this.host = m.host; if (m.host === this.you) this.takeOverBots(); break;
       case 'end': {
         if (G.ended || G.state === 'ended') break;
