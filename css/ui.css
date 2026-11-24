@@ -1803,3 +1803,43 @@ body.mobile .mail-list, body.mobile .mail-view { max-height: 52vh; }
   #inventory.compact .it .btns { flex-direction: column; gap: 3px; } #inventory.compact .it .btns button { min-height: 28px; padding: 3px 8px; font-size: 11.5px; }
   #inventory.compact .it b { font-size: 12px; } #inventory.compact .inv-body { grid-template-columns: 1.1fr 1fr 1fr; gap: 0 8px; }
 }
+
+/* ==========================================================================
+   HUD DO TOPO NO CELULAR (v2): tudo menor, alinhado e sem sobrepor os botões de mapa/pausa/mochila
+   - esquerda: contadores + equipamento (com durabilidade) + colete/vida numa fila só
+   - centro: placar do duelo compacto + aviso do gás fininho embaixo
+   ========================================================================== */
+body.mobile #top-left { top: 8px; left: 10px; gap: 5px; }
+body.mobile .pill { padding: 3px 10px 3px 8px; gap: 5px; font-size: 14px; border-radius: 9px; letter-spacing: 0.5px; border-width: 1.5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+body.mobile .pill .svgi { width: 15px; height: 15px; }
+body.mobile #bottom-left { left: 10px; top: 38px; width: 218px; }
+body.mobile #gear { gap: 4px; margin-bottom: 5px; }
+body.mobile .gear-item { position: relative; overflow: hidden; padding: 2px 8px 4px 3px; gap: 3px; font-size: 12px; border-radius: 9px; border-width: 1.5px; }
+body.mobile .gear-item .gi { width: 21px; height: 21px; border-radius: 6px; }
+/* durabilidade: filete colorido embaixo de cada peça */
+body.mobile .gear-item::after { content: ''; position: absolute; left: 3px; bottom: 2px; height: 2px; width: var(--d, calc(100% - 6px)); max-width: calc(100% - 6px); background: #9fd0ff; border-radius: 1px; transition: width 0.25s; }
+body.mobile .gear-item.l2::after { background: #c08cff; } body.mobile .gear-item.l3::after { background: var(--accent2); }
+body.mobile .gear-item:not(.l1):not(.l2):not(.l3)::after { display: none; }
+body.mobile .bar-wrap { position: relative; margin-bottom: 3px; }
+body.mobile .bar { border-width: 1.5px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
+body.mobile .bar.armor { height: 8px; border-radius: 6px; }
+body.mobile .bar.health { height: 17px; border-radius: 9px; }
+body.mobile .bar > div { border-radius: 6px; }
+/* o colete não tem texto (é a barra azul fina); a vida mostra o número dentro da barra */
+body.mobile #bottom-left .bar-wrap:nth-child(2) .bar-label { display: none; }
+body.mobile #bottom-left .bar-wrap:nth-child(3) { display: flex; flex-direction: column-reverse; } /* barra em cima, texto embaixo */
+body.mobile #bottom-left .bar-wrap:nth-child(3) .bar-label { position: static; margin: 2px 0 0 3px; font-size: 11px; line-height: 1.1; letter-spacing: 0.8px; pointer-events: none; }
+body.mobile #fps { top: 126px; left: 12px; }
+/* centro: placar compacto (antes passava por cima dos botões de mapa e pausa) */
+body.mobile #duel-score { zoom: calc(var(--hz, 1) * 0.8); top: 8px; }
+body.mobile .ds-side { min-width: 0; padding: 4px 10px; gap: 7px; }
+body.mobile .ds-name { max-width: 84px; font-size: 13px; }
+body.mobile .ds-side > b { font-size: 28px; min-width: 20px; }
+body.mobile .ds-pips { gap: 3px; } body.mobile .ds-pips i { width: 8px; height: 14px; }
+body.mobile .ds-alive i { width: 8px; height: 8px; }
+body.mobile .ds-mid { min-width: 64px; padding: 3px 10px; }
+body.mobile .ds-mid b { font-size: 24px; } body.mobile .ds-mid small { font-size: 9px; } body.mobile .ds-mid span { font-size: 9px; }
+/* aviso do gás / zona: pílula fininha, texto em cima e dica pequena embaixo */
+body.mobile #zone-info { top: 8px; padding: 3px 14px 4px; border-radius: 10px; font-size: 13px; line-height: 1.2; border-width: 1.5px; max-width: 46vw; }
+body.mobile #zone-dist { font-size: 10.5px; opacity: 0.85; line-height: 1.15; }
+body.mobile #hud.duel #zone-info { top: 58px; }
