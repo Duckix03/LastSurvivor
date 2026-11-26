@@ -413,7 +413,7 @@ LS.Game = {
   // ---------- Loop ----------
   loop() {
     requestAnimationFrame(this.loop);
-    const dt = Math.min(this.clock.getDelta(), 0.05) * LS.Console.timeScale;
+    const raw = this.clock.getDelta(), dt = Math.min(raw, 0.05) * LS.Console.timeScale; // raw = tempo real do quadro (online: abaixo de 20 FPS roda a simulação em fatias, em vez de câmera lenta)
     this.lastDt = dt;
     // música do lobby e ambiente do reverb (galpão no duelo), conferidos poucas vezes por segundo
     const nowMs = performance.now();
@@ -426,7 +426,11 @@ LS.Game = {
     this._coveredDrawn = covered;
     if (this.state === 'lobby' || (this.state === 'menu' && LS.Lobby.built)) { LS.Lobby.update(dt); LS.Post.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
     if (!this.built) return;
-    if (this.state === 'playing' || (this.state === 'paused' && LS.Net.online)) this.update(dt * LS.Spectate.timeScale()); // câmera lenta na hora da morte
+    if (this.state === 'playing' || (this.state === 'paused' && LS.Net.online)) {
+      // online com FPS baixo: em vez de limitar o dt (todos os bots do host ficavam em câmera lenta e a taxa de envio caía), divide o quadro em até 3 fatias de ≤ 0,05 s
+      const n = LS.Net.online && raw > 0.06 ? Math.min(3, Math.ceil(raw / 0.05)) : 1, sd = n > 1 ? Math.min(raw, 0.15) / n * LS.Console.timeScale : dt;
+      for (let i = 0; i < n; i++) this.update(sd * LS.Spectate.timeScale()); // câmera lenta na hora da morte
+    }
     else if (this.state === 'victory') this.updateVictory(dt);
     else if (this.state === 'menu' || this.state === 'ended') { // câmera orbitando a ilha no fundo
       const t = performance.now() * 0.00005;
