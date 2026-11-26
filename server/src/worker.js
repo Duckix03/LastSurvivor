@@ -31,26 +31,26 @@ const HOST_STALE_MS = 5000; // o host não manda NENHUM bot por tanto tempo (app
 const HIST_MS = 1500;       // histórico de posições de cada personagem (compensação de lag dos tiros)
 const REWIND_MAX = 700;     // o tiro pode olhar no máximo tanto pro passado
 const HIT_BASE = 1.0, HIT_BASE_AIR = 2.5; // folga fixa (m) do caminho da bala até o alvo
-// folga extra por metro de distância (espalhamento da arma). Se acertos legítimos forem recusados, suba esses números; se passar bala demais, desça.
-const HIT_SLOPE = { Pistola: 0.05, SMG: 0.05, Rifle: 0.05, Sniper: 0.04, Escopeta: 0.12, Soco: 0 };
-const HIT_SLOPE_BOT = 0.07;
+// folga extra por metro de distância = espalhamento (meio-ângulo, rad) no PIOR caso legítimo: andando, sem mirar + abertura de rajada (js/config.js: spread × hip × 1,35 + bm).
+// Fica em WEAPONS[x].hs. Bots usam um cubo de espalhamento e multiplicadores maiores (HIT_SLOPE_BOT). Se acertos legítimos forem recusados, suba os 'hs'.
+const HIT_SLOPE_BOT = 0.14, HIT_SLOPE_BOT_MUL = 3.5, HIT_SLOPE_AIR = 2.5;
 const SHOT_ORIGIN_MAX = 7;  // a origem do tiro tem que estar a no máximo isso do atirador (câmera em 3ª pessoa incluída)
 const PUNCH_RANGE = 3.4;
 const HEAR_R = 320;        // até onde um tiro é ouvido
 
 // tabela de armas (igual a js/config.js): o dano é calculado aqui, não no navegador
 const WEAPONS = {
-  m1911: { dmg: 22, rate: 4, range: 120, pellets: 1, cat: 'Pistola' },
-  deagle: { dmg: 48, rate: 2, range: 150, pellets: 1, cat: 'Pistola' },
-  mp5: { dmg: 17, rate: 13, range: 110, pellets: 1, cat: 'SMG' },
-  ump: { dmg: 21, rate: 10, range: 120, pellets: 1, cat: 'SMG' },
-  ak47: { dmg: 32, rate: 9, range: 250, pellets: 1, cat: 'Rifle' },
-  m4a1: { dmg: 27, rate: 11, range: 250, pellets: 1, cat: 'Rifle' },
-  awm: { dmg: 105, rate: 0.75, range: 600, pellets: 1, cat: 'Sniper' },
-  kar98: { dmg: 80, rate: 1, range: 550, pellets: 1, cat: 'Sniper' },
-  m1887: { dmg: 15, rate: 1.1, range: 40, pellets: 9, cat: 'Escopeta' },
-  spas12: { dmg: 12, rate: 1.6, range: 35, pellets: 8, cat: 'Escopeta' },
-  punch: { dmg: 12, rate: 2.2, range: 2.6, pellets: 1, cat: 'Soco' },
+  m1911: { dmg: 22, rate: 4, range: 120, pellets: 1, cat: 'Pistola', hs: 0.06 },
+  deagle: { dmg: 48, rate: 2, range: 150, pellets: 1, cat: 'Pistola', hs: 0.09 },
+  mp5: { dmg: 17, rate: 13, range: 110, pellets: 1, cat: 'SMG', hs: 0.075 },
+  ump: { dmg: 21, rate: 10, range: 120, pellets: 1, cat: 'SMG', hs: 0.075 },
+  ak47: { dmg: 32, rate: 9, range: 250, pellets: 1, cat: 'Rifle', hs: 0.09 },
+  m4a1: { dmg: 27, rate: 11, range: 250, pellets: 1, cat: 'Rifle', hs: 0.07 },
+  awm: { dmg: 105, rate: 0.75, range: 600, pellets: 1, cat: 'Sniper', hs: 0.045 },
+  kar98: { dmg: 80, rate: 1, range: 550, pellets: 1, cat: 'Sniper', hs: 0.065 },
+  m1887: { dmg: 15, rate: 1.1, range: 40, pellets: 9, cat: 'Escopeta', hs: 0.14 },
+  spas12: { dmg: 12, rate: 1.6, range: 35, pellets: 8, cat: 'Escopeta', hs: 0.155 },
+  punch: { dmg: 12, rate: 2.2, range: 2.6, pellets: 1, cat: 'Soco', hs: 0 },
 };
 const GEAR = { vest: [0, 0.3, 0.4, 0.5], helmet: [0, 0.3, 0.4, 0.5] }; // redução de dano por nível
 const BOT_NAMES = ['Viper', 'Shadow', 'Falcon', 'Ghost', 'Blaze', 'Raven', 'Storm', 'Titan', 'Nova', 'Hunter', 'Cobra', 'Wolf', 'Phantom', 'Reaper', 'Ace',
@@ -517,7 +517,8 @@ export class Match {
       if (!this.losOk(shot, v, [[a.pos[0], a.pos[1] + 1.2, a.pos[2]], eye], best.p)) return null;
       return { head: false, dist: best.dist };
     }
-    const o = shot.o, dd = shot.d, slope = a.id[0] === 'b' ? HIT_SLOPE_BOT : (HIT_SLOPE[w.cat] || 0.05), base = v.state === 3 ? HIT_BASE : HIT_BASE_AIR;
+    let slope = w.hs === undefined ? 0.09 : w.hs; if (a.id[0] === 'b') slope = Math.max(HIT_SLOPE_BOT, slope * HIT_SLOPE_BOT_MUL); if (a.state !== 3) slope *= HIT_SLOPE_AIR;
+    const o = shot.o, dd = shot.d, base = v.state === 3 ? HIT_BASE : HIT_BASE_AIR;
     let headOk = false;
     for (const T of cands) {
       const p = this.histAt(v, Math.min(T, now));
