@@ -68,22 +68,27 @@ LS.RemoteFighter = class extends LS.Fighter {
   collideTo(px, pz, tx, tz, y) {
     const W = LS.World, dx = tx - px, dz = tz - pz, dist = Math.hypot(dx, dz), o = this._co || (this._co = { x: 0, z: 0 });
     o.x = tx; o.z = tz;
-    if (dist < 1e-3 || dist > LS.Net.COLLIDE_MAX_STEP) return o; // parado, ou salto grande (teleporte/reapareceu): não mexe
-    const p = this._cp || (this._cp = new THREE.Vector3()), pv = this._cv || (this._cv = { x: 0, z: 0 }), steps = Math.min(40, Math.ceil(dist / 0.15));
+    if (dist < 1e-3 || dist > LS.Net.COLLIDE_MAX_STEP) return o; // parado, ou salto ENORME (teleporte de verdade): não mexe
+    const p = this._cp || (this._cp = new THREE.Vector3()), pv = this._cv || (this._cv = { x: 0, z: 0 }), steps = Math.min(220, Math.ceil(dist / 0.15)); // varre em fatias de 15 cm também nos saltos grandes (lag): antes passava de 6 m sem colidir
     p.set(px, y, pz); W._rockBudget = Infinity;
     for (let i = 0; i < steps; i++) { pv.x = p.x; pv.z = p.z; p.x += dx / steps; p.z += dz / steps; W.collideCircle(p, 0.38, 1.8, pv); }
-    if (Math.hypot(p.x - tx, p.z - tz) > LS.Net.COLLIDE_SNAP) return o; // preso longe do ponto certo: segue o ponto certo
+    const far = Math.hypot(p.x - tx, p.z - tz);
+    if (far > LS.Net.COLLIDE_SNAP) { // ficou longe do ponto de verdade. Só pula pra lá se NÃO tem parede no caminho (ou se a diferença é grande demais pra ser parede)
+      const A = this._la || (this._la = new THREE.Vector3()), B = this._lb || (this._lb = new THREE.Vector3());
+      A.set(p.x, y + 0.9, p.z); B.set(tx, y + 0.9, tz);
+      if (far > LS.Net.COLLIDE_FAR || W.hasLOS(A, B)) return o;
+    }
     o.x = p.x; o.z = p.z; return o;
   }
   update(dt) {
     const s = this.tgt; if (!s) { this.model.root.visible = false; return; }
-    if (this.alive && performance.now() - this.seenT > 700) { this.netHidden = true; this.model.root.visible = false; return; } // (corpo caído some pela própria animação)
+    if (this.alive && performance.now() - this.seenT > 500) { this.netHidden = true; this.model.root.visible = false; return; } // 'hide' do servidor esconde na hora; isto é só a rede de segurança (corpo caído some pela própria animação)
     this.state = RF_STATES[s[7]] || 'ground';
     const k = 1 - Math.exp(-12 * dt), px = this.pos.x, pz = this.pos.z, N = LS.Net;
     const iv = N.tmOff !== null && this.buf && this.buf.length ? this.interp(N.srvNow() - N.interpMs - (this.netId && this.netId[0] === 'b' ? N.BOT_EXTRA_MS : 0)) : null;
     if (iv) { // interpolado entre pacotes
       let nx = iv.x, nz = iv.z;
-      if (this.state === 'ground' && this.alive && !this.netJustShown && N.COLLIDE_PUPPETS) { const c = this.collideTo(px, pz, nx, nz, iv.y); nx = c.x; nz = c.z; }
+      if (this.state === 'ground' && this.alive && N.COLLIDE_PUPPETS) { const c = this.collideTo(px, pz, nx, nz, iv.y); nx = c.x; nz = c.z; }
       this.netJustShown = false;
       this.pos.set(nx, iv.y, nz); this.yaw = iv.yaw; this.pitch = iv.pitch;
     }
@@ -137,7 +142,8 @@ LS.Net = {
   MAXV_GROUND: 9.5,   // m/s: corrida é 7,6; folga pra jitter. Acima disso a extrapolação é cortada
   MAXV_AIR: 28,       // m/s horizontal no ar (mergulho do paraquedas é 24)
   COLLIDE_PUPPETS: true, // bonecos remotos (jogadores e bots) respeitam as paredes ao serem desenhados
-  COLLIDE_MAX_STEP: 6,   // m: deslocamento maior que isso num quadro = teleporte, não varre
+  COLLIDE_MAX_STEP: 40,  // m: deslocamento maior que isso num quadro = teleporte de verdade, não varre
+  COLLIDE_FAR: 8,        // m: preso atrás de parede a mais que isso do ponto de verdade: pula pro ponto de verdade (o dono é quem manda)
   COLLIDE_SNAP: 1.5,     // m: se a colisão deixar o boneco mais longe que isso do ponto de verdade, ele pula pro ponto de verdade
   // RELÓGIO DA PARTIDA: o avião, a zona (e tudo que andava com o dt do aparelho) passam a andar por um relógio único, o do servidor.
   // goTm = hora do servidor em que o 'go' foi dado; clkOff = diferença entre o performance.now() daqui e a hora do servidor (medida no pong, estilo NTP)
@@ -231,7 +237,7 @@ LS.Net = {
   leave() {
     this._goCb = null;
     const ws = this.ws; this.online = false; this.ws = null; this._reconn = false; this.matchId = null; this.matchToken = null;
-    this.tmOff = null; this.rtt = 0; this.lastRx = 0; clearInterval(this._ckIv);
+    this.tmOff = null; this.rtt = 0; this.lastRx = 0; clearInterval(this._ckIv); clearInterval(this._pingIv);
     this.goTm = null; this.clkOff = null; this.clkRtt = Infinity; this._goSeen = false;
     if (ws) { try { if (ws.readyState === 1) ws.send('{"t":"bye"}'); ws.close(); } catch (e) { } } // "bye": saída de propósito (sem tempo de espera no servidor)
     for (const r of this.remotes) if (r.model.root.parent) r.model.root.parent.remove(r.model.root);
@@ -273,7 +279,13 @@ LS.Net = {
     this.online = true; this.you = d.you; this.host = d.host; this.ents = {}; this.remotes = []; this.sendT = 0;
     this.tmOff = null; this.rtt = 0; this.pingT = 0; this.lastRx = performance.now(); this._reconn = false; this._undo = {}; this._undoKeys = [];
     this.interpMs = this.INTERP_MS; this.jit = 0; this.jitN = 0; this.snapRx = 0; this.snapTm = 0; this._ls = {}; this._opt = [];
-    this.startClockSync();
+    this.startClockSync(); this._dk = new Set(); this._gh = null;
+    // ping a cada 2 s por TEMPORIZADOR (não pelo quadro do jogo): mede o RTT e mantém a conexão viva mesmo com a aba/app em segundo plano
+    clearInterval(this._pingIv);
+    this._pingIv = setInterval(() => {
+      if (!this.online) { clearInterval(this._pingIv); return; }
+      this.send({ t: 'ping', c: performance.now(), r: Math.round(this.rtt) });
+    }, 2000);
   },
   // guarda como desfazer a coleta de um item (se o servidor disser que outro jogador chegou primeiro)
   keepUndo(id, f, d) { this._undo[id] = { f, d }; this._undoKeys.push(id); if (this._undoKeys.length > 12) delete this._undo[this._undoKeys.shift()]; },
@@ -293,7 +305,7 @@ LS.Net = {
   register(f, id) { f.netId = id; this.ents[id] = f; if (f.remote) this.remotes.push(f); },
   // marcador de acerto NA HORA (som + marcador na mira): o servidor ainda confere e manda o dano/número depois. Antes o feedback do tiro
   // só aparecia depois de um ping inteiro. Se o servidor recusar o tiro (não chega 'dmg'), o registro expira em 1,2 s.
-  optHit(head) { this._opt.push(performance.now()); if (this._opt.length > 12) this._opt.shift(); LS.Game.onPlayerHit(!!head, false); },
+  optHit(head, victim) { if (victim && victim.netGrace) return; /* alvo imune (reconectando): sem marcador de acerto à toa */ this._opt.push(performance.now()); if (this._opt.length > 12) this._opt.shift(); LS.Game.onPlayerHit(!!head, false); },
   takeOpt() { const t = performance.now(); while (this._opt.length && t - this._opt[0] > 1200) this._opt.shift(); return this._opt.length ? (this._opt.shift(), true) : false; },
   // jitter dos pacotes (como o RTCP: média do desvio entre o intervalo de chegada e o intervalo de envio do servidor).
   // Rede boa: o atraso cai pra ~75 ms (o boneco fica mais perto do tempo real); rede oscilando: sobe até 220 ms (sem engasgar).
@@ -314,8 +326,7 @@ LS.Net = {
     if (!this.online) return;
     for (const r of this.remotes) { this.exT++; r.update(dt); } // exT = quadros x remotos desenhados (base do contador)
     const nowp = performance.now();
-    this.pingT -= dt; // ping a cada 2 s: mede o RTT, mantém a conexão viva e deixa o servidor saber que estamos aqui
-    if (this.pingT <= 0) { this.pingT = 2; this.send({ t: 'ping', c: nowp, r: Math.round(this.rtt) }); }
+    // (o ping agora roda num setInterval em begin(): continua com o app minimizado, em vez de depender do requestAnimationFrame)
     // nada vindo do servidor por 6 s: a conexão morreu em silêncio (comum no celular): tenta voltar
     if (this.matchId && !this._reconn && this.lastRx && nowp - this.lastRx > 5000) { const old = this.ws; this.lost(); if (old) { try { old.close(); } catch (e) { } } }
     this.sendT -= dt;
@@ -342,7 +353,16 @@ LS.Net = {
       for (const b of G.bots) if (b.alive && b.netId && ((parseInt(b.netId.slice(1), 10) & 1) === this._bk)) pack(b, b.pitch);
     }
     if (e.length) this.send({ t: 'st', e });
+    this.flushGel();
   },
+  // dano em parede de gel: acumula por parede/atirador e manda junto (a escopeta acerta 9 vezes no mesmo quadro)
+  gelHit(shooter, gel, dmg) {
+    if (!this.online || !gel || !gel.id || !shooter || !shooter.netId || !this.owns(shooter)) return;
+    const a = this._gh || (this._gh = {}), k = gel.id + '|' + shooter.netId;
+    if (!a[k]) a[k] = { i: shooter.netId, w: gel.id, d: 0 };
+    a[k].d += dmg;
+  },
+  flushGel() { const a = this._gh; if (!a) return; this._gh = null; for (const k in a) this.send({ t: 'gh', i: a[k].i, w: a[k].w, d: Math.round(a[k].d) }); },
 
   // ---------- eventos do servidor ----------
   onMsg(m) {
@@ -360,6 +380,9 @@ LS.Net = {
       case 'resync': { // voltou de uma queda de conexão: acerta vida, mortes e itens que perdeu
         for (const h of m.hp || []) { const v = E(h[0]); if (v && v.alive) v.hp = h[1]; }
         for (const k of m.kills || []) this.onMsg(k);
+        for (const d of m.drops || []) this.onMsg(d);   // loot das mortes que aconteceram durante a queda (o handler 'drops' ignora o que já tinha)
+        for (const d of m.wd || []) this.onMsg(d);      // armas largadas por jogadores
+        for (const g of m.gels || []) { const f = E(g.i); if (f && Array.isArray(g.o) && Array.isArray(g.v)) LS.GelBall.spawn(f, new THREE.Vector3(...g.o), new THREE.Vector3(...g.v), g.i + ':' + (g.n | 0), g.age || 0); } // paredes de gel que existem agora
         for (const id of m.picks || []) this.onMsg({ t: 'pick', id, by: '' });
         break;
       }
@@ -394,11 +417,15 @@ LS.Net = {
         v.hp = 0; v._netApply = true;
         if (m.p && v.remote && v.netHidden) v.pos.set(m.p[0], m.p[1], m.p[2]); // morreu longe: efeito no lugar certo
         LS.Loot.idPfx = 'k' + m.k + '_'; LS.Loot.seq = 0;
-        if (!mine) { v.weapons = [null, null]; for (const t in v.ammo) v.ammo[t] = 0; for (const t in v.meds) v.meds[t] = 0; v.vest = { level: 0, dur: 0 }; v.helmet = { level: 0, dur: 0 }; v.bag = 0; }
+        // quem SAIU da partida não tem dono pra contar o que deixou cair: o host dropa o que dá pra saber pelo pacote de estado (arma, colete, capacete, mochila)
+        const leaver = m.w === 'Saiu' && !mine && this.isHost() && v.remote && v.netId[0] !== 'b', keep = mine || leaver;
+        if (mine) this._dk.add(m.k);
+        if (!keep) { v.weapons = [null, null]; for (const t in v.ammo) v.ammo[t] = 0; for (const t in v.meds) v.meds[t] = 0; v.vest = { level: 0, dur: 0 }; v.helmet = { level: 0, dur: 0 }; v.bag = 0; }
+        else if (leaver) { for (const t in v.ammo) v.ammo[t] = 0; for (const t in v.meds) v.meds[t] = 0; v.gel = 0; v.weapons.forEach(w => { if (w && LS.WEAPONS[w.id]) { w.mag = LS.WEAPONS[w.id].mag; v.ammo[LS.WEAPONS[w.id].ammo] = 30; } }); this._dk.add(m.k); }
         const before = LS.Loot.items.length;
         LS.util.withSeed(m.k * 7919 + 13, () => v.die(a, m.w, !!m.h));
         v._netApply = false; v.placement = m.pl;
-        if (mine) { // quem era dono do personagem conta pros outros o que ele deixou cair
+        if (keep) { // quem era dono do personagem (ou o host, se ele saiu) conta pros outros o que ele deixou cair
           const items = LS.Loot.items.slice(before).map(it => [it.type, it.id, it.level, it.amount, Math.round(it.pos.x * 100) / 100, Math.round(it.pos.y * 100) / 100, Math.round(it.pos.z * 100) / 100, it.ammoInMag]);
           if (items.length) this.send({ t: 'drops', k: m.k, items });
         }
@@ -406,6 +433,8 @@ LS.Net = {
         break;
       }
       case 'drops': {
+        if (!this._dk) this._dk = new Set();
+        if (this._dk.has(m.k)) break; this._dk.add(m.k); // (na reconexão o mesmo loot podia vir duas vezes)
         LS.Loot.idPfx = 'k' + m.k + '_'; LS.Loot.seq = 0;
         for (const d of m.items) { const it = LS.Loot.spawn(d[0], d[1], d[2], d[3], d[4], d[5], d[6]); if (d[7] !== undefined && d[7] !== null) it.ammoInMag = d[7]; }
         LS.Loot.idPfx = 'x'; LS.Loot.seq = 0;
@@ -416,17 +445,25 @@ LS.Net = {
         if (it) LS.Loot.remove(it, E(m.by) || null);
         break;
       }
-      case 'gel': { // bola de gelo de outro jogador: mesma física daqui, a parede nasce no mesmo lugar
+      case 'gel': { // bola de gelo de outro jogador: mesma física (passo fixo) daqui, a parede nasce no mesmo lugar
         const f = E(m.i); if (!f || this.owns(f) || !Array.isArray(m.o) || !Array.isArray(m.v)) break;
-        LS.GelBall.spawn(f, new THREE.Vector3(...m.o), new THREE.Vector3(...m.v)); break;
+        LS.GelBall.spawn(f, new THREE.Vector3(...m.o), new THREE.Vector3(...m.v), m.i + ':' + (m.n | 0), 0); break;
       }
+      case 'gh': { const w = LS.GelWall.byId(m.w); if (w) w.hit(m.d); break; } // dano que outro jogador causou numa parede de gel
+      case 'dropw': { // arma largada por outro jogador (id único): aparece no chão aqui também
+        if (!LS.WEAPONS[m.w] || !Array.isArray(m.p) || LS.Loot.items.some(x => x.netId === m.id)) break;
+        const it = LS.Loot.spawn('weapon', m.w, 0, 1, m.p[0], m.p[1], m.p[2], m.id); if (it && typeof m.m === 'number') it.ammoInMag = m.m; break;
+      }
+      case 'hide': { for (const id of m.ids || []) { const f = E(id); if (f && f.remote && f.alive) { f.netHidden = true; f.model.root.visible = false; } } break; } // saiu de vista: some na hora e não leva tiro "fantasma"
+      case 'rej': this.takeOpt(); break; // o servidor recusou o tiro (parede/posição): descarta o marcador otimista
+      case 'grace': { const f = E(m.v); if (f) f.netGrace = !!m.on; break; }
       case 'fix': { const f = E(m.i); if (f && this.owns(f)) { f.pos.set(m.p[0], m.p[1], m.p[2]); f.vel.set(0, 0, 0); } break; }
       case 'go': { // todos terminaram de carregar: a partida começa
         if (typeof m.tm === 'number') this.goTm = m.tm; // (servidor antigo não manda: matchTime() fica null e tudo anda pelo dt local, como antes)
         this._goSeen = true;
         const f = this._goCb; this._goCb = null; if (f) f(); break;
       }
-      case 'host': this.host = m.host; if (m.host === this.you) this.takeOverBots(); break;
+      case 'host': { const was = this.host === this.you; this.host = m.host; if (m.host === this.you) this.takeOverBots(); else if (was) this.demoteBots(); break; }
       case 'end': {
         if (G.ended || G.state === 'ended') break;
         const win = m.winner === this.you;
@@ -459,12 +496,30 @@ LS.Net = {
       b.netId = r.netId; this.ents[r.netId] = b; G.bots.push(b);
     }
   },
+  // o servidor tirou a posse dos bots deste computador (ele estava travado/minimizado): os bots viram bonecos remotos de novo, controlados pelo novo host
+  demoteBots() {
+    const G = LS.Game;
+    for (const b of G.bots.slice()) {
+      if (!b.netId || b.remote) continue;
+      const r = new LS.RemoteFighter(b.name, b.model.look);
+      r.reset(); r.pos.copy(b.pos); r.yaw = b.yaw; r.alive = b.alive; r.hp = b.hp;
+      r.model.root.visible = false; G.scene.add(r.model.root);
+      if (b.model.root.parent) b.model.root.parent.remove(b.model.root);
+      const i = G.fighters.indexOf(b); if (i >= 0) G.fighters[i] = r;
+      G.bots.splice(G.bots.indexOf(b), 1);
+      this.register(r, b.netId);
+    }
+  },
   // acerto feito por algo controlado aqui: o servidor confere e calcula o dano
   reportHit(attacker, victim, head, weaponName) {
-    if (!victim.netId) return;
+    if (!victim.netId || victim.netGrace) return;
     const w = weaponName === 'Soco' ? 'punch' : attacker.weapon() && attacker.weapon().id;
     if (!w) return;
-    this.send({ t: 'hit', a: attacker.netId, v: victim.netId, h: head ? 1 : 0, w });
+    // vt = o instante (relógio do servidor) em que ESTE aparelho estava desenhando o alvo: o servidor compara o tiro com a posição do alvo naquele instante
+    // (compensação de lag). Alvo controlado aqui mesmo não tem atraso de interpolação: sem vt, o servidor usa a janela padrão.
+    const m = { t: 'hit', a: attacker.netId, v: victim.netId, h: head ? 1 : 0, w };
+    if (this.tmOff !== null && victim.remote) m.vt = Math.round(this.srvNow() - this.interpMs - (victim.netId[0] === 'b' ? this.BOT_EXTRA_MS : 0));
+    this.send(m);
   },
 };
 
