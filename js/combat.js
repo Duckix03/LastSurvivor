@@ -83,8 +83,13 @@ LS.Fighter = class {
   }
   dropWeapon(s) {
     const w = this.weapons[s]; if (!w) return;
-    const it = LS.Loot.spawn('weapon', w.id, 0, 1, this.pos.x + Math.sin(this.yaw) * 1.2, this.pos.y + 0.1, this.pos.z + Math.cos(this.yaw) * 1.2);
+    // online: a arma largada ganha id ÚNICO (dono + contador, que nunca volta a zero) e os outros jogadores ficam sabendo ('dropw').
+    // Antes o id era 'x1, x2...' local: colidia com o de outro jogador e a coleta era desfeita; e a arma nem aparecia pros outros.
+    const N = LS.Net, onl = !!(N && N.online && this.netId && N.owns(this));
+    const nid = onl ? 'd' + this.netId + '_' + (this.dropSeq = (this.dropSeq | 0) + 1) : undefined;
+    const it = LS.Loot.spawn('weapon', w.id, 0, 1, this.pos.x + Math.sin(this.yaw) * 1.2, this.pos.y + 0.1, this.pos.z + Math.cos(this.yaw) * 1.2, nid);
     it.ammoInMag = w.mag;
+    if (onl) { const r = v => Math.round(v * 100) / 100; N.send({ t: 'dropw', i: this.netId, id: nid, w: w.id, m: w.mag, p: [r(it.pos.x), r(it.pos.y), r(it.pos.z)] }); }
     this.weapons[s] = null;
     if (s === this.slot) { this.reloadT = 0; const o = 1 - s; if (this.weapons[o]) { this.slot = o; this.model.switchGun(this.weapons[o].id); } else this.model.switchGun(null); }
   }
@@ -134,6 +139,9 @@ LS.Fighter = class {
       if (f === this || !f.alive || f.netHidden || LS.sameTeam(this, f)) continue;
       const dx = f.pos.x - this.pos.x, dz = f.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1e-3;
       if (d < 1.7 && Math.abs(f.pos.y - this.pos.y) < 1.2 && (dx * fx + dz * fz) / d > 0.5) {
+        // parede no meio? o soco não atravessa (antes só testava distância e cone)
+        const eye = (this._pe || (this._pe = new THREE.Vector3())).set(this.pos.x, this.pos.y + 1.2, this.pos.z), ch = (this._pc || (this._pc = new THREE.Vector3())).set(f.pos.x, f.pos.y + 1.0, f.pos.z);
+        if (!LS.World.hasLOS(eye, ch)) continue;
         f.takeDamage(12, this, false, 'Soco');
         if (this.isPlayer) { LS.Audio.hitmarker(false); if (LS.HUD.hitmarker) LS.HUD.hitmarker(false); }
         break;
@@ -299,7 +307,10 @@ LS.Combat = {
       const maxR = wdef.range * 1.6;
       const wt = LS.World.raycast(origin, d, maxR), wbox = LS.World.lastBox;
       const hit = this.hitFighter(origin, d, wt, shooter);
-      if (!hit && wbox && wbox.gel) wbox.gel.hit(wdef.dmg); // parede de gel balança (e estoura) com os tiros
+      if (!hit && wbox && wbox.gel) { // parede de gel: o dano é de quem atirou de verdade (e é avisado aos outros); o tiro "visual" de outro jogador só balança.
+        // (antes cada computador calculava o seu, com espalhamento 0 nos tiros visuais: a vida e a hora de estourar divergiam)
+        if (visual) wbox.gel.wobble(); else { wbox.gel.hit(wdef.dmg); LS.Net.gelHit(shooter, wbox.gel, wdef.dmg); }
+      }
       const t = hit ? hit.t : wt;
       const end = this._end.copy(origin).addScaledVector(d, t);
       if (p < 3) LS.Effects.tracer(muzzle, end);
@@ -325,7 +336,7 @@ LS.Combat = {
           LS.Game.onPlayerHit(hit.head, !hit.f.alive);
           LS.Effects.damageNumber(end, dealt, hit.head);
           if (armored) LS.Audio.armorHit();
-        } else if (shooter.isPlayer && hit.f.netId && hit.f.alive) LS.Net.optHit(hit.head); // online: marcador/som na hora; o dano e o número vêm do servidor
+        } else if (shooter.isPlayer && hit.f.netId && hit.f.alive) LS.Net.optHit(hit.head, hit.f); // online: marcador/som na hora; o dano e o número vêm do servidor
       } else if (wt < maxR) LS.Effects.impact(end, false, d);
     }
   }
