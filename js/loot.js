@@ -49,8 +49,9 @@ LS.Loot = {
     return g;
   },
 
-  spawn(type, id, level, amount, x, y, z) {
-    const it = { type, id, level: level || 0, amount: amount || 1, pos: new THREE.Vector3(x, y, z), alive: true, netId: (this.idPfx || 'x') + (this.seq = (this.seq || 0) + 1) };
+  // nid (opcional): id de rede já definido (armas largadas têm id único por dono; antes 'x1, x2...' colidia entre jogadores)
+  spawn(type, id, level, amount, x, y, z, nid) {
+    const it = { type, id, level: level || 0, amount: amount || 1, pos: new THREE.Vector3(x, y, z), alive: true, netId: nid || ((this.idPfx || 'x') + (this.seq = (this.seq || 0) + 1)) };
     if (type === 'weapon' && it.ammoInMag === undefined) it.ammoInMag = LS.WEAPONS[id].mag;
     it.mesh = this.makeMesh(it);
     it.mesh.position.copy(it.pos);
