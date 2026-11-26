@@ -8,7 +8,7 @@
 LS.GelWall = class {
   constructor(scene, x, y, z, yaw, opts) {
     opts = opts || {};
-    this.scene = scene; this.t = 0; this.state = 'grow'; this.hp = opts.hp || 400; this.cols = [];
+    this.scene = scene; this.t = 0; this.state = 'grow'; this.hp = opts.hp || 400; this.cols = []; this.id = opts.id || null; // id de rede (dono:n): o dano vindo da rede acha a parede por ele
     const B = LS.GelWall.B, rnd = LS.util.seeded(opts.seed || Math.floor(Math.random() * 1e6));
     const g = this.group = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw || 0;
     // colunas ao longo de um arco (a parede abraça quem está atrás dela)
@@ -81,6 +81,8 @@ LS.GelWall = class {
     });
     im.instanceMatrix.needsUpdate = true;
   }
+  wobble() { if (this.state === 'grow' || this.state === 'idle') this.wobT = 0.35; } // só balança (tiro visual de outro jogador)
+  static byId(id) { return LS.GelWall.list.find(w => w.id === id) || null; }
   hit(dmg) {
     if (this.state === 'dead' || this.state === 'shatter') return;
     this.wobT = 0.35; this.hp -= dmg || 0;
@@ -136,7 +138,8 @@ LS.GelWall.list = [];
 //  Battle royale: começa com 0 (acha no chão) · Duelo: 2 por round · Sala: infinita (ou 2 por round se o dono desligar)
 LS.GelBall = {
   SPEED: 15, UP: 3.2, GRAV: 22, CD: 0.55, LIFE: 30, PER_OWNER: 4,
-  balls: [],
+  FIX: 1 / 60, // PASSO FIXO da simulação: todo computador calcula a mesma trajetória e a parede nasce no mesmo lugar (antes usava o dt de cada aparelho)
+  balls: [], known: new Set(),
   mesh() {
     if (!this._geo) this._geo = LS.Items.itemGeometry({ type: 'gel', id: 'gel' });
     return LS.Items.mesh(this._geo);
@@ -149,44 +152,67 @@ LS.GelBall = {
     f.gelCd = this.CD;
     const o = f.eyePos(new THREE.Vector3()); o.y -= 0.25; o.x += dir.x * 0.6; o.z += dir.z * 0.6;
     const v = new THREE.Vector3(dir.x, Math.max(-0.4, dir.y), dir.z).normalize().multiplyScalar(this.SPEED); v.y += this.UP;
-    if (LS.Net.online && LS.Net.owns(f)) LS.Net.send({ t: 'gel', i: f.netId, o: [o.x, o.y, o.z].map(n => Math.round(n * 100) / 100), v: [v.x, v.y, v.z].map(n => Math.round(n * 100) / 100) });
-    this.spawn(f, o, v);
+    // arredonda ANTES de simular: quem atira e quem recebe pela rede partem exatamente dos mesmos números
+    const r2 = n => Math.round(n * 100) / 100;
+    o.set(r2(o.x), r2(o.y), r2(o.z)); v.set(r2(v.x), r2(v.y), r2(v.z));
+    const n = f.gelSeq = (f.gelSeq | 0) + 1, id = f.netId ? f.netId + ':' + n : null;
+    if (LS.Net.online && LS.Net.owns(f)) LS.Net.send({ t: 'gel', i: f.netId, n, o: [o.x, o.y, o.z], v: [v.x, v.y, v.z] });
+    this.spawn(f, o, v, id, 0);
     if (LS.Audio.ctx) { if (f.isPlayer) LS.Audio.gelThrow(); else { const s = LS.GelWall.snd(f.pos); if (s.d < 40) LS.Audio.gelThrow(s.d, s.pan); } }
     return true;
   },
-  // cria a bolinha voando (também usado quando chega da rede: mesma física = mesmo lugar em todo mundo)
-  spawn(owner, o, v) {
+  // cria a bolinha voando (também usado quando chega da rede e na reconexão: age = há quantos segundos ela foi jogada, pra "adiantar" a simulação)
+  spawn(owner, o, v, id, age) {
+    if (id) { if (this.known.has(id)) return; this.known.add(id); if (this.known.size > 400) this.known.delete(this.known.values().next().value); } // mesma bola não nasce duas vezes
     const m = this.mesh(); m.scale.setScalar(1.5); m.position.copy(o); LS.Game.scene.add(m);
-    this.balls.push({ owner, pos: o.clone(), vel: v.clone(), m, t: 0 });
+    const b = { owner, pos: o.clone(), vel: v.clone(), from: o.clone(), m, t: 0, acc: 0, id };
+    this.balls.push(b);
+    if (age > 0.05) this.advance(b, age);
+  },
+  // um passo fixo da bola; devolve o ponto de pouso se ela parou
+  step(b) {
+    const W = LS.World, d = this._d || (this._d = new THREE.Vector3()), dt = this.FIX;
+    b.t += dt; b.vel.y -= this.GRAV * dt;
+    d.copy(b.vel).multiplyScalar(dt); const len = d.length(); d.divideScalar(len || 1);
+    const hit = W.raycast(b.pos, d, len + 0.15);
+    let land = null;
+    if (hit < len + 0.1) land = b.pos.clone().addScaledVector(d, Math.max(0, hit - 0.5)); // bateu (chão, parede, caixa): nasce um pouco antes
+    else b.pos.addScaledVector(d, len);
+    if (!land) { const g = W.groundAt(b.pos.x, b.pos.z, b.pos.y + 0.2, 0.2); if (b.pos.y <= g + 0.05) land = b.pos.clone(); }
+    if (!land && b.t > 2.5) land = b.pos.clone();
+    return land;
+  },
+  // adianta a simulação (reconexão): se a bola já pousou, a parede nasce já com o tempo de vida que sobrou
+  advance(b, secs) {
+    let k = Math.floor(secs / this.FIX);
+    while (k-- > 0) {
+      const land = this.step(b);
+      if (land) { const i = this.balls.indexOf(b); if (i >= 0) this.balls.splice(i, 1); if (b.m.parent) b.m.parent.remove(b.m); this.burst(b.owner, land, b.from, b.id, secs - b.t); return; }
+    }
+    b.m.position.copy(b.pos);
   },
   update(dt) {
-    const W = LS.World, d = this._d || (this._d = new THREE.Vector3());
     for (let i = this.balls.length - 1; i >= 0; i--) {
-      const b = this.balls[i]; b.t += dt;
-      const step = dt; b.vel.y -= this.GRAV * step;
-      d.copy(b.vel).multiplyScalar(step); const len = d.length(); d.divideScalar(len || 1);
-      const hit = W.raycast(b.pos, d, len + 0.15);
-      let land = null;
-      if (hit < len + 0.1) land = b.pos.clone().addScaledVector(d, Math.max(0, hit - 0.5)); // bateu (chão, parede, caixa): nasce um pouco antes
-      else b.pos.addScaledVector(d, len);
-      const g = W.groundAt(b.pos.x, b.pos.z, b.pos.y + 0.2, 0.2);
-      if (!land && b.pos.y <= g + 0.05) land = b.pos.clone();
-      if (!land && b.t > 2.5) land = b.pos.clone();
+      const b = this.balls[i]; b.acc += dt;
+      let land = null, n = 0;
+      while (!land && b.acc >= this.FIX && n++ < 12) { b.acc -= this.FIX; land = this.step(b); }
       b.m.position.copy(b.pos); b.m.rotation.x += dt * 9; b.m.rotation.z += dt * 6;
-      if (land) { this.balls.splice(i, 1); if (b.m.parent) b.m.parent.remove(b.m); this.burst(b.owner, land); }
+      if (land) { this.balls.splice(i, 1); if (b.m.parent) b.m.parent.remove(b.m); this.burst(b.owner, land, b.from, b.id, 0); }
     }
   },
-  // a bolinha estoura e a parede brota de frente pra quem jogou
-  burst(owner, p) {
-    const W = LS.World, y = W.groundAt(p.x, p.z, p.y + 0.6, 0.3);
-    const from = owner ? owner.pos : p, yaw = Math.atan2(from.x - p.x, from.z - p.z);
+  // a bolinha estoura e a parede brota de frente pra onde ela foi jogada (a origem do arremesso é igual em todo mundo; a posição atual do dono não era)
+  burst(owner, p, from, id, elapsed) {
+    const W = LS.World, y = W.groundAt(p.x, p.z, p.y + 0.6, 0.3), el = elapsed || 0;
+    const life = this.LIFE - el; if (life <= 0) return;
+    const f = from || p, yaw = Math.atan2(f.x - p.x, f.z - p.z);
     // no máximo algumas paredes por pessoa (a mais velha estoura) e um teto geral
     const mine = LS.GelWall.list.filter(w => w.owner === owner && w.state !== 'shatter');
     if (owner && mine.length >= this.PER_OWNER) mine[0].shatter();
     const all = LS.GelWall.list.filter(w => w.state !== 'shatter'); if (all.length >= 40) all[0].shatter();
-    const w = new LS.GelWall(LS.Game.scene, p.x, y, p.z, yaw, { seed: Math.floor(p.x * 73 + p.z * 31) });
-    w.owner = owner; w.life = this.LIFE;
-    if (LS.Audio.ctx) { const s = LS.GelWall.snd(p); LS.Audio.gelPop(s.d, s.pan); }
+    const w = new LS.GelWall(LS.Game.scene, p.x, y, p.z, yaw, { seed: Math.floor(p.x * 73 + p.z * 31), id });
+    w.owner = owner; w.life = life;
+    if (el > 0.3) { w.state = 'idle'; w.place(9); } // reconexão: a parede já estava de pé
+    else if (LS.Audio.ctx) { const s = LS.GelWall.snd(p); LS.Audio.gelPop(s.d, s.pan); }
   },
-  clear() { for (const b of this.balls) if (b.m.parent) b.m.parent.remove(b.m); this.balls = []; }
+  clear() { for (const b of this.balls) if (b.m.parent) b.m.parent.remove(b.m); this.balls = []; this.known = new Set(); }
 };
