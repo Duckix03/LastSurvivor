@@ -26,7 +26,16 @@ const IDLE_MS = 15000;     // cliente novo que some por tanto tempo (sem nem o p
 const GRACE_MS = 8000;     // queda de conexão: o personagem espera tanto tempo pelo jogador voltar (reconexão)
 const VIS_NEAR = 18;       // perto assim sempre aparece (passos, briga de perto)
 const VIS_MAX = 650;       // longe assim nunca aparece (some na neblina de qualquer jeito)
-const VIS_LINGER = 1000;   // depois de visto, continua aparecendo por 1 s (sem "piscar" na quina)
+const VIS_LINGER = 600;    // depois de visto, continua aparecendo por 0,6 s (sem "piscar" na quina). Antes 1 s; o tiro agora também confere parede, então o resto é só visual
+const HOST_STALE_MS = 5000; // o host não manda NENHUM bot por tanto tempo (app minimizado/travado): o servidor passa os bots pra outro jogador
+const HIST_MS = 1500;       // histórico de posições de cada personagem (compensação de lag dos tiros)
+const REWIND_MAX = 700;     // o tiro pode olhar no máximo tanto pro passado
+const HIT_BASE = 1.0, HIT_BASE_AIR = 2.5; // folga fixa (m) do caminho da bala até o alvo
+// folga extra por metro de distância (espalhamento da arma). Se acertos legítimos forem recusados, suba esses números; se passar bala demais, desça.
+const HIT_SLOPE = { Pistola: 0.05, SMG: 0.05, Rifle: 0.05, Sniper: 0.04, Escopeta: 0.12, Soco: 0 };
+const HIT_SLOPE_BOT = 0.07;
+const SHOT_ORIGIN_MAX = 7;  // a origem do tiro tem que estar a no máximo isso do atirador (câmera em 3ª pessoa incluída)
+const PUNCH_RANGE = 3.4;
 const HEAR_R = 320;        // até onde um tiro é ouvido
 
 // tabela de armas (igual a js/config.js): o dano é calculado aqui, não no navegador
@@ -156,6 +165,7 @@ export class Match {
     clearInterval(this.idleT); this.idleT = null;
     this.seen = new Map(); this.pingers = new Set(); this.grace = new Map(); this.bye = new Set();
     this.killLog = []; this.dropped = new Set(); this.sent = new Map(); this.verSeq = 0;
+    this.dropMsgs = []; this.wDrops = []; this.gels = []; this.botSeenT = 0; // reenviados na reconexão (resync)
     clearTimeout(this.goTimer); this.goTimer = null; this.need = null; this.ready = new Set(); this.goSent = false; this.goTm = null;
   }
 
@@ -174,7 +184,7 @@ export class Match {
       clearTimeout(this.grace.get(r.pid)); this.grace.delete(r.pid);
       const old = this.socks.get(r.pid); this.socks.delete(r.pid); // conexão antiga (meio-aberta): troca pela nova
       if (old) { try { old.close(1000, 'reconectou'); } catch (e) { } }
-      const ent = this.ents.get(r.pid); if (ent) ent.grace = false;
+      const ent = this.ents.get(r.pid); if (ent) { ent.grace = false; this.bcast({ t: 'grace', v: ent.id, on: 0 }); }
       this.sent.delete(r.pid); this.bye.delete(r.pid);
     }
     this.socks.set(r.pid, server); this.seen.set(r.pid, Date.now());
@@ -189,7 +199,8 @@ export class Match {
   sendResync(pid) {
     const ws = this.socks.get(pid); if (!ws) return;
     const hp = []; for (const e of this.ents.values()) if (e.alive) hp.push([e.id, Math.round(e.hp)]);
-    send(ws, { t: 'resync', hp, kills: this.killLog, picks: [...this.taken] });
+    const now = Date.now(), gels = this.gels.filter(g => now - g.t < 36000).map(g => ({ i: g.i, n: g.n, o: g.o, v: g.v, age: Math.round(now - g.t) / 1000 }));
+    send(ws, { t: 'resync', hp, kills: this.killLog, picks: [...this.taken], drops: this.dropMsgs, wd: this.wDrops.filter(d => !this.taken.has(d.id)), gels });
     if (this.host !== pid) send(ws, { t: 'host', host: this.host });
     if (this.goSent) send(ws, { t: 'go', tm: this.goTm }); // tm = hora do servidor em que a partida começou (o avião e a zona andam por ela)
   }
@@ -200,7 +211,7 @@ export class Match {
     for (const r of this.roster) { const e = this.newEnt(r.pid, r.pid, r.name); if (num(r.rtt) > 0) e.rtt = Math.min(5000, num(r.rtt)); this.ents.set(r.pid, e); }
     this.joinTimer = setTimeout(() => this.start(), JOIN_MS);
   }
-  newEnt(id, owner, name) { return { id, owner, name, hp: 100, alive: true, st: null, pos: null, lastT: 0, vest: [0, 0], helmet: [0, 0], weapon: null, state: 0, shots: [], envT: 0, envAcc: 0, vel: null, ver: 0, gearVer: 0, gearS: '', stLite: null, rtt: 999, grace: false, fireCr: 3, fireT: 0 }; }
+  newEnt(id, owner, name) { return { id, owner, name, hp: 100, alive: true, st: null, pos: null, lastT: 0, vest: [0, 0], helmet: [0, 0], weapon: null, state: 0, shots: [], envT: 0, envAcc: 0, vel: null, ver: 0, gearVer: 0, gearS: '', stLite: null, rtt: 999, grace: false, fireCr: 3, fireT: 0, ground: false, hist: [], healT: 0, pickT: 0, pickN: 0, ghT: 0, ghN: 0, dwT: 0, dwN: 0 }; }
 
   start() {
     if (this.started || !this.roster) return;
@@ -209,7 +220,7 @@ export class Match {
     for (const r of this.roster) if (!this.socks.has(r.pid)) this.ents.delete(r.pid);
     const humans = this.roster.filter(r => this.socks.has(r.pid));
     if (!humans.length) { this.reset(); return; }
-    this.started = true; this.t0 = Date.now();
+    this.started = true; this.t0 = Date.now(); this.botSeenT = this.t0;
     // host = quem tem o menor ping medido na fila (os bots rodam no navegador dele: o ping dele vira atraso dos bots pra todos). Sem medida: o primeiro.
     let hostR = humans[0], hostRtt = Infinity;
     for (const r of humans) { const e = this.ents.get(r.pid), rt = e && e.rtt > 0 ? e.rtt : 999; if (rt < hostRtt) { hostRtt = rt; hostR = r; } }
@@ -228,7 +239,7 @@ export class Match {
     for (const [pid, ws] of this.socks) send(ws, { t: 'start', you: pid, host: this.host, seed: this.seed, players, bots, sync: sync && this.need.has(pid) ? 1 : 0 });
     if (sync) this.goTimer = setTimeout(() => this.sendGo(), READY_MS); else { this.goSent = true; this.goTm = Date.now() - this.t0; }
     this.tick = setInterval(() => this.broadcastSnap(), TICK_MS);
-    this.idleT = setInterval(() => this.checkIdle(), 3000);
+    this.idleT = setInterval(() => this.checkIdle(), 1000);
   }
   // todo mundo que ia esperar já terminou de carregar (ou saiu)? então libera a partida
   checkGo() {
@@ -248,11 +259,30 @@ export class Match {
     for (const [pid, ws] of this.socks) {
       if (this.pingers.has(pid) && now - (this.seen.get(pid) || now) > IDLE_MS) { try { ws.close(1000, 'idle'); } catch (e) { } this.onSockGone(pid, ws); }
     }
+    // HEARTBEAT DO HOST (pelo servidor): os bots rodam no quadro (requestAnimationFrame) do navegador do host. App minimizado/travado = bots
+    // congelados pra todo mundo, mesmo com a conexão viva. Sem NENHUM estado de bot por HOST_STALE_MS, a posse dos bots passa pra outro jogador.
+    if (this.host && this.goSent && !this.ended) {
+      const last = Math.max(this.botSeenT, this.t0 + (this.goTm || 0));
+      if (now - last > HOST_STALE_MS) {
+        let anyBot = false; for (const e of this.ents.values()) if (e.id[0] === 'b' && e.alive) { anyBot = true; break; }
+        const nh = anyBot ? this.pickHost(this.host) : null;
+        if (nh) { this.botSeenT = now; this.switchHost(nh); }
+      }
+    }
+  }
+  // passa os bots pra outro jogador: ele recebe a posição de todo mundo antes de assumir (os bots não estavam todos no pacote dele)
+  switchHost(nh) {
+    this.host = nh;
+    send(this.socks.get(nh), { t: 'snap', e: this.snapFor(nh, Date.now(), true, false), tm: Date.now() - this.t0 });
+    this.sent.delete(nh);
+    for (const e of this.ents.values()) if (e.id[0] === 'b') e.owner = nh;
+    this.botSeenT = Date.now();
+    this.bcast({ t: 'host', host: nh });
   }
   // escolhe o host (dono dos bots) entre quem está conectado: o de menor ping
-  pickHost() {
+  pickHost(exclude) {
     let best = null, br = Infinity;
-    for (const pid of this.socks.keys()) { const e = this.ents.get(pid), r = e && typeof e.rtt === 'number' ? e.rtt : 999; if (r < br) { br = r; best = pid; } }
+    for (const pid of this.socks.keys()) { if (pid === exclude) continue; const e = this.ents.get(pid), r = e && typeof e.rtt === 'number' ? e.rtt : 999; if (r < br) { br = r; best = pid; } }
     return best;
   }
 
@@ -262,12 +292,13 @@ export class Match {
     // hora real de cada estado: quantos ms atrás o servidor recebeu (cliente usa pra carimbar certo, em vez da hora do tick)
     for (const x of this.ents.values()) if (x.st && x.stLite) { const a = Math.max(0, Math.min(250, now - x.lastT)); x.st[12] = a; x.stLite[12] = a; }
     for (const [pid, ws] of this.socks) {
-      const e = this.snapFor(pid, now, pid === this.host, true);
+      const hide = [], e = this.snapFor(pid, now, pid === this.host, true, hide);
+      if (hide.length) send(ws, { t: 'hide', ids: hide }); // quem saiu de vista: o cliente esconde NA HORA (antes o boneco ficava parado e acertável por ~0,7 s)
       if (e.length) send(ws, { t: 'snap', e, tm }); // nada novo = nada enviado
     }
   }
   // dedupe: só manda quem mudou desde o último envio pra esse jogador; colete/capacete (gear) só quando muda ou a cada 1 s
-  snapFor(pid, now, full, dedupe) {
+  snapFor(pid, now, full, dedupe, hideOut) {
     const me = this.ents.get(pid), e = [];
     let views = null; const getViews = () => views || (views = viewPoints(me.pos));
     let sent = null; if (dedupe && this.pingers.has(pid)) { sent = this.sent.get(pid);  // só pra cliente novo (que manda ping): o antigo recebe tudo, como antes
@@ -275,7 +306,7 @@ export class Match {
     for (const x of this.ents.values()) {
       if (!x.st || x.owner === pid) continue;
       const show = full || (me && !me.alive) || this.visible(pid, me, x, now, getViews); // morto (espectador) vê todo mundo
-      if (!show) { if (sent) sent.delete(x.id); continue; } // sumiu de vista: quando voltar, é reenviado por inteiro
+      if (!show) { if (sent) { if (hideOut && sent.has(x.id)) hideOut.push(x.id); sent.delete(x.id); } continue; } // sumiu de vista: quando voltar, é reenviado por inteiro
       if (!sent) { e.push(x.st); continue; }
       const c = sent.get(x.id);
       if (c && c.v === x.ver) continue;
@@ -327,14 +358,18 @@ export class Match {
           const ent = this.ents.get(String(s[0]));
           if (!this.owns(pid, ent) || !ent.alive) continue;
           const x = num(s[1]), y = num(s[2]), z = num(s[3]), state = num(s[7]) | 0;
-          // anti-teleporte / velocidade impossível (no chão ~8 m/s; no ar até ~70 m/s)
-          if (ent.pos && state !== 0) {
-            const dt = Math.max(0.05, (now - ent.lastT) / 1000), dh = Math.hypot(x - ent.pos[0], z - ent.pos[2]);
-            const maxV = state === 3 ? 14 : 75;
-            if (dh > maxV * dt + 2.5 && ent.state !== 0) { if (ent.owner === pid) send(this.socks.get(pid), { t: 'fix', i: ent.id, p: ent.pos }); continue; }
+          // anti-teleporte / velocidade impossível. Quem já pisou no chão fica com o limite de CHÃO pra sempre (mandar 'state' de queda não libera nada).
+          // No chão o máximo real é ~7,6 m/s; no ar (mergulho ~24 m/s). Também confere a vertical (voar / subir sem pular).
+          if (ent.pos && state !== 0 && ent.state !== 0) {
+            const dt = Math.max(0.05, (now - ent.lastT) / 1000), dh = Math.hypot(x - ent.pos[0], z - ent.pos[2]), dy = y - ent.pos[1];
+            const gr = ent.ground;
+            const maxV = gr ? 12.5 : 40, up = gr ? 12 * dt + 2.5 : 60 * dt + 6, down = gr ? 60 * dt + 4 : 100 * dt + 8;
+            if (dh > maxV * dt + 2.5 || dy > up || -dy > down) { if (ent.owner === pid) send(this.socks.get(pid), { t: 'fix', i: ent.id, p: ent.pos }); continue; }
           }
           if (ent.pos && ent.lastT) { const vdt = Math.max(0.05, (now - ent.lastT) / 1000); ent.vel = [(x - ent.pos[0]) / vdt, 0, (z - ent.pos[2]) / vdt]; }
-          ent.pos = [x, y, z]; ent.lastT = now; ent.state = state;
+          ent.pos = [x, y, z]; ent.lastT = now; ent.state = state; if (state === 3) ent.ground = true;
+          ent.hist.push({ t: now, p: ent.pos }); while (ent.hist.length > 2 && now - ent.hist[0].t > HIST_MS) ent.hist.shift(); if (ent.hist.length > 80) ent.hist.shift();
+          if (ent.id[0] === 'b') this.botSeenT = now; // sinal de vida dos bots (host)
           ent.weapon = typeof s[8] === 'string' && WEAPONS[s[8]] ? s[8] : null;
           const g = Array.isArray(s[9]) ? s[9] : [];
           ent.vest = [Math.min(3, num(g[0]) | 0), num(g[1])]; ent.helmet = [Math.min(3, num(g[2]) | 0), num(g[3])];
@@ -356,6 +391,8 @@ export class Match {
         let o = null, d = null;
         if (m.w !== 'punch') {
           o = Array.isArray(m.o) && m.o.length === 3 ? m.o.map(v => num(v)) : (ent.pos || [0, 0, 0]);
+          // a origem do tiro tem que estar perto de quem atira (senão dava pra "atirar de dentro da casa do outro")
+          if (ent.pos) { const eye = [ent.pos[0], ent.pos[1] + 1.55, ent.pos[2]]; if (Math.hypot(o[0] - eye[0], o[1] - eye[1], o[2] - eye[2]) > SHOT_ORIGIN_MAX) o = eye; }
           d = Array.isArray(m.d) && m.d.length === 3 ? m.d.map(v => num(v)) : [0, 0, 1];
           const dl = Math.hypot(d[0], d[1], d[2]) || 1; d = d.map(v => v / dl);
         }
@@ -366,23 +403,16 @@ export class Match {
         }
         break;
       }
-      case 'hit': { // acerto informado por quem atirou: o servidor confere e calcula o dano
+      case 'hit': { // acerto informado por quem atirou: o servidor confere (ritmo, alcance, posição do alvo NO MOMENTO do tiro, parede) e calcula o dano
         const a = this.ents.get(String(m.a)), v = this.ents.get(String(m.v));
         if (!this.owns(pid, a) || !a.alive || !v || !v.alive || v.grace || a === v || !a.pos || !v.pos) return;
         const now = Date.now(), shot = [...a.shots].reverse().find(s => s.left > 0 && now - s.t < 600 && s.w === m.w);
         if (!shot) return;
-        const w = WEAPONS[shot.w], dist = Math.hypot(a.pos[0] - v.pos[0], a.pos[1] - v.pos[1], a.pos[2] - v.pos[2]);
-        if (dist > w.range * 1.6 + 4) return;
-        if (shot.o && shot.d && v.state === 3) { // a bala tem que ter passado perto do alvo (folga grande: lag, interpolação e espalhamento)
-          const vx = v.pos[0] - shot.o[0], vy = v.pos[1] + 1.1 - shot.o[1], vz = v.pos[2] - shot.o[2];
-          const t = vx * shot.d[0] + vy * shot.d[1] + vz * shot.d[2];
-          if (t < -3) return;
-          const perp = Math.hypot(vx - shot.d[0] * t, vy - shot.d[1] * t, vz - shot.d[2] * t);
-          if (perp > 4.5 + Math.max(0, t) * 0.08) return;
-        }
+        const w = WEAPONS[shot.w], ok = this.validHit(a, v, shot, w, m, now);
+        if (!ok) { send(this.socks.get(pid), { t: 'rej', v: v.id }); return; }
         shot.left--;
-        const head = !!m.h && shot.w !== 'punch';
-        const fall = dist > w.range ? Math.max(0.25, Math.min(1, 1 - (dist - w.range) / (w.range * 0.6))) : 1;
+        const head = ok.head && shot.w !== 'punch';
+        const fall = ok.dist > w.range ? Math.max(0.25, Math.min(1, 1 - (ok.dist - w.range) / (w.range * 0.6))) : 1;
         let dmg = w.dmg * fall * (head ? (w.cat === 'Sniper' ? 2.5 : 1.8) : 1);
         if (a.id[0] === 'b') dmg *= this.botDmg;
         this.applyDamage(v, a, dmg, head, shot.w, false);
@@ -400,30 +430,55 @@ export class Match {
       case 'heal': { // cura do próprio personagem (até 100, no máximo 75 por vez)
         const v = this.ents.get(String(m.v));
         if (!this.owns(pid, v) || !v.alive) return;
+        const nowH = Date.now(); if (v.state !== 3 || nowH - v.healT < 1500) return; v.healT = nowH; // no chão, no máximo uma cura a cada 1,5 s
         v.hp = Math.min(100, v.hp + Math.max(0, Math.min(75, num(m.n))));
         this.bcast({ t: 'hp', v: v.id, hp: Math.round(v.hp) });
         break;
       }
       case 'pick': { // item do chão: o primeiro que pegar leva
         const id = String(m.id).slice(0, 24);
-        if (!this.owns(pid, this.ents.get(String(m.by))) || this.taken.size > 5000) return;
+        const pe = this.ents.get(String(m.by));
+        if (!this.owns(pid, pe) || !pe.alive || this.taken.size > 5000) return;
+        const nowP = Date.now(); if (nowP - pe.pickT > 1000) { pe.pickT = nowP; pe.pickN = 0; } if (++pe.pickN > 10) return; // no máximo 10 coletas por segundo
         if (this.taken.has(id)) { send(this.socks.get(pid), { t: 'nopick', id }); return; }
         this.taken.add(id); this.bcast({ t: 'pick', id, by: String(m.by || '') }, pid);
         break;
       }
-      case 'gel': { // bola de gelo (vira parede de gel): só repassa, no máximo 1 a cada 0,4 s por personagem
+      case 'gel': { // bola de gelo (vira parede de gel): repassa, no máximo 1 a cada 0,4 s por personagem. Guarda pra reenviar a quem reconectar.
         const ent = this.ents.get(String(m.i)), now = Date.now();
         if (!this.owns(pid, ent) || !ent.alive || now - (ent.gelT || 0) < 400 || !Array.isArray(m.o) || !Array.isArray(m.v)) return;
         ent.gelT = now;
-        this.bcast({ t: 'gel', i: ent.id, o: m.o.slice(0, 3).map(v => num(v)), v: m.v.slice(0, 3).map(v => Math.max(-40, Math.min(40, num(v)))) }, pid);
+        const g = { i: ent.id, n: m.n | 0, o: m.o.slice(0, 3).map(v => num(v)), v: m.v.slice(0, 3).map(v => Math.max(-40, Math.min(40, num(v)))) };
+        this.gels.push(Object.assign({ t: now }, g)); if (this.gels.length > 60) this.gels.shift();
+        this.bcast(Object.assign({ t: 'gel' }, g), pid);
+        break;
+      }
+      case 'gh': { // dano numa parede de gel: quem atirou calcula e o servidor repassa (todos aplicam a mesma soma: a parede estoura junto)
+        const ent = this.ents.get(String(m.i)); if (!this.owns(pid, ent) || !ent.alive) return;
+        const now = Date.now(); if (now - ent.ghT > 1000) { ent.ghT = now; ent.ghN = 0; } if (++ent.ghN > 25) return;
+        const d = Math.max(0, Math.min(400, num(m.d))); if (d <= 0) return;
+        this.bcast({ t: 'gh', w: String(m.w).slice(0, 32), d }, pid);
+        break;
+      }
+      case 'dropw': { // arma largada (troca de arma): id único + aviso aos outros (antes os outros nem viam a arma e o id colidia)
+        const ent = this.ents.get(String(m.i)); if (!this.owns(pid, ent) || !ent.alive || !WEAPONS[m.w] || m.w === 'punch' || !Array.isArray(m.p)) return;
+        const now = Date.now(); if (now - ent.dwT > 1000) { ent.dwT = now; ent.dwN = 0; } if (++ent.dwN > 6) return;
+        const id = String(m.id).slice(0, 32), p = m.p.slice(0, 3).map(n => num(n));
+        if (!id || this.taken.has(id) || (ent.pos && Math.hypot(p[0] - ent.pos[0], p[2] - ent.pos[2]) > 12)) return;
+        const msg = { t: 'dropw', id, w: m.w, m: Math.max(0, Math.min(200, num(m.m))), p };
+        this.wDrops.push(msg); if (this.wDrops.length > 200) this.wDrops.shift();
+        this.bcast(msg, pid);
         break;
       }
       case 'drops': { // o que um personagem deixou cair ao morrer (quem era dono dele manda a lista)
         if (!Array.isArray(m.items)) return;
         const k = m.k | 0, kr = this.killLog.find(x => x.k === k);
-        if (!kr || this.dropped.has(k) || !this.owns(pid, this.ents.get(kr.v))) return; // só quem era dono do morto, e só uma vez
+        // só quem era dono do morto, e só uma vez. Quem SAIU da partida não tem mais dono: o host dropa o que dá pra saber (arma, colete, capacete, mochila)
+        if (!kr || this.dropped.has(k) || !(this.owns(pid, this.ents.get(kr.v)) || (kr.w === 'Saiu' && pid === this.host))) return;
         this.dropped.add(k);
-        this.bcast({ t: 'drops', k, items: m.items.slice(0, 20) }, pid);
+        const dm = { t: 'drops', k, items: m.items.slice(0, 20) };
+        this.dropMsgs.push(dm); if (this.dropMsgs.length > 60) this.dropMsgs.shift();
+        this.bcast(dm, pid);
         break;
       }
       case 'diff': if (pid === this.host) this.botDmg = Math.max(0.3, Math.min(1.2, num(m.dmg, 0.75))); break;
@@ -431,6 +486,61 @@ export class Match {
       case 'ready': if (this.need && this.need.has(pid)) { this.ready.add(pid); this.checkGo(); } break; // terminou de carregar o mapa
       case 'bye': this.bye.add(pid); break; // saiu de propósito: sem tempo de espera pra reconectar
     }
+  }
+
+  // posição de um personagem num instante do passado (interpola o histórico de pacotes que o servidor recebeu)
+  histAt(e, T) {
+    const h = e.hist; if (!h || !h.length) return e.pos;
+    if (T >= h[h.length - 1].t) return h[h.length - 1].p;
+    if (T <= h[0].t) return h[0].p;
+    for (let i = h.length - 1; i > 0; i--) {
+      const A = h[i - 1], B = h[i];
+      if (A.t <= T && T <= B.t) { const u = B.t > A.t ? (T - A.t) / (B.t - A.t) : 1; return [A.p[0] + (B.p[0] - A.p[0]) * u, A.p[1] + (B.p[1] - A.p[1]) * u, A.p[2] + (B.p[2] - A.p[2]) * u]; }
+    }
+    return e.pos;
+  }
+  // confere um acerto. Devolve { head, dist } ou null (recusado).
+  //  1) COMPENSAÇÃO DE LAG: o atirador vê o alvo ~100-220 ms atrás (interpolação) + metade do ping. O cliente manda 'vt' = o instante (relógio do servidor)
+  //     que ele estava vendo; o tiro é comparado com a posição do alvo NESSE instante (±90 ms), e não com a posição de agora (que já pode estar dentro da casa).
+  //  2) O caminho da bala (origem + direção do disparo) tem que passar perto do alvo, com folga pequena (HIT_BASE + espalhamento da arma).
+  //  3) PAREDE: nada (parede, telhado, pedra, morro) entre a origem/olho do atirador e o corpo do alvo (vis.js).
+  //  4) Headshot só vale se o raio também passou perto da cabeça naquele instante.
+  validHit(a, v, shot, w, m, now) {
+    let cands;
+    if (typeof m.vt === 'number' && isFinite(m.vt)) { const T = Math.max(now - REWIND_MAX, Math.min(now, this.t0 + m.vt)); cands = [T - 90, T - 45, T, T + 45, T + 90]; }
+    else cands = [now - 450, now - 350, now - 250, now - 150, now - 60, now]; // sem 'vt' (cliente antigo): janela inteira de lag
+    const eye = [a.pos[0], a.pos[1] + 1.55, a.pos[2]];
+    let best = null;
+    if (shot.w === 'punch') {
+      for (const T of cands) { const p = this.histAt(v, Math.min(T, now)), d = Math.hypot(p[0] - a.pos[0], p[2] - a.pos[2]); if (d <= PUNCH_RANGE && Math.abs(p[1] - a.pos[1]) < 2.2 && (!best || d < best.d)) best = { p, d, dist: d }; }
+      if (!best) return null;
+      if (!this.losOk(shot, v, [[a.pos[0], a.pos[1] + 1.2, a.pos[2]], eye], best.p)) return null;
+      return { head: false, dist: best.dist };
+    }
+    const o = shot.o, dd = shot.d, slope = a.id[0] === 'b' ? HIT_SLOPE_BOT : (HIT_SLOPE[w.cat] || 0.05), base = v.state === 3 ? HIT_BASE : HIT_BASE_AIR;
+    let headOk = false;
+    for (const T of cands) {
+      const p = this.histAt(v, Math.min(T, now));
+      const vx = p[0] - o[0], vy = p[1] + 1.0 - o[1], vz = p[2] - o[2], t = vx * dd[0] + vy * dd[1] + vz * dd[2];
+      if (t < -2) continue;
+      const perp = Math.hypot(vx - dd[0] * t, vy - dd[1] * t, vz - dd[2] * t);
+      if (perp > base + Math.max(0, t) * slope) continue;
+      if (!best || perp < best.perp) best = { p, perp, t };
+      const hy = p[1] + 1.57 - o[1], ht = vx * dd[0] + hy * dd[1] + vz * dd[2];
+      if (Math.hypot(vx - dd[0] * ht, hy - dd[1] * ht, vz - dd[2] * ht) <= 0.55 + Math.max(0, ht) * slope * 0.5) headOk = true; // cabeça: folga de espalhamento menor que a do corpo
+    }
+    if (!best) return null;
+    const dist = Math.hypot(o[0] - best.p[0], o[1] - best.p[1], o[2] - best.p[2]);
+    if (dist > w.range * 1.6 + 4) return null;
+    if (!this.losOk(shot, v, [o, eye], best.p)) return null;
+    return { head: !!m.h && headOk, dist };
+  }
+  // linha de visão do atirador até o corpo do alvo (resultado guardado por tiro: os 9 balins da escopeta pagam a conta uma vez só)
+  losOk(shot, v, views, p) {
+    if (!shot.los) shot.los = new Map();
+    let ok = shot.los.get(v.id);
+    if (ok === undefined) { ok = canSee(views, bodyPoints(p, null)); shot.los.set(v.id, ok); }
+    return ok;
   }
 
   applyDamage(v, a, dmg, head, weapon, ignoreArmor) {
@@ -465,7 +575,7 @@ export class Match {
     this.checkGo(); // quem caiu enquanto carregava não segura os outros
     const e = this.ents.get(pid);
     if (this.ended || !e || !e.alive || this.bye.has(pid)) { this.finalLeave(pid); return; }
-    e.grace = true; clearTimeout(this.grace.get(pid));
+    e.grace = true; this.bcast({ t: 'grace', v: e.id, on: 1 }); clearTimeout(this.grace.get(pid)); // imune enquanto reconecta: os outros param de mostrar marcador de acerto nele
     this.grace.set(pid, setTimeout(() => { this.grace.delete(pid); this.finalLeave(pid); }, GRACE_MS));
   }
   onLeave(pid) { this.socks.delete(pid); this.finalLeave(pid); }
@@ -476,14 +586,7 @@ export class Match {
     if (me) me.grace = false;
     if (me && me.alive && !this.ended) this.kill(me, null, 'Saiu', false);
     // o host saiu: assume quem tem o menor ping
-    if (pid === this.host && this.socks.size) {
-      this.host = this.pickHost();
-      // o novo host recebe a posição de todo mundo antes de assumir os bots (não estavam todos no pacote dele)
-      send(this.socks.get(this.host), { t: 'snap', e: this.snapFor(this.host, Date.now(), true, false), tm: Date.now() - this.t0 });
-      this.sent.delete(this.host);
-      for (const e of this.ents.values()) if (e.id[0] === 'b') e.owner = this.host;
-      this.bcast({ t: 'host', host: this.host });
-    }
+    if (pid === this.host && this.socks.size) { const nh = this.pickHost(); if (nh) this.switchHost(nh); } // o host saiu: assume quem tem o menor ping
     if (!this.socks.size && !this.grace.size) this.close();
   }
   close() {
@@ -702,7 +805,7 @@ export class Room extends Match {
     if (d.t === 'env' && this.ph !== 'fight') return;
     if (d.t === 'st' && this.ph !== 'fight') me.pos = null; // fora da luta (loja/contagem) cada um vai pro lugar de nascer: sem trava de teleporte
     if (d.t === 'gel' && this.ph !== 'fight') return;
-    if (d.t === 'st' || d.t === 'fire' || d.t === 'hit' || d.t === 'env' || d.t === 'heal' || d.t === 'gel') super.onMsg(pid, d);
+    if (d.t === 'st' || d.t === 'fire' || d.t === 'hit' || d.t === 'env' || d.t === 'heal' || d.t === 'gel' || d.t === 'gh' || d.t === 'dropw') super.onMsg(pid, d);
   }
   sendPicks(team) {
     const list = {}; for (const e of this.ents.values()) if (e.team === team) list[e.id] = { w: e.picks || [], r: !!e.ready };
@@ -740,7 +843,7 @@ export class Room extends Match {
   }
   nextRound() {
     this.round++; this.endPending = false;
-    for (const e of this.ents.values()) { if (e.gone) continue; e.hp = 100; e.alive = true; e.pos = null; e.lastT = 0; e.shots = []; e.vest = [2, 70]; e.helmet = [2, 70]; e.ready = false; if (e.st) e.st[10] = 100; }
+    for (const e of this.ents.values()) { if (e.gone) continue; e.hp = 100; e.alive = true; e.pos = null; e.lastT = 0; e.shots = []; e.ground = false; e.hist = []; e.vest = [2, 70]; e.helmet = [2, 70]; e.ready = false; if (e.st) e.st[10] = 100; }
     if ((this.round - 1) % 2 === 0) { // loja nos rounds 1, 3, 5...
       for (const e of this.ents.values()) { e.picks = e.load.slice(); e.ready = !!e.gone; }
       this.setPhase('shop', num(+this.env.SHOP_SECS) || RM_SHOP); // SHOP_SECS: só pra testes locais
@@ -774,7 +877,7 @@ export class Room extends Match {
     if (!silent) { this.bcast({ t: 'lobby' }); this.sendRoom(); }
   }
   // espectador (quem não joga) recebe todo mundo
-  snapFor(pid, now, full, dedupe) { return super.snapFor(pid, now, full || !this.ents.has(pid), dedupe); }
+  snapFor(pid, now, full, dedupe, hideOut) { return super.snapFor(pid, now, full || !this.ents.has(pid), dedupe, hideOut); }
   onLeave() { /* a sala cuida (leave) */ }
   close() { /* a partida não fecha a sala */ }
 }
