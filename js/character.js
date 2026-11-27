@@ -175,6 +175,17 @@ LS.CharacterModel = class {
       [0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4].forEach(r => { const m = new THREE.Mesh(LS.boxGeo(1.7 * S, 0.32 * S, 0.3 * S), gd); m.rotation.z = r; fl.add(m); });
       [[-2.9, 8.9], [-3.4, 9.3], [-2.4, 9.4]].forEach(([x, y], i) => { const m = add(0.9, 0.45, 0.3, x, y, 1.5, gd); m.rotation.z = 0.5 + i * 0.6; }); // folhinhas douradas
     }
+    else if (look.hat === 'elfo') { // Chapéu de Elfo: verde com barra vermelha, ponta mole com sininho que balança + orelhas pontudas
+      const G = M(0x1f8a3a), Gd = M(0x17702e), Rb = M(0xc8182a), sk = M(new THREE.Color(look.skin).getHex());
+      add(9.8, 1.8, 9.8, 0, 6.9, 0, Rb); [-3.5, -1.2, 1.2, 3.5].forEach(x => add(1.1, 1.85, 0.3, x, 6.9, 4.95, M(0xf4f4f0))); // barra com listrinhas
+      add(8.6, 2.2, 8.6, 0, 8.8, -0.2, G); add(6.6, 2.0, 6.6, 0, 10.8, -0.6, Gd);
+      const tp = new THREE.Group(); tp.position.set(0, 11.8 * S, -1.2 * S); g.add(tp);
+      const part = (w, h, d, x, y, z, mat) => { const m = new THREE.Mesh(LS.boxGeo(w * S, h * S, d * S), mat); m.position.set(x * S, y * S, z * S); m.castShadow = true; tp.add(m); return m; };
+      part(4.6, 2, 4.6, 0, 0.9, -0.6, G); part(3, 2, 3, 0.3, 1.8, -2.4, Gd); part(1.8, 1.6, 1.8, 0.5, 1.4, -4.0, G);
+      part(1.6, 1.6, 1.6, 0.6, 0.3, -5.1, M(0xffc531)); part(0.6, 0.5, 0.6, 0.6, -0.6, -5.1, M(0xa07a10)); // sininho
+      this.fx.push(t => { tp.rotation.x = Math.sin(t * 2.4) * 0.1; tp.rotation.z = Math.sin(t * 1.8 + 0.5) * 0.07; });
+      [-1, 1].forEach(s => { const e = add(1.2, 2.6, 1.6, s * 4.55, 4.6, 0.4, sk); e.rotation.z = -s * 0.6; const t2 = add(0.8, 1.4, 1.0, s * 5.3, 5.9, 0.4, sk); t2.rotation.z = -s * 0.75; }); // orelhas pontudas
+    }
     // ---- itens da loja ----
     const gold = 0xffc531, hairC = new THREE.Color(look.hair).getHex(), glow = c => new THREE.MeshBasicMaterial({ color: c });
     if (look.hat === 'coroa') {
@@ -277,6 +288,14 @@ LS.CharacterModel = class {
     this.buildHair(look, add, M, hairC);
     if (look.glasses === 'cyber') add(8.8, 1.3, 0.9, 0, 3.6, 4.35, glow(0x20f0ff));
     else if (look.glasses === 'aviador') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x3a2a10));
+    if (look.mask === 'nariz rena') { // Nariz de Rena: narizinho vermelho que brilha e pisca devagar
+      const nm = new THREE.MeshBasicMaterial({ color: 0xff2a2a }), n = add(1.7, 1.5, 1.1, 0, 1.95, 4.5, nm); add(0.5, 0.4, 0.2, -0.35, 2.4, 5.1, glow(0xffd0d0));
+      this.fx.push(t => { const k = 0.75 + 0.25 * Math.sin(t * 3.2); nm.color.setRGB(1, 0.16 * k, 0.16 * k).multiplyScalar(0.7 + 0.3 * k); n.scale.setScalar(0.95 + 0.06 * k); });
+    }
+    if (look.glasses === 'neve') { // Óculos de Neve: alça preta em volta da cabeça, armação e lente laranja espelhada
+      add(8.7, 1.4, 8.7, 0, 3.6, 0, M(0x1a1a1e)); add(7.6, 2.2, 0.6, 0, 3.85, 4.42, M(0x26262c));
+      add(6.8, 1.7, 0.4, 0, 3.9, 4.78, M(0xff8a1f)); add(6.8, 0.55, 0.42, 0, 4.5, 4.8, M(0xffc04a)); add(1.4, 0.35, 0.2, -2.2, 4.45, 5.02, glow(0xfff2c8));
+    }
     if (look.mask === 'gás') { add(4.2, 3, 2, 0, 1.6, 4.9, M(0x2a2d32)); [-1, 1].forEach(s => add(1.8, 1.8, 1.8, s * 2.6, 1.2, 5.3, M(0x50555c))); }
     if (look.glasses === 'escuros') this.buildRoundShades(add);
     else if (look.glasses === 'estrela' || look.glasses === 'redondos') this.buildStarShades(add);
@@ -331,7 +350,7 @@ LS.CharacterModel = class {
   // ---------- barbas em camadas (afinam no queixo, com bigode e costeletas) ----------
   buildBeard(look, add, M, glow) {
     const b = look.beard; if (!b || b === 'nenhuma') return;
-    const C = b === 'mago' ? M(0xf4f4f0) : b === 'gelo' ? M(0xa8e8ff) : M(new THREE.Color(look.hair).getHex());
+    const C = b === 'mago' || b === 'noel' ? M(0xf4f4f0) : b === 'gelo' ? M(0xa8e8ff) : M(new THREE.Color(look.hair).getHex());
     const side = (h, d) => [-1, 1].forEach(sd => add(0.6, h, d, sd * 4.25, 2.0, 2.6, C));
     const stache = () => { add(4.8, 0.7, 0.6, 0, 2.35, 4.3, C); [-1, 1].forEach(sd => add(1, 1.1, 0.6, sd * 2.6, 1.85, 4.3, C)); };
     if (b === 'curta') { add(7.4, 0.9, 0.4, 0, 0.45, 4.15, C); [-1, 1].forEach(sd => add(0.35, 2.6, 2.4, sd * 4.12, 1.6, 2.6, C)); }
@@ -339,6 +358,11 @@ LS.CharacterModel = class {
     else if (b === 'cheia' || b === 'gelo') {
       add(8.4, 1.6, 1, 0, 0.4, 4.35, C); add(6.4, 1.3, 1, 0.2, -0.9, 4.3, C); add(3.6, 1, 0.9, -0.1, -1.9, 4.25, C); side(3.6, 3.2); stache();
       if (b === 'gelo') [-2.6, -0.9, 0.9, 2.6].forEach((x, i) => add(0.6, 1.2 + (i % 2) * 0.8, 0.6, x, -1.4 - (i % 2) * 0.9, 4.5, glow(0xe6faff))); // pingentes de gelo
+    }
+    else if (b === 'noel') { // Barba de Noel: bem cheia e fofa, arredondada embaixo, com bigodão
+      const C2 = M(0xe4e4ea);
+      add(8.6, 2, 1.4, 0, 0.5, 4.45, C); add(8.0, 1.8, 1.5, 0, -1.2, 4.3, C2); add(6.6, 1.6, 1.4, 0, -2.7, 4.2, C); add(4.4, 1.3, 1.2, 0, -3.9, 4.1, C2); add(2.2, 1, 1, 0, -4.8, 4.0, C);
+      side(4.2, 3.6); add(5.8, 1.1, 0.9, 0, 2.3, 4.5, C); [-1, 1].forEach(sd => add(1.6, 1.0, 0.8, sd * 3.0, 1.9, 4.5, C2));
     }
     else if (b === 'mago') { // longa, afinando em degraus e com um leve zigue-zague
       add(8.4, 1.8, 1.2, 0, 0.3, 4.4, C);
@@ -400,6 +424,18 @@ LS.CharacterModel = class {
       const T = this.torso, Hp = this.hips;
       [[T, 3.5, 0xe0283a, 0xff7080], [T, 0.5, 0x2aa84a, 0x7ae08a], [Hp, 2.5, 0xf2f2f2, 0xffffff]].forEach(([b, y, c, hi]) => {
         put(b, 1.6, 1.4, 0.8, 0, y, 2.3, M(c)); put(b, 0.7, 0.4, 0.3, -0.25, y + 0.3, 2.78, M(hi));
+      });
+    }
+    if (look.neck === 'cachecol') { // Cachecol Natalino: listrado vermelho e branco, nó na frente e as pontas que balançam
+      const T = this.torso, R = M(0xd0202e), W = M(0xf4f4f0);
+      put(T, 9.0, 1.9, 1.3, 0, 7.15, -2.1, R); [-1, 1].forEach(s => put(T, 1.3, 1.9, 5.4, s * 3.85, 7.15, 0, R)); put(T, 9.0, 1.9, 1.3, 0, 7.15, 2.1, R);
+      [-3, -1, 1, 3].forEach(x => put(T, 0.8, 1.95, 0.25, x, 7.15, 2.85, W)); [-3, -1, 1, 3].forEach(x => put(T, 0.8, 1.95, 0.25, x, 7.15, -2.85, W));
+      put(T, 2.2, 2.0, 1.6, -1.7, 5.8, 2.6, R);                                                         // nó
+      [[-2.3, 0.2], [-1.0, -0.15]].forEach(([x, rz], j) => { // duas pontas penduradas (cada faixa de uma cor)
+        const tl = new THREE.Group(); tl.position.set(x * S, 5.0 * S, 2.75 * S); tl.rotation.z = rz; T.add(tl); this.bodyAcc.push(tl);
+        for (let i = 0; i < 5; i++) { const m = new THREE.Mesh(LS.boxGeo(1.7 * S, 0.95 * S, 0.7 * S), i % 2 ? W : R); m.position.y = (-0.5 - i * 0.95) * S; m.castShadow = true; tl.add(m); }
+        const fr = new THREE.Mesh(LS.boxGeo(1.7 * S, 0.5 * S, 0.5 * S), W); fr.position.y = -5.2 * S; tl.add(fr); // franjinha
+        this.fx.push(t => { tl.rotation.z = rz + Math.sin(t * 2 + j) * 0.06; tl.rotation.x = -0.08 + Math.sin(t * 1.6 + j * 2) * 0.05; });
       });
     }
     if (look.neck === 'pisca') { // colar pisca-pisca: fio verde em volta do pescoço com lampadinhas que piscam

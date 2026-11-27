@@ -127,6 +127,8 @@ LS.Account = {
   async redeem(code) { const d = await this.api('/api/handoff/redeem', { code }); this.setToken(d.token); this.apply(d.account); return d; },
   // diamantes e codiguins (o servidor guarda os diamantes)
   async buyDiamond(item) { const d = await this.api('/api/buy', { item }); this.apply(d.account); return d; },
+  // Spin de Natal: pede os diamantes ganhos (o servidor tem limite por dia). Não usa apply() pra não desfazer os tickets gastos agora
+  async xmasGems(n) { const d = await this.api('/api/xmas/gems', { n }); if (this.me) this.me.diamonds = d.diamonds; return d; },
   async daily() { const d = await this.api('/api/daily', {}); this.apply(d.account); return d; },
   async redeemCode(code) {
     const d = await this.api('/api/redeem', { code }); const R = d.reward;
