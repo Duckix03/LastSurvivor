@@ -53,7 +53,7 @@ const BADGES = ['owner', 'dev', 'tester', 'cc', 'verificado'];
 const MAX_FRIENDS = 200, ONLINE_MS = 150000; // online = mandou sinal nos últimos 2,5 min
 const RESERVED = ['admin', 'adm', 'moderador', 'owner', 'dono', 'dev', 'suporte', 'support', 'convidado', 'guest', 'lastsurvivor', 'last_survivor', 'sistema', 'system', 'claude', 'anthropic'];
 const NAME_RE = /^[A-Za-z0-9_.\-À-ÿ]{3,16}$/;
-const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top', 'legs'];
+const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top', 'legs', 'neck'];
 const ITEM_RE = /^[a-zA-Z]{2,10}:[a-zA-Z0-9À-ÿ .\-]{1,24}$/; // itens da loja: "parte:valor" (ex.: hat:coroa)
 // snow = SnowTickets do evento de Natal; x* = progresso das missões do evento (xy = ano do evento, xc = missões resgatadas)
 const STAT_KEYS = ['games', 'wins', 'kills', 'xp', 'coins', 'dmg', 'best', 'snow', 'xy', 'xg', 'xk', 'xh', 'xw', 'xd', 'xmk', 'xmh', 'xc'];
@@ -67,8 +67,9 @@ const EXCLUSIVE = new Set(['hat:coroa diamante', 'hat:astronauta', 'hat:pirata',
 // peças que só vêm com uma fantasia de diamante
 const DIAMOND_PIECES = { 'costume:dino': ['hat:dino', 'pattern:escamas'] };
 // personagens de evento (Spin de Natal ou codiguin): o codiguin dá a fantasia com as peças. NÃO são protegidos (o spin é no jogo, igual ao Gold Royale)
-const EVENT_COSTUMES = { 'costume:frost': ['hat:gorro natal', 'mask:floco', 'top:natal', 'pattern:estrela', 'legs:natal'] };
-const EVENT_SET = new Set(Object.entries(EVENT_COSTUMES).flat(2)); // criador não pode dar item de evento
+const EVENT_COSTUMES = { 'costume:frost': ['hat:gorro natal', 'mask:floco', 'top:natal', 'pattern:estrela', 'legs:natal'], 'costume:gengibre': ['mask:gengibre', 'top:gengibre', 'legs:gengibre'] };
+const EVENT_ITEMS = ['hat:tiara rena', 'neck:pisca']; // avulsos do evento (criador não pode dar)
+const EVENT_SET = new Set(Object.entries(EVENT_COSTUMES).flat(2).concat(EVENT_ITEMS)); // criador não pode dar item de evento
 const PIECE_SET = new Set(Object.values(DIAMOND_PIECES).flat());
 // esses só entram na conta pelo servidor (compra com diamante ou codiguin): o jogo não consegue se dar eles
 const PROTECTED = it => EXCLUSIVE.has(it) || it in DIAMOND_PRICES || PIECE_SET.has(it);

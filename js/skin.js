@@ -14,6 +14,7 @@ LS.Skin = {
   GLASSES: ['nenhum', 'escuros', 'estrela', 'viseira'],
   MASKS: ['nenhuma', 'bandana', 'máscara'],
   HATS: ['nenhum', 'gorro', 'chapéu', 'faixa'],
+  NECKS: ['nenhum'], // colares (pisca-pisca de Natal...)
   TOPS: ['camiseta', 'jaqueta', 'moletom', 'regata', 'colete'],
   // trajes prontos (originais do LAST SURVIVOR)
   PRESETS: {
@@ -148,11 +149,19 @@ LS.Skin = {
       for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#111114', 0.05);
       [[1, 5], [6, 5], [2, 6], [3, 6], [4, 6], [5, 6]].forEach(([x, y]) => px(fx + x, fy + y, '#20f0ff', 0));
     }
-    else if (look.mask === 'floco') { // Frost Reaper: máscara preta com um floco de neve
-      for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#111114', 0.05);
-      [H[0], H[1]].forEach(r => rect(r, '#111114', 0.05, [5, 8]));
-      [[4, 5], [3, 6], [4, 6], [5, 6], [4, 7]].forEach(([x, y]) => px(fx + x, fy + y, '#ffffff', 0));
-      [[3, 5], [5, 5], [3, 7], [5, 7]].forEach(([x, y]) => px(fx + x, fy + y, '#a8d8ff', 0));
+    else if (look.mask === 'floco') { // Frost Reaper: máscara preta (de tecido, com dobrinha) e um floco de neve
+      for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, y === 5 ? '#26262c' : '#111114', 0.06);
+      [H[0], H[1]].forEach(r => { rect(r, '#111114', 0.06, [5, 8]); rect(r, '#26262c', 0.04, [5, 6]); });
+      rect(H[5], '#111114', 0.06, [5, 8]);
+    }
+    else if (look.mask === 'gengibre') { // biscoito de gengibre: olhinhos de chocolate, bochecha rosa e sorriso de glacê
+      for (let y = 3; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, look.skin, 0.05);
+      [[2, 3], [5, 3]].forEach(([x, y]) => px(fx + x, fy + y, '#fff6ea', 0));
+      [[2, 4], [5, 4]].forEach(([x, y]) => px(fx + x, fy + y, '#2a1206', 0));
+      [[1, 5], [6, 5]].forEach(([x, y]) => px(fx + x, fy + y, '#e8708a', 0));
+      [[1, 6], [6, 6], [2, 7], [3, 7], [4, 7], [5, 7]].forEach(([x, y]) => px(fx + x, fy + y, '#fff6ea', 0));
+      [F, H[0], H[1], H[5]].forEach(r => this.icing(px, r, 0));                   // glacê em volta da cabeça
+      rect(H[2], col(look.skin, 1.08), 0.06);
     }
     else if (look.mask === 'máscara') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#3a3d42', 0.08); px(fx + 2, fy + 6, '#1a1a1a', 0); px(fx + 5, fy + 6, '#1a1a1a', 0); }
     if (look.glasses === 'escuros') [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, '#101010', 0)); // o resto é 3D (lentes redondas)
@@ -185,9 +194,8 @@ LS.Skin = {
       for (let y = 2; y < 12; y++) for (let x = 2; x < 6; x++) px(front[0] + x, front[1] + y, y % 2 ? '#d8e07a' : '#c6ce62', 0.04);
     }
     else if (look.pattern === 'estrela') { // Frost Reaper: camisa escura com corrente e estrela dourada
-      [[1, 0], [2, 1], [3, 2], [4, 2], [5, 1], [6, 0]].forEach(([x, y]) => px(front[0] + x, front[1] + y, '#e8b830', 0));
-      [[3, 3], [4, 3], [2, 4], [3, 4], [4, 4], [5, 4], [3, 5], [4, 5]].forEach(([x, y]) => px(front[0] + x, front[1] + y, (x === 3 && y === 3) ? '#fff2a0' : '#ffd23a', 0));
-      [[2, 6], [5, 6]].forEach(([x, y]) => px(front[0] + x, front[1] + y, '#c89418', 0));
+      [[1, 0], [2, 1], [5, 1], [6, 0]].forEach(([x, y]) => px(front[0] + x, front[1] + y, '#e8b830', 0));
+      [[3, 2], [4, 2]].forEach(([x, y]) => px(front[0] + x, front[1] + y, '#a8841a', 0)); // a estrela é 3D (pingente)
     }
     else if (look.pattern === 'raio') { [[4, 0], [3, 1], [3, 2], [2, 3], [2, 4], [3, 4], [4, 4], [5, 4], [4, 5], [4, 6], [3, 7], [3, 8], [2, 9]].forEach(([x, y]) => { px(front[0] + x, front[1] + y, '#ffe14a', 0); if (x + 1 < 8) px(front[0] + x + 1, front[1] + y, '#ffc020', 0); }); }
     else if (look.pattern === 'faixa') { for (let y = 0; y < 11; y++) { const x = Math.floor(y * 8 / 11); px(front[0] + x, front[1] + y, '#f0f0f0'); if (x + 1 < 8) px(front[0] + x + 1, front[1] + y, '#f0f0f0'); } }
@@ -217,26 +225,41 @@ LS.Skin = {
       for (let y = 0; y < 12; y++) for (let x = 0; x < 8; x++) { const open = x >= 3 && x <= 4 && y < 9; if (!open) px(front[0] + x, front[1] + y, lt, 0.08); }
       for (let y = 0; y < 11; y++) px(front[0] + (y < 9 ? 5 : 4), front[1] + y, '#c8c8cc', 0);
       rect([front[0], front[1], 3, 2], col(lt, 1.6), 0.05); rect([front[0] + 5, front[1], 3, 2], col(lt, 1.6), 0.05);
-    } else if (top === 'natal') { // Frost Reaper: jaqueta vermelha aberta, pelinho branco nas bordas e flocos de neve
-      const rd = '#c8182a', fur = '#f4f4f4';
-      const flake = (r, cx, cy) => { [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]].forEach(([dx, dy]) => { const x = cx + dx, y = cy + dy; if (x >= 0 && x < r[2] && y >= 0 && y < r[3]) px(r[0] + x, r[1] + y, '#ffffff', 0); }); };
-      [B[0], B[1], B[5]].forEach(r => rect(r, rd, 0.07)); rect(B[2], rd, 0.07);
-      for (let y = 0; y < 11; y++) for (let x = 0; x < 8; x++) { const open = x >= 3 && x <= 4 && y < 10; if (!open) px(front[0] + x, front[1] + y, (x === 2 || x === 5) && y < 10 ? fur : rd, x === 2 || x === 5 ? 0.03 : 0.07); }
-      for (let x = 0; x < 8; x++) if (x < 3 || x > 4) px(front[0] + x, front[1], fur, 0.03); // gola
-      [B[0], B[1], B[4], B[5]].forEach(r => rect(r, fur, 0.03, [10, 11])); rect(B[2], fur, 0.03); // barra e ombros de pelinho
-      flake(front, 0, 6); flake(front, 7, 3); flake(B[5], 2, 3); flake(B[5], 5, 7); flake(B[0], 1, 5); flake(B[1], 2, 7);
+    } else if (top === 'natal') { // Frost Reaper: jaqueta vermelha aberta com sombra nas laterais, pelinho (3D por cima) e flocos
+      const rd = '#c8182a', rdD = '#9e1020', rdL = '#de2a3a', fur = '#f4f4f4';
+      [B[0], B[1]].forEach(r => { rect(r, '#b01424', 0.06); rect(r, rdD, 0.04, [0, 1]); });
+      rect(B[5], rd, 0.07); rect(B[2], rd, 0.06);
+      for (let y = 0; y < 12; y++) px(B[5][0] + 3, B[5][1] + y, rdD, 0.03);       // costura das costas
+      for (let y = 0; y < 11; y++) for (let x = 0; x < 8; x++) {
+        const open = x >= 3 && x <= 4 && y < 10; if (open) continue;
+        const c = (x === 2 || x === 5) && y < 10 ? fur : x === 0 || x === 7 ? rdD : (x === 1 || x === 6) && y < 3 ? rdL : rd;
+        px(front[0] + x, front[1] + y, c, c === fur ? 0.03 : 0.06);
+      }
+      [[0, 7], [1, 7]].forEach(([x, y]) => px(front[0] + x, front[1] + y, rdD, 0)); [[6, 7], [7, 7]].forEach(([x, y]) => px(front[0] + x, front[1] + y, rdD, 0)); // bolsos
+      [B[0], B[1], B[4], B[5]].forEach(r => rect(r, fur, 0.03, [10, 11]));
+      [[1, 9], [6, 2], [5, 9], [2, 5]].forEach(([x, y]) => px(B[5][0] + x, B[5][1] + y, '#ffd6dc', 0)); // pontinhos de neve (os flocos são 3D)
+      px(front[0] + 6, front[1] + 5, '#ffd6dc', 0); px(B[0][0] + 1, B[0][1] + 8, '#ffd6dc', 0); px(B[1][0] + 2, B[1][1] + 3, '#ffd6dc', 0);
+    } else if (top === 'gengibre') { // biscoito de gengibre: corpo de biscoito com borda tostada e glacê em zigue-zague
+      const ck = look.skin, dk = col(look.skin, 0.78);
+      B.forEach(r => rect(r, col(ck, 1.04), 0.06));
+      [B[4], B[5]].forEach(r => { for (let y = 0; y < 12; y++) { px(r[0], r[1] + y, dk, 0.04); px(r[0] + 7, r[1] + y, dk, 0.04); } });
+      [B[0], B[1], B[4], B[5]].forEach(r => { this.icing(px, r, 0); this.icing(px, r, 9); });
+      [3, 6, 9].forEach(y => { px(front[0] + 3, front[1] + y, dk, 0); px(front[0] + 4, front[1] + y, dk, 0); }); // marquinha onde ficam as balas (3D)
     } else if (top === 'regata') { [B[0], B[1]].forEach(r => rect(r, look.skin, 0.05, [0, 2])); rect([front[0], front[1], 2, 2], look.skin, 0.05); rect([front[0] + 6, front[1], 2, 2], look.skin, 0.05); }
-    [B[0], B[1], B[4], B[5]].forEach(r => rect(r, '#3a2412', 0.1, [11, 12])); // cinto
+    if (top === 'natal') { [B[0], B[1], B[4], B[5]].forEach(r => rect(r, '#141416', 0.06, [11, 12])); px(front[0] + 3, front[1] + 11, '#e8b830', 0); px(front[0] + 4, front[1] + 11, '#ffd23a', 0); } // cinto preto com fivela dourada
+    else if (top !== 'gengibre') [B[0], B[1], B[4], B[5]].forEach(r => rect(r, '#3a2412', 0.1, [11, 12])); // cinto
     // ---- braços ----
     const A = this.faceRects('arm');
-    const SLV = { jaqueta: acc, moletom: acc, terno: '#23262d', kimono: look.shirt, armadura: '#8a9099', couro: '#1c1c1f', natal: '#c8182a' }; // roupas de manga comprida
+    const SLV = { jaqueta: acc, moletom: acc, terno: '#23262d', kimono: look.shirt, armadura: '#8a9099', couro: '#1c1c1f', natal: '#c8182a', gengibre: look.skin }; // roupas de manga comprida
     const longS = !!SLV[top], sleeve = longS ? SLV[top] : look.shirt, sl = top === 'regata' ? 0 : longS ? 10 : 4;
     A.forEach((r, i) => { if (i === 2) rect(r, sl ? sleeve : look.skin, 0.06); else if (i === 3) rect(r, look.skin, 0.05); else { rect(r, sleeve, 0.06, [0, sl]); rect(r, look.skin, 0.05, [sl, 12]); } });
-    if (top === 'natal') A.forEach((r, i) => { // punho de pelinho, floco na manga e luva preta sem dedos
+    if (top === 'natal') A.forEach((r, i) => { // manga com sombra por dentro, punho de pelinho (3D), luva preta com friso vermelho
       if (i === 3) { rect(r, '#141416', 0.05); return; } if (i === 2) return;
-      rect(r, '#f4f4f4', 0.03, [8, 10]); rect(r, '#141416', 0.05, [10, 12]); px(r[0] + 1, r[1] + 11, look.skin, 0.03); px(r[0] + 2, r[1] + 11, look.skin, 0.03);
-      if (i === 4 || i === 0) { px(r[0] + 1, r[1] + 3, '#ffffff', 0); px(r[0] + 2, r[1] + 4, '#ffffff', 0); px(r[0] + 1, r[1] + 5, '#ffffff', 0); px(r[0] + 2, r[1] + 3, '#a8d8ff', 0); }
+      if (i === 1 || i === 5) rect(r, '#a81222', 0.05, [0, 8]);
+      rect(r, '#f4f4f4', 0.03, [8, 10]); rect(r, '#141416', 0.05, [10, 12]); px(r[0], r[1] + 10, '#c8182a', 0); px(r[0] + 3, r[1] + 10, '#c8182a', 0);
+      px(r[0] + 1, r[1] + 11, look.skin, 0.03); px(r[0] + 2, r[1] + 11, look.skin, 0.03);
     });
+    if (top === 'gengibre') A.forEach((r, i) => { if (i < 2 || i > 3) this.icing(px, r, 7); }); // glacê no pulso
     // ---- pernas ----
     const L = this.faceRects('leg');
     L.forEach((r, i) => { if (i === 2) rect(r, look.pants, 0.06); else if (i === 3) rect(r, '#1c1c1c', 0.1); else { rect(r, look.pants, 0.06, [0, 10]); rect(r, '#1c1c1c', 0.12, [10, 12]); } });
@@ -244,14 +267,32 @@ LS.Skin = {
     if (lg === 'rasgada') { [L[4], L[5]].forEach(r => { rect([r[0] + 1, r[1] + 5, 2, 1], look.skin, 0.05); px(r[0] + 1, r[1] + 6, look.skin, 0.05); px(r[0] + 2, r[1] + 2, col(look.pants, 1.4), 0.05); px(r[0] + 1, r[1] + 8, col(look.pants, 1.35), 0.05); }); }
     else if (lg === 'listra') [L[0], L[1]].forEach(r => { for (let y = 0; y < 10; y++) { px(r[0] + 1, r[1] + y, '#f0f0f0', 0.03); px(r[0] + 2, r[1] + y, '#f0f0f0', 0.03); } });
     else if (lg === 'camuflada') sides.forEach(r => { for (let i = 0; i < 14; i++) { const x = Math.floor(rnd() * r[2]), y = Math.floor(rnd() * 10); px(r[0] + x, r[1] + y, col(look.pants, rnd() < 0.5 ? 0.6 : 1.4), 0.05); } });
-    else if (lg === 'natal') { // Frost Reaper: faixa vermelha do lado, floco na coxa e tênis vermelho e branco com pelinho
-      [L[0], L[1]].forEach(r => { for (let y = 0; y < 9; y++) { px(r[0] + 1, r[1] + y, '#c8182a', 0.04); px(r[0] + 2, r[1] + y, '#c8182a', 0.04); } });
-      [L[4]].forEach(r => { [[1, 3], [0, 4], [1, 4], [2, 4], [1, 5]].forEach(([x, y]) => px(r[0] + x, r[1] + y, '#ffffff', 0)); });
+    else if (lg === 'natal') { // Frost Reaper: faixa vermelha e branca do lado, floco na coxa, joelho com dobra e tênis vermelho e branco
+      [L[0], L[1]].forEach(r => { for (let y = 0; y < 9; y++) { px(r[0] + 1, r[1] + y, '#c8182a', 0.04); px(r[0] + 2, r[1] + y, '#c8182a', 0.04); px(r[0] + 3, r[1] + y, '#e8e8ea', 0.03); } });
+      [L[4], L[5]].forEach(r => { px(r[0] + 1, r[1] + 6, col(look.pants, 1.6), 0.05); px(r[0] + 2, r[1] + 6, col(look.pants, 1.6), 0.05); });
       sides.forEach(r => { rect(r, '#f4f4f4', 0.03, [9, 10]); rect(r, '#c8182a', 0.05, [10, 11]); rect(r, '#f4f4f4', 0.03, [11, 12]); });
-      [L[4]].forEach(r => px(r[0] + 1, r[1] + 10, '#ffd23a', 0)); rect(L[3], '#f4f4f4', 0.03);
+      px(L[4][0] + 1, L[4][1] + 10, '#f4f4f4', 0); px(L[4][0] + 2, L[4][1] + 10, '#f4f4f4', 0); // biqueira branca
+      [L[0], L[1]].forEach(r => px(r[0] + 2, r[1] + 10, '#ffd23a', 0)); rect(L[3], '#f4f4f4', 0.03); // estrelinha dourada do lado
+    }
+    else if (lg === 'gengibre') { // biscoito: perna de biscoito, glacê no tornozelo e pé tostado
+      L.forEach(r => rect(r, col(look.skin, 1.04), 0.06));
+      sides.forEach(r => { this.icing(px, r, 7); rect(r, col(look.skin, 0.78), 0.04, [11, 12]); });
+      rect(L[3], col(look.skin, 0.72), 0.04);
     }
     else if (lg === 'chamas') sides.forEach(r => { for (let x = 0; x < r[2]; x++) { const h = 2 + Math.floor(rnd() * 4); for (let y = 0; y < h; y++) px(r[0] + x, r[1] + 9 - y, y > h - 2 ? '#ffe14a' : y > h * 0.5 ? '#ff8a1f' : '#e0301a', 0.06); } });
   },
+  // floquinho de neve 3x3 (centro e diagonais brancos, braços azul-claro): não parece uma "cruz"; big = 5x5
+  flake(px, x, y, big) {
+    if (big) {
+      [[2, 0], [2, 1], [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [2, 3], [2, 4]].forEach(([dx, dy]) => px(x + dx, y + dy, '#ffffff', 0));
+      [[0, 0], [4, 0], [1, 1], [3, 1], [1, 3], [3, 3], [0, 4], [4, 4]].forEach(([dx, dy]) => px(x + dx, y + dy, '#b8e2ff', 0));
+      return;
+    }
+    [[1, 1], [0, 0], [2, 0], [0, 2], [2, 2]].forEach(([dx, dy]) => px(x + dx, y + dy, '#ffffff', 0));
+    [[1, 0], [0, 1], [2, 1], [1, 2]].forEach(([dx, dy]) => px(x + dx, y + dy, '#9fd4ff', 0));
+  },
+  // glacê em zigue-zague (3 linhas de altura, período 4): r = retângulo, y = primeira linha
+  icing(px, r, y) { for (let x = 0; x < r[2]; x++) { const k = x % 4, dy = k === 0 ? 0 : k === 2 ? 2 : 1; px(r[0] + x, r[1] + y + dy, '#fff6ea', 0); } },
   makeTexture(look, seed) {
     const cv = document.createElement('canvas'); cv.width = cv.height = 64;
     this.paint(cv, look, seed);

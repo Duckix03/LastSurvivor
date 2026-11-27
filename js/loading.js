@@ -9,7 +9,7 @@ LS.Loading = {
   },
   TIPS: ['Dica: fique dentro da zona segura!', 'Dica: tiro na cabeça faz PANELA (e vale mais tickets no Natal)!', 'Dica: agachar diminui o recuo da arma.', 'Dica: a bolinha de neve vira uma parede de gelo.',
     'Dica: pegue colete e capacete logo no começo.', 'Dica: segure W na queda livre pra mergulhar mais rápido.', 'Dica: no duelo, vença 5 rounds pra ganhar.', 'Dica: chame seus amigos pra party e caiam juntos!'],
-  XMAS_TIPS: ['Evento de Natal: abate na cabeça dá +5 SnowTickets, no corpo +3.', 'Evento de Natal: complete as missões e gire o Spin de Natal!', 'O Frost Reaper é o prêmio máximo do Spin de Natal.'],
+  XMAS_TIPS: ['Evento de Natal: abate na cabeça dá +5 SnowTickets, no corpo +3.', 'Evento de Natal: complete as missões e gire o Spin de Natal!', 'Frost Reaper e Biscoito de Gengibre são os prêmios máximos do Spin de Natal.'],
   last: null,
   // escolhe a arte (sem repetir a da vez anterior); no Natal a do Frost Reaper aparece metade das vezes
   pick(mode) {

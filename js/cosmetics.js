@@ -18,7 +18,8 @@ LS.Cosmetics = {
     hat: { label: 'Chapéu', focus: 'head', list: 'HATS' },
     top: { label: 'Roupa', focus: 'torso', list: 'TOPS' },
     pattern: { label: 'Estampa', focus: 'torso', list: 'PATTERNS' },
-    legs: { label: 'Calça', focus: 'legs', list: null }
+    legs: { label: 'Calça', focus: 'legs', list: null },
+    neck: { label: 'Colar', focus: 'torso', list: 'NECKS' }
   },
   // itens novos: [parte, valor, nome, raridade (0-3), preço]
   PREMIUM: [
@@ -47,9 +48,12 @@ LS.Cosmetics = {
   COSTUME_PIECES: [['hat', 'dino', 'Capuz de Dino', 3], ['pattern', 'escamas', 'Escamas de Dino', 3]],
   // EVENTO DE NATAL: só saem no Spin de Natal (SnowTickets) ou em codiguin. [parte, valor, nome, raridade]
   EVENT_ITEMS: [['hat', 'gorro natal', 'Gorro de Natal', 2], ['mask', 'floco', 'Máscara Floco', 2], ['top', 'natal', 'Jaqueta Natalina', 3, 1],
-    ['pattern', 'estrela', 'Corrente Estrela', 1], ['legs', 'natal', 'Calça Natalina', 1]],
+    ['pattern', 'estrela', 'Corrente Estrela', 1], ['legs', 'natal', 'Calça Natalina', 1],
+    ['hat', 'tiara rena', 'Tiara de Rena', 2], ['neck', 'pisca', 'Colar Pisca-Pisca', 3],
+    ['mask', 'gengibre', 'Rosto de Biscoito', 2], ['top', 'gengibre', 'Corpo de Biscoito', 3, 1], ['legs', 'gengibre', 'Pernas de Biscoito', 1]],
   EVENT_COSTUMES: [
-    { id: 'frost', name: 'Frost Reaper', rarity: 5, look: { hat: 'gorro natal', mask: 'floco', top: 'natal', pattern: 'estrela', legs: 'natal', shirt: '#141416', accent: '#c8182a', pants: '#141416', hair: '#e8e8e8', hairStyle: 'curto', glasses: 'nenhum', beard: 'nenhuma' } }
+    { id: 'frost', name: 'Frost Reaper', rarity: 5, look: { hat: 'gorro natal', mask: 'floco', top: 'natal', pattern: 'estrela', legs: 'natal', shirt: '#141416', accent: '#c8182a', pants: '#141416', hair: '#e8e8e8', hairStyle: 'curto', glasses: 'nenhum', beard: 'nenhuma', neck: 'nenhum' } },
+    { id: 'gengibre', name: 'Biscoito de Gengibre', rarity: 5, look: { skin: '#b8692e', hair: '#b8692e', hairStyle: 'careca', mask: 'gengibre', top: 'gengibre', pattern: 'liso', legs: 'gengibre', shirt: '#b8692e', accent: '#b8692e', pants: '#b8692e', hat: 'nenhum', glasses: 'nenhum', beard: 'nenhuma', neck: 'nenhum' } }
   ],
   // fantasias completas: comprar dá todas as peças de uma vez. Pagas em DIAMANTES (dprice)
   COSTUMES: [
@@ -138,7 +142,7 @@ LS.Cosmetics = {
   sanitize(look) {
     const L = Object.assign({}, look);
     if (L.glasses === 'redondos') L.glasses = 'estrela'; // virou o óculos de estrela
-    const def = { hairStyle: 'curto', beard: 'nenhuma', glasses: 'nenhum', mask: 'nenhuma', hat: 'nenhum', top: 'camiseta', pattern: 'liso', legs: 'lisa' };
+    const def = { hairStyle: 'curto', beard: 'nenhuma', glasses: 'nenhum', mask: 'nenhuma', hat: 'nenhum', top: 'camiseta', pattern: 'liso', legs: 'lisa', neck: 'nenhum' };
     for (const slot in this.SLOTS) if (L[slot] && !this.ownsValue(slot, L[slot])) L[slot] = def[slot];
     return L;
   },
@@ -158,10 +162,13 @@ LS.Cosmetics = {
   },
   // ---------- Spin de Natal (SnowTickets) ----------
   // peso de cada prêmio: a fantasia Frost Reaper é o prêmio máximo (3%). Repetido devolve tickets
-  // a Jaqueta Natalina não sai sozinha: só vem com a fantasia (assim juntar as outras peças não libera o Frost Reaper)
-  XMAS_W: { 'costume:frost': 3, 'hat:gorro natal': 20, 'mask:floco': 22, 'pattern:estrela': 27, 'legs:natal': 28 },
+  // a Jaqueta Natalina e o Corpo de Biscoito não saem sozinhos: só vêm com o personagem (juntar as outras peças não libera ele)
+  // Frost Reaper e Biscoito de Gengibre são os prêmios máximos (3% cada)
+  XMAS_W: { 'costume:frost': 3, 'costume:gengibre': 3, 'neck:pisca': 8, 'hat:tiara rena': 9, 'mask:gengibre': 9, 'hat:gorro natal': 12, 'mask:floco': 13, 'legs:gengibre': 12, 'pattern:estrela': 15, 'legs:natal': 16 },
   XMAS_COST: 60, XMAS_10: 600, XMAS_REFUND: [10, 15, 20, 30, 0, 60],
   snow() { return LS.stats.snow || 0; },
+  // personagem de evento que traz essa peça (Jaqueta Natalina → Frost Reaper)
+  pieceOf(it) { return this.items.find(c => c.slot === 'costume' && c.ev && c.look && c.look[it.slot] === it.val) || null; },
   xmasPool() { return Object.keys(this.XMAS_W).map(id => this.byId[id]).filter(Boolean); },
   xmasDone() { return this.xmasPool().every(i => this.owns(i.id)); },
   xspin() {
