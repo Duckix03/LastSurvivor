@@ -263,13 +263,13 @@ LS.Game = {
     const mine = killer === this.player || victim === this.player;
     LS.HUD.killFeed(killer && killer !== victim ? killer.name : '', victim.name, weapon || '?', head, mine);
     if (this.mode === 'duel' || this.mode === 'custom') {
-      if (killer === this.player && victim !== this.player) LS.Audio.kill();
+      if (killer === this.player && victim !== this.player) { LS.Audio.kill(); LS.HUD.killPop(victim.name, head, this.killStreak()); }
       if (victim === this.player) LS.Spectate.start(killer, weapon, head); else LS.Spectate.onKill(victim, killer); // killcam também no duelo e na sala
       if (this.mode === 'custom') LS.Custom.onKill(victim, killer); else LS.Duel.onKill(victim, killer); return;
     }
     if (killer === this.player && victim !== this.player) {
       LS.Audio.kill();
-      LS.HUD.centerMsg('ELIMINOU ' + victim.name.toUpperCase(), (head ? 'Tiro na cabeça! · ' : '') + this.player.kills + ' abate(s)', 1.8);
+      LS.HUD.killPop(victim.name, head, this.killStreak()); // caveira (headshot: racha ao meio)
     }
     if (victim === this.player) this.lastKiller = killer && killer !== victim ? killer : null;
     // só sobrou o seu esquadrão (mesmo com você morto, se um aliado sobreviveu): vitória
@@ -278,6 +278,8 @@ LS.Game = {
     if (victim === P) LS.Spectate.start(killer, weapon, head); // killcam + cartão + espectador (aliados primeiro)
     else if (!this.pendingWin) LS.Spectate.onKill(victim, killer);
   },
+  // abates em sequência (até 6 s entre um e outro): x2, x3...
+  killStreak() { const t = performance.now(); this._ks = t - (this._ksT || 0) < 6000 ? (this._ks || 1) + 1 : 1; this._ksT = t; return this._ks; },
   onGunshot(shooter) { LS.HUD.gunshot(shooter); // indicador na tela / minimapa de onde vem o tiro
     for (const b of this.bots) if (b !== shooter && b.alive && b.state === 'ground') b.hearShot(shooter); },
   onPlayerHit(head, killed) { LS.HUD.hit(head || killed); LS.Audio.hitmarker(head); },
