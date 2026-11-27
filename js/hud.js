@@ -49,28 +49,28 @@ LS.HUD = {
     this.el['center-msg'].innerHTML = title + (sub ? '<small>' + sub + '</small>' : '');
     this.el['center-msg'].classList.add('show'); this.centerT = secs || 2.5;
   },
-  // ---------- ÍCONE DE ABATE (estilo Minecraft): caveira vermelha em pixel; headshot = racha ao meio com o tiro ----------
-  SKULL: [
-    '....oooooooo....',
-    '..ooHHHHHHHHoo..',
-    '.oHHhhhhhhhhRRo.',
+  // ---------- ÍCONE DE ABATE (estilo Minecraft): cabeça de bloco vermelha nocauteada; headshot = racha ao meio com o tiro ----------
+  SKULL: [ // cabeça de bloco vermelha com olhos em X (nocaute): engraçada, não assustadora
+    '................',
+    '.oooooooooooooo.',
+    '.oHHHHHHHHHHHHo.',
     '.oHhhhhhhhhhhRo.',
-    'oHhhhhhhhhhhhhRo',
-    'oHhhhhhhhhhhhhRo',
-    'oheeeehhhheeeeRo',
-    'oheeeehhhheeeeRo',
-    'ohegeehhhhegeeRo',
-    'oheeeehhhheeeeRo',
-    '.ohhhhhnnhhhhRo.',
-    '..ohhhhnnhhhRo..',
-    '..oRhhhhhhhhRo..',
-    '..otTtTtTtTtto..',
-    '...oRRRRRRRRo...',
-    '....oooooooo....'],
+    '.ohhhhhhhhhhhRo.',
+    '.ohxhxhhhhxhxRo.',
+    '.ohhxhhhhhhxhRo.',
+    '.ohxhxhhhhxhxRo.',
+    '.ohhhhhhhhhhhRo.',
+    '.ochhhhhhhhhcRo.',
+    '.ohhhhmmmmhhhRo.',
+    '.ohhhhmttmhhhRo.',
+    '.ohhhhhhhhhhhRo.',
+    '.oRRRRRRRRRRRRo.',
+    '.oooooooooooooo.',
+    '................'],
   skullImg() {
     if (this._skull) return this._skull;
     const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d');
-    const col = { o: '#1a0408', H: '#ff8a96', h: '#e8324a', R: '#9c1328', e: '#2a0208', g: '#ff3b3b', n: '#5c0a16', t: '#f4e6d8', T: '#c9b7a6' };
+    const col = { o: '#1f0a10', H: '#ff8f9c', h: '#ec3b52', R: '#b01f36', x: '#2a0610', c: '#ff6f84', m: '#5a0c1c', t: '#ffb3c4' };
     this.SKULL.forEach((row, y) => [...row].forEach((ch, x) => { if (col[ch]) { g.fillStyle = col[ch]; g.fillRect(x, y, 1, 1); } }));
     return (this._skull = c.toDataURL());
   },
@@ -84,6 +84,15 @@ LS.HUD = {
       '<span>' + String(name || '').replace(/[<>&"]/g, '') + '</span>';
     el.className = ''; void el.offsetWidth; el.className = 'show' + (head ? ' head' : '');
     clearTimeout(this._kpT); this._kpT = setTimeout(() => { el.className = ''; }, 1900);
+  },
+  // ping da partida online: barrinhas coloridas no topo (verde bom, amarelo ok, vermelho ruim)
+  setPing(ms) {
+    let el = this.el.ping;
+    if (!el) { el = this.el.ping = document.createElement('div'); el.id = 'ping-pill'; el.className = 'pill'; document.getElementById('top-left').appendChild(el); }
+    if (ms == null) { if (!el.classList.contains('hidden')) el.classList.add('hidden'); return; }
+    const q = ms < 90 ? 'good' : ms < 170 ? 'ok' : 'bad', k = Math.round(ms);
+    if (el._k === k) return; el._k = k;
+    el.className = 'pill ' + q; el.innerHTML = '<i class="pg"><b></b><b></b><b></b></i>' + k + ' ms';
   },
   hit(head) {
     const h = this.el.hitmarker; h.classList.remove('show', 'head'); void h.offsetWidth;
@@ -290,6 +299,7 @@ LS.HUD = {
     const el = this.$('squad'), P = G.player, on = G.mode === 'br' && P.team != null && (G.state === 'playing' || G.state === 'paused');
     el.classList.toggle('hidden', !on); if (!on) { this._sqK = ''; return; }
     const mates = G.fighters.filter(f => f !== P && f.team === P.team);
+    if (!mates.length) { el.classList.add('hidden'); this._sqK = ''; return; } // solo: sem painel
     const key = mates.map(f => f.name + ':' + (f.alive ? Math.ceil(f.hp) : 'x')).join('|');
     if (key === this._sqK) return; this._sqK = key;
     el.innerHTML = mates.map(f => '<div class="sq' + (f.alive ? '' : ' dead') + (f.isPlayer === false && !(f instanceof LS.Bot) ? ' human' : '') + '"><b>' + LS.Profile.esc(f.name) + '</b><i><em style="width:' + (f.alive ? Math.max(0, f.hp) : 0) + '%"></em></i></div>').join('');

@@ -32,6 +32,7 @@ LS.Touch = {
     const st = document.documentElement.style;
     st.setProperty('--uiz', clamp(clamp(H / 560, 0.66, 1) * k, 0.55, 1.2).toFixed(3));
     st.setProperty('--hz', clamp(clamp(H / 520, 0.7, 1) * k, 0.6, 1.2).toFixed(3));
+    st.setProperty('--pz', clamp(clamp(H / 430, 0.8, 1) * k, 0.72, 1.15).toFixed(3)); // painéis (tela cheia no celular): não encolhem tanto quanto o menu
     st.setProperty('--tbs', clamp(S.btnSize || 1, 0.7, 1.4).toFixed(2));
     st.setProperty('--tbo', clamp(S.btnAlpha === undefined ? 0.85 : S.btnAlpha, 0.3, 1).toFixed(2));
     document.body.classList.toggle('short', H < 520); // celular deitado: layout compacto dos menus

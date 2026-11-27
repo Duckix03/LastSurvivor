@@ -2,7 +2,7 @@
 'use strict';
 LS.MODES = {
   br: {
-    name: 'BATTLE ROYALE', tag: 'ESQUADRÕES', place: 'Ilha · Esquadrões de 4',
+    name: 'BATTLE ROYALE', tag: 'POPULAR', place: 'Ilha',
     desc: 'Salte do avião, junte loot e seja o último em pé.'
   },
   duel: {
@@ -12,16 +12,18 @@ LS.MODES = {
 };
 
 LS.Modes = {
-  KEY: 'lastsurvivor_mode', SIZE_KEY: 'lastsurvivor_duel_size',
-  id: 'br', duelSize: 1, // duelo: 1 = 1v1, 2 = 2v2 (equipes)
+  KEY: 'lastsurvivor_mode', SIZE_KEY: 'lastsurvivor_duel_size', BR_KEY: 'lastsurvivor_br_size',
+  id: 'br', duelSize: 1, brSize: 4, // duelo: 1 = 1v1, 2 = 2v2 (equipes) · battle royale: 1 solo, 2 duo, 4 squad
+  BR_NAMES: { 1: 'SOLO', 2: 'DUO', 4: 'SQUAD' },
   init() {
     try {
       const m = localStorage.getItem(this.KEY); if (LS.MODES[m]) this.id = m;
       this.duelSize = localStorage.getItem(this.SIZE_KEY) === '2' ? 2 : 1;
+      const bs = +localStorage.getItem(this.BR_KEY); if (bs === 1 || bs === 2 || bs === 4) this.brSize = bs;
     } catch (e) { /* sem localStorage */ }
     document.getElementById('modes-grid').addEventListener('click', e => {
       const sz = e.target.closest('[data-size]');
-      if (sz) { LS.Audio.init(); LS.Audio.click(); this.setSize(+sz.dataset.size); this.set('duel'); this.renderGrid(); return; } // troca 1v1/2v2 e fica no painel
+      if (sz) { LS.Audio.init(); LS.Audio.click(); if (sz.dataset.br) this.setBr(+sz.dataset.size); else { this.setSize(+sz.dataset.size); this.set('duel'); } this.renderGrid(); return; } // troca o tamanho e fica no painel
       if (e.target.closest('[data-custom]')) { LS.Audio.init(); LS.Audio.click(); LS.Custom.open(); return; } // salas: abre o painel delas
       const c = e.target.closest('[data-mode]'); if (!c) return;
       LS.Audio.init(); LS.Audio.click();
@@ -32,7 +34,7 @@ LS.Modes = {
   // dados do modo com o que muda conforme o tamanho do time
   info(id) {
     const m = Object.assign({}, LS.MODES[id || this.id]);
-    if ((id || this.id) === 'br') { m.players = 32; m.sub = 'Ilha · Esquadrões de 4 · 32 jogadores'; }
+    if ((id || this.id) === 'br') { const t = this.brSize; m.players = 32; m.vs = this.BR_NAMES[t]; m.sub = 'Ilha · ' + (t === 1 ? 'cada um por si' : t === 2 ? 'duplas' : 'esquadrões de 4') + ' · 32 jogadores'; }
     else { const t = this.duelSize; m.players = t * 2; m.vs = t + 'v' + t; m.sub = 'Galpão · ' + m.vs + (t > 1 ? ' equipes' : '') + ' · Primeiro a 5'; }
     return m;
   },
@@ -52,6 +54,16 @@ LS.Modes = {
     try { localStorage.setItem(this.SIZE_KEY, String(this.duelSize)); } catch (e) { /* ignora */ }
     this.render();
   },
+  // tamanho do time no battle royale (1, 2 ou 4). Em party: o do líder
+  setBr(n) {
+    n = n === 1 || n === 2 ? n : 4;
+    if (LS.Party && !LS.Party.allowBr(n)) return; // party: só o líder; time menor que a party: escolhe quem fica
+    this.brSize = n; this.id = 'br';
+    try { localStorage.setItem(this.BR_KEY, String(n)); localStorage.setItem(this.KEY, 'br'); } catch (e) { /* ignora */ }
+    this.render();
+    if (LS.Party) { LS.Party.modeChanged('br'); LS.Party.render(); }
+  },
+  teamSize() { return this.id === 'br' ? this.brSize : this.duelSize; },
   maxPlayers() { return this.cur().players; },
   // textos do lobby que mostram o modo atual
   render() {
@@ -68,7 +80,8 @@ LS.Modes = {
     const cards = Object.keys(LS.MODES).map(id => {
       const m = this.info(id), sel = id === this.id;
       const sizes = id === 'duel' ? '<div class="mode-sizes">' + [1, 2].map(n => '<span data-size="' + n + '" class="' + (this.duelSize === n ? 'sel' : '') + '">' +
-        n + ' V ' + n + '<small>' + (n > 1 ? 'EQUIPES' : 'SOLO') + '</small></span>').join('') + '</div>' : '';
+        n + ' V ' + n + '<small>' + (n > 1 ? 'EQUIPES' : 'SOLO') + '</small></span>').join('') + '</div>'
+        : '<div class="mode-sizes">' + [1, 2, 4].map(n => '<span data-br="1" data-size="' + n + '" class="' + (this.brSize === n ? 'sel' : '') + '">' + this.BR_NAMES[n] + '<small>' + (n === 1 ? 'SOZINHO' : n + ' POR TIME') + '</small></span>').join('') + '</div>';
       return '<button class="mode-card' + (sel ? ' sel' : '') + '" data-mode="' + id + '">' +
         '<div class="mode-art" data-art="' + this.artId(id) + '">' + this.artHtml(this.artId(id)) + '</div><div class="mode-shine"></div>' +
         '<span class="mode-tag">' + m.tag + '</span>' + (sel ? '<span class="mode-check">✓ SELECIONADO</span>' : '') +

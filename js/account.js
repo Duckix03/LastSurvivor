@@ -51,6 +51,7 @@ LS.Account = {
     P.avatar = { type: '3d', bg: pr.avatarBg || 0 }; P.cover = pr.cover || 'br';
     if (pr.weapon !== undefined) P.weapon = pr.weapon;
     if (Array.isArray(pr.owned)) P.owned = [...new Set([...(P.owned || []), ...pr.owned])]; // itens da loja (junta com os deste navegador)
+    if (!fromCache) this.syncSettings(acc.settings);
     if (!fromCache && acc.stats) {
       if ((acc.stats.games || 0) > 0 || (acc.stats.xp || 0) > 0) Object.assign(LS.stats, acc.stats);
       else this.saveStats(true); // conta nova: leva as estatísticas deste navegador pra ela
@@ -66,6 +67,38 @@ LS.Account = {
     const n = document.getElementById('lobby-name');
     if (n) n.disabled = false; // só leitura; tocar abre o perfil (trocar de nome custa moedas)
     if (LS.UI && LS.UI.current === 'panel-stats' && LS.Profile.bound) LS.Profile.render();
+  },
+  // ---------- configurações na nuvem ----------
+  DEVICE_KEYS: ['fullscreen', 'quality', 'resScale', 'renderDistance', 'postfx', 'perfMode', 'autoQ', 'autoTier', 'fpsCap'],
+  // a mais nova vence: a da conta (outro aparelho mexeu depois) entra aqui; a daqui sendo mais nova sobe pra conta
+  syncSettings(cs) {
+    const mine = LS.settings._t || 0, theirs = cs && cs._t ? cs._t : 0;
+    if (theirs > mine) {
+      const keep = {}; for (const k of this.DEVICE_KEYS) keep[k] = LS.settings[k];
+      Object.assign(LS.settings, cs, keep); // gráfico e tela cheia são de cada aparelho (o PC não pega o gráfico do celular)
+      LS.saveSettings(true);
+      try { LS.Game.applySettings(); if (LS.UI.syncSettings) LS.UI.syncSettings(); if (LS.Touch.active) LS.Touch.fit(); if (LS.HudEdit) LS.HudEdit.apply(); } catch (e) { /* jogo ainda carregando */ }
+      this.cloudT = theirs; this.cloudUI();
+    } else if (mine > theirs) this.queueSettings(400);
+    else { this.cloudT = theirs; this.cloudUI(); }
+  },
+  queueSettings(ms) {
+    if (!this.logged()) { this.cloudUI(); return; }
+    clearTimeout(this._setT); this._setT = setTimeout(() => this.pushSettings(), ms || 2500);
+    this.cloudUI('salvando…');
+  },
+  async pushSettings(now) {
+    clearTimeout(this._setT);
+    if (!this.logged()) { this.cloudUI(); if (now && LS.Party) LS.Party.toast('Entre na sua conta pra salvar as configurações nela.'); return; }
+    if (now && !LS.settings._t) LS.settings._t = Date.now();
+    const s = Object.assign({}, LS.settings); for (const k of this.DEVICE_KEYS) delete s[k];
+    try { const d = await this.api('/api/settings', { settings: s }); if (d.settings) { this.syncSettings(d.settings); return; } this.cloudT = d.t || s._t; this.cloudUI(); if (now && LS.Party) LS.Party.toast('Configurações salvas na conta!'); }
+    catch (e) { this.cloudUI('não deu pra salvar agora (sem internet?)'); }
+  },
+  cloudUI(msg) {
+    const el = document.getElementById('set-cloud'); if (!el) return;
+    if (!this.logged()) { el.innerHTML = 'Entre na sua conta pra salvar as configurações nela'; return; }
+    el.innerHTML = msg ? '<b class="off">' + msg + '</b>' : this.cloudT ? '<b>✓ salvas na conta</b> · vão junto pra qualquer aparelho' : 'Ainda não salvas na conta';
   },
   setToken(t) { this.token = t; try { localStorage.setItem(this.KEY, t); } catch (e) { /* ignora */ } },
   drop() {

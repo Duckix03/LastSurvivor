@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '100'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '101'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // versão do ONLINE (crossplay navegador ↔ app). Suba +1 quando mudar algo que quebra a partida online
 // (armas, mapa, protocolo de rede...) e suba junto o MIN_PROTO em server/src/worker.js, depois "npx wrangler deploy".
 // Quem estiver com versão mais velha (ex.: APK antigo) recebe o aviso pra atualizar em vez de entrar com regras diferentes.
@@ -88,8 +88,8 @@ LS.GOOGLE_CLIENT_ID = '';
 LS.ISLAND_RADIUS = 340;     // raio útil da ilha
 LS.WATER_LEVEL = 0;
 LS.GEL = { name: 'Bola de Gelo', max: 4 }; // vira a parede de gel (js/gelwall.js)
-LS.BOT_COUNT = 31; // + você = 32 = 8 esquadrões de 4
-LS.SQUAD = 4; // battle royale em esquadrões: os bots completam as vagas do seu time
+LS.BOT_COUNT = 31; // + você = 32 (32 solos, 16 duplas ou 8 esquadrões)
+LS.SQUAD = 4; // tamanho máximo de time no battle royale (o do modo escolhido: LS.Modes.brSize); os bots completam as vagas do seu time
 // bots sempre no NORMAL, de propósito (não tem mais escolha de dificuldade): dano dos tiros deles × dmg, mira entre skill[0] e skill[1]
 LS.BOT_LEVEL = { dmg: 0.55, skill: [0.35, 1] };
 LS.GRAVITY = 24;
@@ -110,8 +110,7 @@ LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, musicVol:
   // filtro de cor da imagem 3D (a intensidade é o "vivid")
   filter: 'classico' };
 LS.settings = Object.assign({}, LS.defaultSettings);
-// celular: começa mais leve (dá pra mudar nas configurações)
-try { if (window.matchMedia && matchMedia('(pointer: coarse)').matches && !localStorage.getItem('lastsurvivor_settings')) Object.assign(LS.settings, { quality: 'low', resScale: 0.8, perfMode: true, renderDistance: 250, postfx: false }); } catch (e) { /* ignora */ }
+// celular: o gráfico é escolhido pelo automático (js/perf.js), pela placa de vídeo e pelo FPS de verdade (antes todo celular começava no mínimo)
 try {
   const saved = JSON.parse(localStorage.getItem('lastsurvivor_settings') || '{}');
   Object.assign(LS.settings, saved);
@@ -124,8 +123,11 @@ LS.sensMult = v => Math.pow(Math.max(1, +v || 50) / 50, 1.585);
 LS.sensKey = (aiming, scoped, zoom) => !aiming ? 'sensGeneral' : !scoped ? 'sensRedDot' : zoom < 5 ? 'sens4x' : zoom < 7 ? 'sens6x' : 'sens8x';
 // distância de renderização efetiva (limitada no modo desempenho)
 LS.effDist = () => LS.settings.perfMode ? Math.min(LS.settings.renderDistance, 250) : LS.settings.renderDistance;
-LS.saveSettings = function () {
-  localStorage.setItem('lastsurvivor_settings', JSON.stringify(LS.settings));
+// salva no navegador e (com conta) manda pra nuvem uns segundos depois. _t = quando mudou (a mais nova vence entre aparelhos)
+LS.saveSettings = function (fromCloud) {
+  if (!fromCloud) LS.settings._t = Date.now();
+  try { localStorage.setItem('lastsurvivor_settings', JSON.stringify(LS.settings)); } catch (e) { /* sem espaço */ }
+  if (!fromCloud && LS.Account && LS.Account.queueSettings) LS.Account.queueSettings();
 };
 
 LS.stats = { games: 0, wins: 0, kills: 0 };

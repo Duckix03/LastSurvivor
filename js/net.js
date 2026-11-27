@@ -185,7 +185,7 @@ LS.Net = {
     let done = false;
     const fail = why => { if (done) return; done = true; this.cancel(); cb.onFail(why); };
     let ws;
-    try { ws = new WebSocket(this.wsUrl('/ws/find')); } catch (e) { fail('erro'); return; }
+    try { ws = new WebSocket(this.wsUrl('/ws/find?s=' + ((party && party.size) || LS.Modes.brSize || 4))); } catch (e) { fail('erro'); return; } // fila do modo: solo, duo ou squad
     this.findWs = ws;
     const to = setTimeout(() => fail('sem resposta'), 45000);
     let pt = null; // ping enquanto procura: o servidor usa pra escolher como host (dono dos bots) quem tem o menor ping
@@ -276,6 +276,7 @@ LS.Net = {
 
   // ---------- começo da partida ----------
   begin(d) {
+    this.caps = Array.isArray(d.caps) ? d.caps : []; this._hq = [];
     this.online = true; this.you = d.you; this.host = d.host; this.ents = {}; this.remotes = []; this.sendT = 0;
     this.tmOff = null; this.rtt = 0; this.pingT = 0; this.lastRx = performance.now(); this._reconn = false; this._undo = {}; this._undoKeys = [];
     this.interpMs = this.INTERP_MS; this.jit = 0; this.jitN = 0; this.snapRx = 0; this.snapTm = 0; this._ls = {}; this._opt = [];
@@ -513,6 +514,13 @@ LS.Net = {
     if (G.mode === 'br') G.markSquad();
   },
   // acerto feito por algo controlado aqui: o servidor confere e calcula o dano
+  // acertos do mesmo quadro (as balas da escopeta) vão juntos num pacote só, se o servidor sabe ler ('caps' do start)
+  queueHit(m) {
+    if (!(this.caps && this.caps.includes('hits'))) { this.send(m); return; }
+    (this._hq || (this._hq = [])).push(m);
+    if (this._hq.length === 1) Promise.resolve().then(() => this.flushHits());
+  },
+  flushHits() { const q = this._hq; this._hq = []; if (!q || !q.length) return; if (q.length === 1) this.send(q[0]); else this.send({ t: 'hits', l: q.map(h => { const o = Object.assign({}, h); delete o.t; return o; }) }); },
   reportHit(attacker, victim, head, weaponName) {
     if (!victim.netId || victim.netGrace) return;
     const w = weaponName === 'Soco' ? 'punch' : attacker.weapon() && attacker.weapon().id;
@@ -521,7 +529,7 @@ LS.Net = {
     // (compensação de lag). Alvo controlado aqui mesmo não tem atraso de interpolação: sem vt, o servidor usa a janela padrão.
     const m = { t: 'hit', a: attacker.netId, v: victim.netId, h: head ? 1 : 0, w };
     if (this.tmOff !== null && victim.remote) m.vt = Math.round(this.srvNow() - this.interpMs - (victim.netId[0] === 'b' ? this.BOT_EXTRA_MS : 0));
-    this.send(m);
+    this.queueHit(m);
   },
 };
 

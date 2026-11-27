@@ -97,7 +97,7 @@ LS.Lobby = {
     // online: procura jogadores de verdade por até 30 s; se não achar ninguém, joga contra bots
     this.online = true;
     const title = document.querySelector('#lobby-mm h3'), cnt = document.getElementById('mm-count');
-    title.textContent = party ? 'PROCURANDO PARTIDA · PARTY DE ' + party.gsize : 'PROCURANDO JOGADORES'; cnt.textContent = 'conectando ao servidor…';
+    title.textContent = (party ? 'PARTY DE ' + party.gsize + ' · ' : 'PROCURANDO · ') + LS.Modes.BR_NAMES[(party && party.size) || LS.Modes.brSize]; cnt.textContent = 'conectando ao servidor…';
     LS.Net.find({
       onQueue: (n, left) => { cnt.textContent = n + (n === 1 ? ' jogador' : ' jogadores') + ' · ' + left + ' s'; },
       onStart: d => { this.searching = false; this.online = false; document.getElementById('lobby-mm').classList.add('hidden'); LS.Game.startOnline(d); },

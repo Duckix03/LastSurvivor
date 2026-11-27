@@ -21,7 +21,9 @@
   --px-drop: 4px 4px 0 rgba(0, 0, 0, 0.45);
   --px-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
 }
-html, body { font-synthesis: none; font-variant-ligatures: none; }
+html, body { font-synthesis: none; }
+/* a Pixelify Sans desenha o "fi" esquisito (vira "A"): sem ligaduras em nada (o atalho "font:" religava) */
+*, *::before, *::after { font-variant-ligatures: none !important; font-feature-settings: "liga" 0, "clig" 0 !important; }
 
 /* tudo quadrado (menos o que é redondo de propósito: minimapa, luneta, mira, anéis) */
 *, *::before, *::after { border-radius: 0 !important; }
@@ -97,8 +99,18 @@ input[type=range] { height: 10px; border: 2px solid var(--px-ink); box-shadow: v
 input[type=range]::-webkit-slider-thumb { width: 16px; height: 22px; border: 3px solid var(--px-ink); box-shadow: var(--px-raise); background: #ffc531; }
 input[type=range]::-moz-range-thumb { width: 12px; height: 18px; border: 3px solid var(--px-ink); background: #ffc531; }
 .set-tabs button, .sh-tabs button, .sh-cats button, .pf-tabs button, .cu-tabs button { font-family: var(--display); border: 2px solid var(--px-ink) !important; }
-.switch span, .pf-switch span { border: 2px solid var(--px-ink); box-shadow: var(--px-sink); }
-.switch span::before, .pf-switch span::after { border: 2px solid var(--px-ink); box-shadow: var(--px-raise); }
+/* interruptores pixel: trilho com borda, bloquinho que anda certinho de um lado pro outro (medidas com a borda) */
+.switch { width: 54px !important; height: 28px !important; }
+.pf-switch { width: 46px !important; height: 26px !important; }
+.switch span, .pf-switch span { position: absolute !important; inset: 0 !important; width: auto !important; height: auto !important; margin: 0 !important; box-sizing: border-box; border: 3px solid var(--px-ink); background: #2a3044 !important; box-shadow: var(--px-sink) !important; }
+.switch span::before, .pf-switch span::after { box-sizing: border-box; top: 2px !important; left: 2px !important; border: 2px solid var(--px-ink); background: #dfe4ef !important;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.7), inset -2px -2px 0 rgba(0, 0, 0, 0.3) !important; transition: transform 0.12s steps(3) !important; }
+.switch span::before { width: 18px !important; height: 18px !important; }
+.pf-switch span::after { width: 16px !important; height: 16px !important; }
+.switch input:checked + span, .pf-switch input:checked + span { background: #3fbf4f !important; box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.35), inset -3px -3px 0 rgba(255, 255, 255, 0.15) !important; }
+.switch input:checked + span::before { transform: translateX(26px) !important; }
+.pf-switch input:checked + span::after { transform: translateX(20px) !important; }
+.switch input:focus-visible + span, .pf-switch input:focus-visible + span { outline: 2px solid #fff; }
 
 /* ---------- cartões (loja, modos, itens): moldura de bloco ---------- */
 .mode-card, .sh-card, .shop-card, .gr-card, .cs-w, .cu-row, .fr-row, .mail-row, .st-card, .stats-grid > div, .end-stats > div, .cc-card, .cgp-card {
@@ -134,10 +146,11 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 18px; border: 3px sol
 #kill-pop.show .kp-shot { animation: kpShot 0.2s steps(4) both; }
 @keyframes kpShot { 0% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(260%); } }
 .kp-bits { position: absolute; left: 50%; top: 40%; }
-.kp-bits s { position: absolute; width: 8px; height: 8px; background: #e8324a; box-shadow: 2px 2px 0 #5c0a16; opacity: 0; }
+.kp-bits s { position: absolute; width: 8px; height: 8px; background: #ffc531; box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45); opacity: 0; }
+.kp-bits s:nth-child(2n) { background: #fff; } .kp-bits s:nth-child(3n) { background: #ec3b52; }
 #kill-pop.show .kp-bits s { animation: kpBit 0.6s 0.18s steps(6) both; }
 .kp-bits s:nth-child(1) { --x: -46px; --y: -30px; } .kp-bits s:nth-child(2) { --x: 44px; --y: -36px; } .kp-bits s:nth-child(3) { --x: -54px; --y: 14px; }
-.kp-bits s:nth-child(4) { --x: 52px; --y: 20px; } .kp-bits s:nth-child(5) { --x: -8px; --y: -50px; background: #ffc531; } .kp-bits s:nth-child(6) { --x: 10px; --y: 44px; }
+.kp-bits s:nth-child(4) { --x: 52px; --y: 20px; } .kp-bits s:nth-child(5) { --x: -8px; --y: -50px; } .kp-bits s:nth-child(6) { --x: 10px; --y: 44px; }
 @keyframes kpBit { 0% { opacity: 1; transform: translate(0, 0); } 100% { opacity: 0; transform: translate(var(--x), var(--y)); } }
 .kp-skull em { position: absolute; right: -34px; top: -6px; font: 400 24px var(--display); font-style: normal; color: #ffc531; text-shadow: 3px 3px 0 #000; }
 #kill-pop > span { font: 600 15px var(--body); letter-spacing: 1px; color: #fff; padding: 2px 8px; background: rgba(11, 13, 19, 0.7); border: 2px solid #0b0d13; text-shadow: var(--px-shadow); }
@@ -217,3 +230,89 @@ body.mobile .wr-tabs { width: 104px; } body.mobile .wr-tab { padding: 6px 5px; f
 
 /* guarda-roupa (closet): sem o JOGAR, ele fica só no lobby */
 #lobby .lobby-actions { display: none !important; }
+
+/* =====================================================================
+   HUD PERSONALIZADO (celular): opacidade de cada item + editor
+   ===================================================================== */
+#hud .hud-ed { opacity: var(--ho, 1); }
+#touch-ui .tb.hud-ed { opacity: calc(var(--tbo, 0.85) * var(--ho, 1)); }
+#touch-ui .tb.hud-ed.lit, #touch-ui .tb.hud-ed.down { opacity: var(--ho, 1); }
+#joy.on { translate: none !important; } /* joystick vai pra onde o dedo encosta */
+body.hud-editing #game-container { filter: brightness(0.35) saturate(0.6); }
+body.hud-editing #touch-ui .tb.hidden, body.hud-editing #touch-ui .tb.empty { display: flex !important; opacity: calc(var(--tbo, 0.85) * var(--ho, 1)); }
+body.hud-editing #squad { display: flex !important; min-width: 120px; min-height: 30px; outline: 2px dashed rgba(255, 255, 255, 0.3); }
+body.hud-editing #killfeed { min-width: 160px; min-height: 40px; outline: 2px dashed rgba(255, 255, 255, 0.3); }
+body.hud-editing #hud > *:not(#touch-ui):not(#minimap-wrap):not(#top-left):not(#bottom-left):not(#bottom-right):not(#killfeed):not(#squad) { visibility: hidden; }
+body.hud-editing #touch-area { display: none !important; }
+#hud-edit { position: fixed; inset: 0; z-index: 90; touch-action: none; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 40px); }
+#hud-edit.hidden { display: none; }
+#he-sel { position: fixed; pointer-events: none; border: 3px dashed #ffc531; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6); animation: heBlink 0.8s steps(2) infinite; }
+#he-sel.hidden { display: none; }
+@keyframes heBlink { 50% { border-color: #fff; } }
+.he-bar { position: fixed; left: 50%; top: 8px; transform: translateX(-50%); width: min(560px, 92vw); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 10px;
+  background: #1f2433 var(--px-noise); background-size: 48px 48px; border: 3px solid var(--px-ink); box-shadow: var(--px-raise), 6px 6px 0 rgba(0, 0, 0, 0.45); zoom: var(--uiz, 1); }
+.he-bar.low { top: auto; bottom: 8px; }
+.he-name { display: flex; align-items: center; gap: 8px; width: 100%; }
+.he-name b { font: 400 16px var(--display); color: #ffc531; text-shadow: var(--px-shadow); }
+.he-name span { font: 400 12px var(--body); color: var(--mut); }
+.he-name .btn { margin-left: auto; flex: none; }
+.he-sl { flex: 1; min-width: 150px; display: flex; align-items: center; gap: 6px; font: 400 11px var(--display); color: #c9d2e3; }
+.he-sl input { flex: 1; min-width: 0; }
+.he-sl output { width: 38px; text-align: right; font: 400 12px var(--display); color: #fff; }
+.he-btns { display: flex; gap: 6px; width: 100%; justify-content: flex-end; }
+.he-btns .btn { flex: none; }
+.he-code { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(4, 6, 14, 0.6); zoom: var(--uiz, 1); }
+.he-lbl { display: block; margin: 8px 0 4px; font: 400 11px var(--display); color: var(--mut); letter-spacing: 1px; }
+.he-row { display: flex; gap: 6px; } .he-row input { flex: 1; min-width: 0; padding: 7px 8px; color: #fff; font: 400 12px var(--body); } .he-row .btn { flex: none; }
+.he-note { min-height: 16px; margin: 8px 0 0 !important; font: 400 12px var(--body); color: #4ae680; } .he-note.bad { color: #ff7a8e; }
+.set-cloud small b { color: #4ae680; font-weight: 600; } .set-cloud small b.off { color: var(--mut); }
+
+/* =====================================================================
+   CELULAR: versão própria dos painéis. Cada painel vira uma tela cheia (respeitando o entalhe), com o
+   título e os botões parados e o meio rolando. Zoom próprio (--pz), que não encolhe demais (texto legível).
+   ===================================================================== */
+body.mobile .panel-screen { padding: 0 !important; }
+body.mobile .panel-screen > .panel {
+  zoom: var(--pz, 1) !important; margin: 0 !important; min-width: 0 !important; max-width: none !important; max-height: none !important;
+  width: calc((100vw - var(--sl, 0px) - var(--sr, 0px) - 12px) / var(--pz, 1)) !important; height: calc((100vh - 12px) / var(--pz, 1)) !important;
+  padding: 10px 16px 10px !important; display: flex !important; flex-direction: column; overflow: hidden !important;
+  box-shadow: var(--px-raise) !important; }
+body.mobile .panel-screen > .panel > h2, body.mobile .lobby-panel h2 { font-size: 22px !important; margin: 0 0 8px !important; flex: none; }
+body.mobile .panel-screen > .panel > .panel-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+body.mobile .panel-screen > .panel > .panel-buttons { flex: none; margin-top: 8px !important; padding-top: 8px; border-top: 3px solid rgba(0, 0, 0, 0.35); }
+body.mobile .panel-buttons .btn { padding: 8px 16px; font-size: 15px; }
+/* configurações: abas em cima, conteúdo rola */
+body.mobile .set-panel { height: calc((100vh - 12px) / var(--pz, 1)) !important; }
+/* loja e Gold Royale: a grade rola com o painel (sem altura calculada à parte) */
+body.mobile .sh-grid, body.mobile .gr-grid { max-height: none !important; }
+body.mobile .shop-box { zoom: var(--pz, 1) !important; }
+body.mobile .cu-panel { zoom: var(--pz, 1) !important; }
+/* mais simples: sem os textos de enfeite */
+body.mobile .panel-sub, body.mobile .panel h2::after { display: none !important; }
+body.mobile .mode-card .mode-title b { font-size: 20px; }
+/* janelas (party, procurando partida, editor): mesmo zoom dos painéis */
+body.mobile .mm-box, body.mobile .pm-box, body.mobile .pi-card, body.mobile .he-bar, body.mobile .he-code { zoom: var(--pz, 1) !important; }
+body.mobile .pm-box { max-height: calc(92vh / var(--pz, 1)); }
+/* guarda-roupa: painel da esquerda na altura toda */
+body.mobile #lobby > .wr-panel { zoom: var(--pz, 1) !important; top: 6px !important; bottom: auto !important; left: calc(var(--sl, 0px) + 6px) !important;
+  width: calc((58vw - var(--sl, 0px)) / var(--pz, 1)) !important; height: calc((100vh - 12px) / var(--pz, 1)) !important; padding: 8px 10px !important; }
+body.mobile .wr-namerow { margin-bottom: 6px; } body.mobile .wr-head { margin-bottom: 4px; } body.mobile .wr-head h2 { font-size: 20px !important; }
+body.mobile .wr-tabs { width: 112px; } body.mobile .wr-tab { font-size: 11px; padding: 6px 6px; } body.mobile .wr-tab svg { width: 15px; height: 15px; }
+body.mobile .wr-grid { grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 5px; }
+body.mobile .wr-main { padding: 6px; } body.mobile .wr-top b { font-size: 16px; }
+body.mobile .mode-art { height: 140px !important; } body.mobile .mode-shine { height: 140px !important; } body.mobile .mode-title { top: 140px !important; padding: 22px 12px 7px !important; }
+body.mobile .mode-info { padding: 8px 10px 10px !important; } body.mobile .mode-info p { font-size: 11.5px; line-height: 1.35; margin: 0; }
+body.mobile .mode-sizes { margin-top: 8px !important; } body.mobile .mode-sizes span { font-size: 16px !important; padding: 4px 0 3px !important; }
+
+/* ping (partida online) */
+#ping-pill.hidden { display: none; }
+#ping-pill .pg { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; margin-right: 6px; vertical-align: -1px; }
+#ping-pill .pg b { width: 3px; background: rgba(255, 255, 255, 0.25); }
+#ping-pill .pg b:nth-child(1) { height: 5px; } #ping-pill .pg b:nth-child(2) { height: 8px; } #ping-pill .pg b:nth-child(3) { height: 12px; }
+#ping-pill.good .pg b { background: #4ae680; } #ping-pill.good { color: #b9f7cf; }
+#ping-pill.ok .pg b:nth-child(-n+2) { background: #ffc531; } #ping-pill.ok { color: #ffe7a0; }
+#ping-pill.bad .pg b:nth-child(1) { background: #ff4d6d; } #ping-pill.bad { color: #ffb3c1; }
+/* celular: esquadrão logo abaixo da vida (antes ficava em cima dos botões de cura da esquerda) */
+body.mobile #squad { top: calc(90px / var(--hz, 1)) !important; bottom: auto !important; left: calc(var(--sl, 0px) + 10px) !important; gap: 2px; zoom: var(--hz, 1); }
+body.mobile #squad .sq { width: 104px !important; padding: 1px 6px 2px; border-width: 2px !important; line-height: 1.1; }
+body.mobile #squad .sq b { font-size: 10px; } body.mobile #squad .sq i { height: 3px; margin-top: 2px; }

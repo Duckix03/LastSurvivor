@@ -42,7 +42,7 @@ LS.UI = {
     const S = LS.settings, $ = id => document.getElementById(id);
     const pc = x => Math.round(x * 100) + '%';
     const SENS = [['set-s-general', 'sensGeneral'], ['set-s-reddot', 'sensRedDot'], ['set-s-4x', 'sens4x'], ['set-s-6x', 'sens6x'], ['set-s-8x', 'sens8x']];
-    const sync = () => {
+    let sync = () => {
       for (const [id, k] of SENS) { $(id).value = S[k]; $('val-' + id.slice(4)).textContent = S[k]; }
       $('set-res').value = S.resScale; $('val-res').textContent = pc(S.resScale);
       document.querySelectorAll('#set-quality [data-q]').forEach(b => b.classList.toggle('on', b.dataset.q === S.quality));
@@ -60,6 +60,14 @@ LS.UI = {
       $('set-btna').value = S.btnAlpha === undefined ? 0.85 : S.btnAlpha; $('val-btna').textContent = pc(S.btnAlpha === undefined ? 0.85 : S.btnAlpha);
       $('set-uis').value = S.uiSize || 1; $('val-uis').textContent = pc(S.uiSize || 1);
     };
+    const sync0 = sync;
+    sync = () => { // + gráfico automático e limite de FPS
+      sync0();
+      $('set-autoq').checked = !!S.autoQ;
+      const T = LS.Gfx, lv = (S.autoTier | 0) + 1;
+      $('set-autoq-info').textContent = S.autoQ ? 'nível ' + lv + ' de 6' + (T.lastFps ? ' · ' + Math.round(T.lastFps) + ' FPS na última partida' : '') + ' · placa: ' + (T.klass === 'strong' ? 'forte' : T.klass === 'mid' ? 'média' : T.klass === 'weak' ? 'fraca' : '?') : 'desligado: você escolhe a qualidade';
+      document.querySelectorAll('#set-fpscap [data-cap]').forEach(b => b.classList.toggle('on', +b.dataset.cap === (+S.fpsCap || 0)));
+    };
     this.syncSettings = sync;
     const changed = () => { LS.saveSettings(); sync(); LS.Game.applySettings(); };
     // abas
@@ -72,15 +80,18 @@ LS.UI = {
     };
     $('set-tabs').addEventListener('click', e => { const b = e.target.closest('[data-st]'); if (b) { LS.Audio.click(); this.setTab(b.dataset.st); } });
     for (const [id, k] of SENS) $(id).addEventListener('input', e => { S[k] = +e.target.value; LS.saveSettings(); sync(); });
-    $('set-quality').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) { LS.Audio.click(); S.quality = b.dataset.q; changed(); } });
+    const manual = () => { if (S.autoQ) { S.autoQ = false; } }; // mexeu no gráfico na mão: desliga o automático
+    $('set-quality').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) { LS.Audio.click(); manual(); S.quality = b.dataset.q; changed(); } });
+    $('set-autoq').addEventListener('change', e => { S.autoQ = e.target.checked; if (S.autoQ) LS.Gfx.setTier(S.autoTier !== undefined ? S.autoTier : LS.Gfx.startTier()); changed(); });
+    $('set-fpscap').addEventListener('click', e => { const b = e.target.closest('[data-cap]'); if (b) { LS.Audio.click(); S.fpsCap = +b.dataset.cap; changed(); } });
     $('set-filter').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { LS.Audio.click(); S.filter = b.dataset.f; if (!S.vivid) S.vivid = 0.6; changed(); } });
     $('set-vol').addEventListener('input', e => { S.volume = +e.target.value; changed(); });
     $('set-music').addEventListener('input', e => { S.musicVol = +e.target.value; changed(); if (LS.Music) LS.Music.sync(); });
-    $('set-dist').addEventListener('input', e => { S.renderDistance = +e.target.value; changed(); });
+    $('set-dist').addEventListener('input', e => { manual(); S.renderDistance = +e.target.value; changed(); });
     $('set-fps').addEventListener('change', e => { S.showFps = e.target.checked; changed(); });
-    $('set-res').addEventListener('input', e => { S.resScale = +e.target.value; changed(); });
-    $('set-perf').addEventListener('change', e => { S.perfMode = e.target.checked; changed(); });
-    $('set-postfx').addEventListener('change', e => { S.postfx = e.target.checked; changed(); });
+    $('set-res').addEventListener('input', e => { manual(); S.resScale = +e.target.value; changed(); });
+    $('set-perf').addEventListener('change', e => { manual(); S.perfMode = e.target.checked; changed(); });
+    $('set-postfx').addEventListener('change', e => { manual(); S.postfx = e.target.checked; changed(); });
     $('set-aa').addEventListener('change', e => { S.aimAssist = e.target.checked; changed(); });
     $('set-vivid').addEventListener('input', e => { S.vivid = +e.target.value; changed(); });
     const touchSet = (id, key) => $(id).addEventListener('input', e => { S[key] = +e.target.value; LS.saveSettings(); sync(); LS.Touch.fit(); });
@@ -116,8 +127,11 @@ LS.UI = {
       case 'lobby-random': LS.Lobby.random(); break;
       case 'lobby-reset': LS.Lobby.reset(); break;
       case 'lobby-back': LS.Lobby.cancelSearch(); LS.Wardrobe.leave(); LS.Game.quitToMenu(); break;
-      case 'settings': this.syncSettings(); this.openPanel('panel-settings'); break;
+      case 'settings': this.syncSettings(); this.openPanel('panel-settings'); LS.Account.cloudUI(); break;
       case 'controls': this.openPanel('panel-controls'); break;
+      case 'hud-edit': LS.HudEdit.start(); break;
+      case 'hud-code': LS.HudEdit.start(); LS.HudEdit.codeOpen = true; LS.HudEdit.render(); break;
+      case 'settings-cloud': LS.Account.pushSettings(true); break;
       case 'credits': this.openPanel('panel-credits'); break;
       case 'back': this.back(); break;
       case 'settings-reset':
@@ -125,6 +139,7 @@ LS.UI = {
           const D = LS.defaultSettings, TAB = { sens: ['sensGeneral', 'sensRedDot', 'sens4x', 'sens6x', 'sens8x'],
             gfx: ['resScale', 'quality', 'filter', 'vivid', 'renderDistance', 'postfx', 'perfMode', 'showFps'], geral: ['volume', 'musicVol', 'aimAssist', 'btnSize', 'btnAlpha', 'uiSize'] };
           for (const k of TAB[this.settingsTab] || []) LS.settings[k] = D[k];
+          if (this.settingsTab === 'gfx') { const P = LS.Gfx, mob = P.mobile(); LS.settings.autoQ = mob; LS.settings.fpsCap = mob ? 60 : 0; delete LS.settings.autoTier; if (mob) P.setTier(P.startTier(), true); }
           LS.saveSettings(); this.syncSettings(); LS.Game.applySettings(); LS.Touch.fit();
         }
         break;
@@ -146,6 +161,7 @@ window.addEventListener('load', () => {
     const sf = document.getElementById('set-fullscreen'); if (sf) sf.closest('.setting').style.display = 'none';
   }
   LS.checkAppVersion(); // app velho: tela de "atualize"
+  LS.Gfx.boot(); // gráfico automático (celular): escolhe o nível pela placa de vídeo antes de criar o renderer
   LS.Game.init();
   LS.App.init(); // app Android (APK): botão voltar etc. No navegador não faz nada
   LS.Touch.init(); // celular: controles de toque (só liga em tela de toque)
@@ -161,6 +177,7 @@ window.addEventListener('load', () => {
   LS.Conta.init(); // aba CONTA das configurações (e a página de login com Google aberta pelo app)
   LS.Shop.init(); LS.Friends.init(); LS.Custom.init(); LS.Menu.initBanners();
   LS.Party.init(); // party com amigos (até 4 no BR, 2 no duelo)
+  LS.HudEdit.init(); // HUD personalizado do celular (posição, tamanho e opacidade)
   LS.Menu.init();
   document.getElementById('arsenal-list').addEventListener('click', e => { const b = e.target.closest('[data-wpn]'); if (b) { LS.Audio.init(); LS.Audio.click(); LS.Menu.pickLobbyWeapon(b.dataset.wpn); } });
   LS.UI.bindSettings();

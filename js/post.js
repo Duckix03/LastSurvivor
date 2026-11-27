@@ -17,6 +17,7 @@ LS.Post = {
     this.rt = new THREE.WebGLRenderTarget(size.x, size.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: false });
     this.rt.depthTexture = new THREE.DepthTexture(size.x, size.y);
     this.rt.depthTexture.type = THREE.UnsignedIntType;
+    const AO_N = LS.Touch && LS.Touch.detect() ? 8 : 16; // celular: metade das amostras de oclusão (o efeito mais caro da tela)
     this.mat = new THREE.ShaderMaterial({
       uniforms: {
         tColor: { value: this.rt.texture }, tDepth: { value: this.rt.depthTexture },
@@ -25,7 +26,7 @@ LS.Post = {
       },
       depthTest: false, depthWrite: false,
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-      fragmentShader: `
+      fragmentShader: '#define AO_N ' + AO_N + '\n' + `
         uniform sampler2D tColor, tDepth; uniform vec2 res; uniform float near, far, projScale, aoStrength, edge, vignette, fogFar;
         varying vec2 vUv;
         float lin(float d){ float z = d * 2.0 - 1.0; return (2.0 * near * far) / (far + near - z * (far - near)); }
@@ -57,15 +58,15 @@ LS.Post = {
             vec2 cell = mod(floor(gl_FragCoord.xy), 2.0);
             float rad = clamp(0.45 * projScale / z, 2.0, 40.0), occ = 0.0, ang = (cell.x * 2.0 + cell.y) * 1.5708;
             float th0 = 0.03 + z * 0.012, th1 = 0.18 + z * 0.01;
-            for (int i = 0; i < 16; i++) {
+            for (int i = 0; i < AO_N; i++) {
               float fi = float(i) + 1.0;
-              ang += 2.39996;
-              vec2 op = vec2(cos(ang), sin(ang)) * rad * sqrt(fi / 16.0);   // em pixels
+              ang += 2.39996 * (16.0 / float(AO_N));
+              vec2 op = vec2(cos(ang), sin(ang)) * rad * sqrt(fi / float(AO_N));   // em pixels
               float expect = z + op.x * gx + op.y * gy;                       // onde o próprio plano estaria
               float d = expect - depthAt(vUv + op * px);                      // > 0: algo na frente (canto/fresta)
               occ += smoothstep(th0, th1, d) * (1.0 - smoothstep(0.3, 0.55, d)); // só contato (sem "aura" atrás de quem está na frente)
             }
-            float ao = clamp(1.0 - (occ / 16.0) * 0.8 * aoStrength, 0.35, 1.0);
+            float ao = clamp(1.0 - (occ / float(AO_N)) * 0.8 * aoStrength, 0.35, 1.0);
             // ---- contorno suave: bordas de profundidade, só de perto (de longe vira serrilhado no morro) ----
             float jump = max(max(abs(dN - z), abs(dS - z)), max(abs(dE - z), abs(dW - z))) / z;
             float ed = smoothstep(0.06, 0.16, jump) * edge * (1.0 - smoothstep(18.0, 55.0, z));

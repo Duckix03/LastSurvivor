@@ -11,9 +11,9 @@
 <link rel="preconnect" href="https://lastsurvivor.lastsurvivorbr.workers.dev" crossorigin>
 <link rel="preload" href="fonts/tiny5-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/pixelify-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=100">
-<link rel="stylesheet" href="css/ui.css?v=100">
-<link rel="stylesheet" href="css/pixel.css?v=100">
+<link rel="stylesheet" href="css/style.css?v=101">
+<link rel="stylesheet" href="css/ui.css?v=101">
+<link rel="stylesheet" href="css/pixel.css?v=101">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
 <style>
@@ -159,6 +159,10 @@
   <div class="panel">
     <h2>NOVIDADES</h2>
     <div class="news-list">
+      <div><b>Solo, Duo e Squad</b><span>O Battle Royale agora tem 3 modos: sozinho, em dupla ou em esquadrão de 4. Escolha no banner do Battle Royale.</span></div>
+      <div><b>HUD do seu jeito</b><span>No celular: Configurações → Geral → EDITAR HUD. Arraste os botões, mude tamanho e opacidade e passe o código do seu HUD pros amigos.</span></div>
+      <div><b>Configurações na conta</b><span>Sensibilidade, som e HUD vão junto pra qualquer aparelho em que você entrar.</span></div>
+      <div><b>Gráficos automáticos</b><span>No celular o jogo escolhe o gráfico pela sua placa de vídeo e vai ajustando pelo FPS. Bem mais bonito nos celulares bons!</span></div>
       <div><b>Visual de bloco</b><span>Interface toda nova estilo Minecraft: quadrada, com fonte pixelada, bordas de bloco e botões que afundam.</span></div>
       <div><b>Caveira de abate</b><span>Eliminou alguém? Aparece uma caveira vermelha. Tiro na cabeça racha ela ao meio!</span></div>
       <div><b>Guarda-roupa closet</b><span>Seções com quantos itens você tem e grade só com as fotos, igual um closet.</span></div>
@@ -252,6 +256,14 @@
       </div>
     </section>
     <section class="set-pane" data-pane="gfx">
+      <div class="setting">
+        <label>Gráficos automáticos <small id="set-autoq-info">ajusta sozinho pelo FPS do seu aparelho</small></label>
+        <label class="switch"><input type="checkbox" id="set-autoq"><span></span></label>
+      </div>
+      <div class="setting set-col">
+        <label>Limite de FPS <small>60 deixa o celular mais frio (FPS mais estável)</small></label>
+        <div class="chips" id="set-fpscap"><button data-cap="30">30</button><button data-cap="60">60</button><button data-cap="90">90</button><button data-cap="0">SEM LIMITE</button></div>
+      </div>
       <div class="setting set-sl">
         <label>Resolução <small>menor = mais FPS</small></label>
         <div class="sl-wrap"><input type="range" id="set-res" min="0.4" max="1" step="0.05"><output id="val-res"></output></div>
@@ -314,6 +326,19 @@
       <div class="setting set-sl only-mobile">
         <label>Tamanho dos menus e da HUD</label>
         <div class="sl-wrap"><input type="range" id="set-uis" min="0.8" max="1.25" step="0.05"><output id="val-uis"></output></div>
+      </div>
+      <div class="setting only-mobile">
+        <label>HUD personalizado <small>arraste cada botão, mude tamanho e opacidade</small></label>
+        <button class="btn small btn-primary" data-action="hud-edit">EDITAR HUD</button>
+      </div>
+      <div class="setting only-mobile">
+        <label>Código do HUD <small>copie o seu ou use o de um amigo</small></label>
+        <button class="btn small" data-action="hud-code">CÓDIGO</button>
+      </div>
+      <div class="set-sec">CONTA</div>
+      <div class="setting set-cloud">
+        <label>Configurações na nuvem <small id="set-cloud">Entre na sua conta pra salvar as configurações nela</small></label>
+        <button class="btn small" data-action="settings-cloud">SALVAR AGORA</button>
       </div>
     </section>
     <section class="set-pane" data-pane="conta"><div id="conta-box"></div></section>
@@ -510,63 +535,65 @@
 </div>
 
 <script src="js/vendor/three.min.js"></script>
-<script src="js/config.js?v=100"></script>
-<script src="js/icons.js?v=100"></script>
-<script src="js/post.js?v=100"></script>
-<script src="js/console.js?v=100"></script>
-<script src="js/audio.js?v=100"></script>
-<script src="js/gunsound.js?v=100"></script>
-<script src="js/music.js?v=100"></script>
-<script src="js/input.js?v=100"></script>
-<script src="js/pixicons.js?v=100"></script>
-<script src="js/touch.js?v=100"></script>
-<script src="js/world.js?v=100"></script>
-<script src="js/sky.js?v=100"></script>
-<script src="js/worldbuild.js?v=100"></script>
-<script src="js/housekit.js?v=100"></script>
-<script src="js/houses.js?v=100"></script>
-<script src="js/skin.js?v=100"></script>
-<script src="js/character.js?v=100"></script>
-<script src="js/animlib.js?v=100"></script>
-<script src="js/itemmodels.js?v=100"></script>
-<script src="js/itemicons.js?v=100"></script>
-<script src="js/textures.js?v=100"></script>
-<script src="js/flora.js?v=100"></script>
-<script src="js/effects.js?v=100"></script>
-<script src="js/gelwall.js?v=100"></script>
-<script src="js/loot.js?v=100"></script>
-<script src="js/combat.js?v=100"></script>
-<script src="js/player.js?v=100"></script>
-<script src="js/bot.js?v=100"></script>
-<script src="js/zone.js?v=100"></script>
-<script src="js/plane.js?v=100"></script>
-<script src="js/net.js?v=100"></script>
-<script src="js/duel.js?v=100"></script>
-<script src="js/custommap.js?v=100"></script>
-<script src="js/hud.js?v=100"></script>
-<script src="js/victory.js?v=100"></script>
-<script src="js/esp.js?v=100"></script>
-<script src="js/lobbyscene.js?v=100"></script>
-<script src="js/lobbythemes.js?v=100"></script>
-<script src="js/lobby.js?v=100"></script>
-<script src="js/banners.js?v=100"></script>
-<script src="js/account.js?v=100"></script>
-<script src="js/mail.js?v=100"></script>
-<script src="js/cosmetics.js?v=100"></script>
-<script src="js/thumbs.js?v=100"></script>
-<script src="js/wardrobe.js?v=100"></script>
-<script src="js/shop.js?v=100"></script>
-<script src="js/friends.js?v=100"></script>
-<script src="js/profile.js?v=100"></script>
-<script src="js/conta.js?v=100"></script>
-<script src="js/modes.js?v=100"></script>
-<script src="js/menu.js?v=100"></script>
-<script src="js/spectate.js?v=100"></script>
-<script src="js/custom.js?v=100"></script>
-<script src="js/party.js?v=100"></script>
-<script src="js/game.js?v=100"></script>
-<script src="js/app.js?v=100"></script>
-<script src="js/uikit.js?v=100"></script>
-<script src="js/main.js?v=100"></script>
+<script src="js/config.js?v=101"></script>
+<script src="js/icons.js?v=101"></script>
+<script src="js/post.js?v=101"></script>
+<script src="js/console.js?v=101"></script>
+<script src="js/audio.js?v=101"></script>
+<script src="js/gunsound.js?v=101"></script>
+<script src="js/music.js?v=101"></script>
+<script src="js/input.js?v=101"></script>
+<script src="js/pixicons.js?v=101"></script>
+<script src="js/touch.js?v=101"></script>
+<script src="js/perf.js?v=101"></script>
+<script src="js/world.js?v=101"></script>
+<script src="js/sky.js?v=101"></script>
+<script src="js/worldbuild.js?v=101"></script>
+<script src="js/housekit.js?v=101"></script>
+<script src="js/houses.js?v=101"></script>
+<script src="js/skin.js?v=101"></script>
+<script src="js/character.js?v=101"></script>
+<script src="js/animlib.js?v=101"></script>
+<script src="js/itemmodels.js?v=101"></script>
+<script src="js/itemicons.js?v=101"></script>
+<script src="js/textures.js?v=101"></script>
+<script src="js/flora.js?v=101"></script>
+<script src="js/effects.js?v=101"></script>
+<script src="js/gelwall.js?v=101"></script>
+<script src="js/loot.js?v=101"></script>
+<script src="js/combat.js?v=101"></script>
+<script src="js/player.js?v=101"></script>
+<script src="js/bot.js?v=101"></script>
+<script src="js/zone.js?v=101"></script>
+<script src="js/plane.js?v=101"></script>
+<script src="js/net.js?v=101"></script>
+<script src="js/duel.js?v=101"></script>
+<script src="js/custommap.js?v=101"></script>
+<script src="js/hud.js?v=101"></script>
+<script src="js/victory.js?v=101"></script>
+<script src="js/esp.js?v=101"></script>
+<script src="js/lobbyscene.js?v=101"></script>
+<script src="js/lobbythemes.js?v=101"></script>
+<script src="js/lobby.js?v=101"></script>
+<script src="js/banners.js?v=101"></script>
+<script src="js/account.js?v=101"></script>
+<script src="js/mail.js?v=101"></script>
+<script src="js/cosmetics.js?v=101"></script>
+<script src="js/thumbs.js?v=101"></script>
+<script src="js/wardrobe.js?v=101"></script>
+<script src="js/shop.js?v=101"></script>
+<script src="js/friends.js?v=101"></script>
+<script src="js/profile.js?v=101"></script>
+<script src="js/conta.js?v=101"></script>
+<script src="js/modes.js?v=101"></script>
+<script src="js/menu.js?v=101"></script>
+<script src="js/spectate.js?v=101"></script>
+<script src="js/custom.js?v=101"></script>
+<script src="js/party.js?v=101"></script>
+<script src="js/hudedit.js?v=101"></script>
+<script src="js/game.js?v=101"></script>
+<script src="js/app.js?v=101"></script>
+<script src="js/uikit.js?v=101"></script>
+<script src="js/main.js?v=101"></script>
 </body>
 </html>
