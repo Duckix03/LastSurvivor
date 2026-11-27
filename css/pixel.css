@@ -467,3 +467,10 @@ body.mobile .sh-grid.big .sh-img { height: calc((100vh - 20px) / var(--pz, 1) - 
 body.mobile .gr.xm .gr-grid { grid-template-columns: repeat(5, 1fr) !important; }
 body.mobile .gr.xm .gr-grid .sh-img { height: 104px; }
 body.mobile .sh-grid.big .sh-img img { height: 100% !important; width: 100% !important; max-width: none !important; max-height: none !important; object-fit: cover; object-position: 50% 45%; }
+/* Spin de Natal: os dois prêmios máximos lado a lado */
+.xm-stars { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.xm-stars > div { min-width: 0; }
+.xm-stars .sh-img.big { height: 150px; }
+.xm-stars b { font-size: 14px !important; line-height: 1.1; }
+body.mobile .xm-stars .sh-img.big { height: 104px; }
+body.mobile .xm-stars b { font-size: 11px !important; }

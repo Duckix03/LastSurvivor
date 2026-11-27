@@ -7,7 +7,7 @@ LS.Wardrobe = {
     { id: 'hat', label: 'CHAPÉU', icon: 'hat', slots: ['hat'] },
     { id: 'face', label: 'ROSTO', icon: 'face', slots: ['glasses', 'mask', 'beard'], colors: [['eyes', 'EYES', 'Olhos']] },
     { id: 'hair', label: 'CABELO', icon: 'hair', slots: ['hairStyle'], colors: [['hair', 'HAIRS', 'Cor do cabelo e barba']] },
-    { id: 'top', label: 'ROUPA', icon: 'shirt', slots: ['top'], colors: [['accent', 'ACCENTS', 'Cor da roupa / acessórios']] },
+    { id: 'top', label: 'ROUPA', icon: 'shirt', slots: ['top', 'neck'], colors: [['accent', 'ACCENTS', 'Cor da roupa / acessórios']] },
     { id: 'pattern', label: 'CAMISA', icon: 'pattern', slots: ['pattern'], colors: [['shirt', 'SHIRTS', 'Cor da camisa']] },
     { id: 'legs', label: 'CALÇA', icon: 'pants', slots: ['legs'], colors: [['pants', 'PANTS', 'Cor da calça']] },
     { id: 'skin', label: 'PELE', icon: 'skin', slots: [], colors: [['skin', 'SKINS', 'Tom de pele']] }
@@ -77,7 +77,7 @@ LS.Wardrobe = {
     mask: '<path d="M4 7c3-2 13-2 16 0v5c0 4-4 7-8 7s-8-3-8-7z"/><path d="M8 11h2M14 11h2"/>',
     beard: '<path d="M5 8c0 7 3 12 7 12s7-5 7-12c-2 2-4 3-7 3S7 10 5 8z"/>',
     hat: '<path d="M4 15h16M7 15V9a5 5 0 0 1 10 0v6"/>', hairStyle: '<path d="M5 13c0-5 3-8 7-8s7 3 7 8M5 13c2-1 4-4 4-6M12 5c0 3 3 5 7 6"/>',
-    top: '<path d="M8 4l-5 3 2 4 3-1v10h8V10l3 1 2-4-5-3c-1 2-2 3-4 3S9 6 8 4z"/>', pattern: '<rect x="4" y="4" width="16" height="16"/><path d="M4 12h16M12 4v16"/>', legs: '<path d="M7 3h10l1 18h-4l-2-11-2 11H6z"/>'
+    top: '<path d="M8 4l-5 3 2 4 3-1v10h8V10l3 1 2-4-5-3c-1 2-2 3-4 3S9 6 8 4z"/>', pattern: '<rect x="4" y="4" width="16" height="16"/><path d="M4 12h16M12 4v16"/>', legs: '<path d="M7 3h10l1 18h-4l-2-11-2 11H6z"/>', neck: '<path d="M5 4c0 7 3 11 7 11s7-4 7-11"/><path d="M12 15v3"/><rect x="10" y="18" width="4" height="3"/>'
   },
   slotIcon(slot) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square">' + (this.SLOT_ICONS[slot] || '') + '</svg>'; },
   isNone(it) { return it.slot !== 'costume' && /^nenhum/.test(it.val || ''); },
@@ -120,7 +120,7 @@ LS.Wardrobe = {
     const it = this.sel && C.byId[this.sel];
     if (it && !C.owns(it.id)) {
       const pieces = it.slot === 'costume' ? C.pieces(it).filter(p => !C.owns(p.id)).length : 0;
-      h += '<div id="wr-buybar" style="--rc:' + R[it.rarity].color + '"><div><span class="wr-rar">' + R[it.rarity].name + '</span><b>' + it.name + '</b><small>Provando' + (pieces ? ' · ' + pieces + ' peças' : '') + (it.ev ? (it.piece ? ' · vem com o Frost Reaper' : ' · evento de Natal') : it.royale ? ' · só sai no Gold Royale' : ' · você tem ' + (it.dprice ? LS.icon('gem', 'gem-i') + ' ' + C.diamonds().toLocaleString('pt-BR') : LS.icon('coin', 'coin-i') + ' ' + C.coins().toLocaleString('pt-BR'))) + '</small><span class="wr-err"></span></div>' +
+      h += '<div id="wr-buybar" style="--rc:' + R[it.rarity].color + '"><div><span class="wr-rar">' + R[it.rarity].name + '</span><b>' + it.name + '</b><small>Provando' + (pieces ? ' · ' + pieces + ' peças' : '') + (it.ev ? (it.piece ? ' · vem com o ' + ((C.pieceOf(it) || {}).name || 'personagem') : ' · evento de Natal') : it.royale ? ' · só sai no Gold Royale' : ' · você tem ' + (it.dprice ? LS.icon('gem', 'gem-i') + ' ' + C.diamonds().toLocaleString('pt-BR') : LS.icon('coin', 'coin-i') + ' ' + C.coins().toLocaleString('pt-BR'))) + '</small><span class="wr-err"></span></div>' +
         (it.ev ? (LS.Xmas.active() ? '<button class="btn btn-primary xm-btn" data-wxmas="1">GIRAR NO SPIN DE NATAL</button>' : '<button class="btn btn-primary" data-wcode="1">SÓ EM CODIGUIN</button>') :
           it.code ? '<button class="btn btn-primary" data-wcode="1">SÓ EM CODIGUIN</button>' : it.piece ? '<button class="btn btn-primary" disabled>VEM NA FANTASIA</button>' :
           it.royale ? '<button class="btn btn-primary" data-wroyale="1">GIRAR NO GOLD ROYALE</button>' : '<button class="btn btn-primary" data-wbuy="1">COMPRAR ' + LS.Shop.priceTag(it) + '</button>') + '</div>';

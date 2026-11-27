@@ -316,7 +316,7 @@ LS.Profile = {
   CG_TABS: [
     { id: 'costume', label: 'FANTASIAS', test: i => i.slot === 'costume' && !i.code }, { id: 'code', label: 'EXCLUSIVOS', test: i => i.code },
     { id: 'hat', label: 'CHAPÉUS', test: i => i.slot === 'hat' && !i.code }, { id: 'face', label: 'ROSTO', test: i => ['glasses', 'mask', 'hairStyle', 'beard'].includes(i.slot) && !i.code },
-    { id: 'body', label: 'ROUPAS', test: i => (i.slot === 'top' || i.slot === 'pattern') && !i.code }, { id: 'legs', label: 'CALÇAS', test: i => i.slot === 'legs' }
+    { id: 'body', label: 'ROUPAS', test: i => (i.slot === 'top' || i.slot === 'pattern' || i.slot === 'neck') && !i.code }, { id: 'legs', label: 'CALÇAS', test: i => i.slot === 'legs' }
   ],
   openCodes(tabs) {
     const cc = this.cgMode === 'cc', L = cc ? this.ccData.limits : null;
@@ -496,7 +496,7 @@ LS.Profile = {
   // ADMIN → MANUTENÇÃO: durante uma atualização só o owner e quem tem selo DEV entram
   // ADMIN → EVENTOS: Natal liga sozinho de 1 a 31 de dezembro; dá pra forçar ligado (testar/estender) ou desligado
   async openEvent(tabs) {
-    this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint"><b>Evento de Natal</b>: SnowTickets por abate, missões e o Spin de Natal (Frost Reaper). No <b>automático</b> ele fica ligado de 1 a 31 de dezembro. Chega pra todo mundo em até 1 minuto.</p>' +
+    this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint"><b>Evento de Natal</b>: SnowTickets por abate, missões e o Spin de Natal (Frost Reaper e Biscoito de Gengibre). No <b>automático</b> ele fica ligado de 1 a 31 de dezembro. Chega pra todo mundo em até 1 minuto.</p>' +
       '<div id="ev-adm" class="th-grid"><p class="pf-hint">Carregando…</p></div><p id="pf-err" class="pf-err hidden"></p>' +
       '<div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>', 'adm wide');
     let cur = LS.Xmas.server;

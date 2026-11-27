@@ -943,7 +943,7 @@ const PARTY_GRACE = 30000, INVITE_MS = 60000;
 const partyCap = (mode, size) => (mode === 'duel' ? 2 : teamSz(size));
 const MODE_TXT = { duel: 'Duelo', 1: 'Solo', 2: 'Duo', 4: 'Squad' };
 // visual do boneco: só as chaves conhecidas, textos curtos (cada conexão hibernada guarda no máximo 2 KB)
-const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top', 'legs', 'costume'];
+const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top', 'legs', 'costume', 'neck'];
 const cleanLook = l => { if (!l || typeof l !== 'object') return null; const o = {}; for (const k of LOOK_KEYS) if (typeof l[k] === 'string' && l[k].length <= 28) o[k] = l[k]; return o; };
 export class PartyHub {
   constructor(state, env) {

@@ -5,7 +5,7 @@ LS.Thumbs = {
   cache: {}, queue: [], busy: false,
   // boneco "manequim" neutro: assim a foto mostra o item, não o seu visual
   BASE: { skin: '#e0ac69', hair: '#2a1a10', hairStyle: 'curto', eyes: '#3a2a1a', shirt: '#8c96a3', pattern: 'liso', pants: '#4a4f5a', legs: 'lisa',
-    accent: '#d0901a', beard: 'nenhuma', glasses: 'nenhum', mask: 'nenhuma', hat: 'nenhum', top: 'camiseta' },
+    accent: '#d0901a', beard: 'nenhuma', glasses: 'nenhum', mask: 'nenhuma', hat: 'nenhum', top: 'camiseta', neck: 'nenhum' },
   CAMS: { // onde a câmera olha em cada tipo de item
     head: { pos: [0.55, 1.66, 1.5], at: [0, 1.56, 0], fov: 34 },
     torso: { pos: [0.75, 1.15, 2.3], at: [0, 1.05, 0], fov: 33 },

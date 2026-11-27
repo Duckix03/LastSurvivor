@@ -5,7 +5,7 @@ LS.Shop = {
     { id: 'feat', label: 'DESTAQUES', test: i => i.slot === 'costume' },
     { id: 'hat', label: 'CHAPÉUS', test: i => i.slot === 'hat' },
     { id: 'face', label: 'ROSTO', test: i => ['glasses', 'mask', 'hairStyle', 'beard'].includes(i.slot) },
-    { id: 'body', label: 'ROUPAS', test: i => i.slot === 'top' || i.slot === 'pattern' },
+    { id: 'body', label: 'ROUPAS', test: i => i.slot === 'top' || i.slot === 'pattern' || i.slot === 'neck' },
     { id: 'legs', label: 'CALÇAS', test: i => i.slot === 'legs' },
     { id: 'code', label: 'EXCLUSIVOS', test: i => i.code } // só de codiguin: aparecem pra mostrar, não dá pra comprar
   ],
@@ -63,11 +63,11 @@ LS.Shop = {
           'Esses itens só saem no <b style="color:#ffd34d">GOLD ROYALE</b>. Ganhe moedas jogando (abates, vitórias e rounds do duelo) e gire!') + '</p>';
     } else if (xm) {
       // Spin de Natal: os prêmios + as missões embaixo; o Frost Reaper fica em destaque (prêmio máximo)
-      const pool = C.xmasPool(), W = C.XMAS_W, tot = pool.reduce((t, i) => t + W[i.id], 0), star = C.byId['costume:frost'], done = C.xmasDone();
+      const pool = C.xmasPool(), W = C.XMAS_W, tot = pool.reduce((t, i) => t + W[i.id], 0), stars = ['costume:frost', 'costume:gengibre'].map(id => C.byId[id]), done = C.xmasDone();
       h += '<div class="gr xm"><div class="gr-pool"><div class="gr-grid">' + pool.map(i => this.card(i, ' gr-cell')).join('') + '</div>' +
-        '<p class="gr-odds">Chances por giro: ' + pool.map(i => '<span style="color:' + C.RARITY[i.rarity].color + '">' + i.name + ' ' + Math.round(W[i.id] / tot * 100) + '%</span>').join(' · ') + ' · Repetido devolve tickets. A Jaqueta Natalina só vem com o Frost Reaper.</p>' +
+        '<p class="gr-odds">Chances por giro: ' + pool.map(i => '<span style="color:' + C.RARITY[i.rarity].color + '">' + i.name + ' ' + Math.round(W[i.id] / tot * 100) + '%</span>').join(' · ') + ' · Repetido devolve tickets. A Jaqueta Natalina e o Corpo de Biscoito só vêm com o personagem.</p>' +
         LS.Xmas.missionsHtml() + '</div>' +
-        '<div class="gr-side"><div class="gr-star xm-star"><span>PRÊMIO MÁXIMO</span><div class="sh-img big"><img alt="" data-tid="' + star.id + '"></div><b>' + star.name + '</b><small>PERSONAGEM DE EVENTO</small></div>' +
+        '<div class="gr-side"><div class="gr-star xm-star"><span>PRÊMIOS MÁXIMOS</span><div class="xm-stars">' + stars.map(st => '<div><div class="sh-img big"><img alt="" data-tid="' + st.id + '"></div><b>' + st.name + '</b></div>').join('') + '</div><small>PERSONAGENS DE EVENTO</small></div>' +
         (done ? '<p class="xm-done">Você já tem tudo do Spin de Natal!</p>' :
         '<button class="gr-btn xm-btn" data-sh="spin1"><b>1 GIRO</b><span>' + LS.icon('snow', 'snow-i') + ' ' + C.XMAS_COST + '</span></button>' +
         '<button class="gr-btn xm-btn ten" data-sh="spin10"><b>10 + 1 GIROS</b><span>' + LS.icon('snow', 'snow-i') + ' ' + C.XMAS_10 + '</span></button>') + '</div></div>';
@@ -100,7 +100,7 @@ LS.Shop = {
         it.royale ? '<button class="btn btn-primary" data-sh="view" data-v="royale">GIRAR NO GOLD ROYALE</button>' :
         '<button class="btn btn-primary" data-sh="buy" data-v="' + id + '">COMPRAR ' + this.priceTag(it) + '</button>') + '</div>');
     if (!own && it.code) document.querySelector('.sh-modal-box .sh-sub').insertAdjacentHTML('afterend', '<p class="sh-sub" style="color:#2ee6ff">Item exclusivo: só sai em codiguin.</p>');
-    if (!own && it.ev) document.querySelector('.sh-modal-box .sh-sub').insertAdjacentHTML('afterend', '<p class="sh-sub" style="color:#ff6a7a">Item do <b>evento de Natal</b>: ' + (it.piece ? 'vem junto com o Frost Reaper.' : 'sai no Spin de Natal ou em codiguin.') + '</p>');
+    if (!own && it.ev) document.querySelector('.sh-modal-box .sh-sub').insertAdjacentHTML('afterend', '<p class="sh-sub" style="color:#ff6a7a">Item do <b>evento de Natal</b>: ' + (it.piece ? 'vem junto com o ' + ((C.pieceOf(it) || {}).name || 'personagem') + '.' : 'sai no Spin de Natal ou em codiguin.') + '</p>');
     if (!own && it.royale) document.querySelector('.sh-modal-box .sh-sub').insertAdjacentHTML('afterend', '<p class="sh-sub" style="color:#ffd34d">Esse item só sai no <b>Gold Royale</b>. Gire pra tentar a sorte!</p>');
   },
   async doBuy(id) {
