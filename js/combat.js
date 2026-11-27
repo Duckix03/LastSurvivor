@@ -326,7 +326,7 @@ LS.Combat = {
       if (hit) {
         // queda de dano com a distância
         const fall = t > wdef.range ? LS.util.clamp(1 - (t - wdef.range) / (wdef.range * 0.6), 0.25, 1) : 1;
-        let dmg = wdef.dmg * fall * (hit.head ? (wdef.cat === 'Sniper' ? 2.5 : 1.8) : 1);
+        let dmg = (hit.head && wdef.hsDmg ? wdef.hsDmg : wdef.dmg * (hit.head ? (wdef.cat === 'Sniper' ? 2.5 : 1.8) : 1)) * fall;
         if (!shooter.isPlayer) dmg *= LS.Game.botDamageMul;
         LS.Effects.impact(end, true, d);
         if (visual) continue;
