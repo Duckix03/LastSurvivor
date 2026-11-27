@@ -224,7 +224,7 @@ LS.Player = class extends LS.Fighter {
   }
 
   // ---------- assistência de mira ----------
-  // PC: bem leve (cone de 2–3°, a mira fica só um pouco "grudenta" no inimigo). Nunca trava e não atravessa parede.
+  // PC: moderado (cone de 3,5–4,5°, mira "grudenta" + puxada suave e um snap curto ao atirar). Nunca trava, não atravessa parede e fica desligado na luneta.
   // CELULAR (estilo Free Fire): dedo é impreciso, então a ajuda é forte:
   //  - cone grande (11° atirando · 8° mirando) e alcance longo, escolhe o inimigo mais perto da mira
   //  - ao APERTAR o tiro, dá um "snap" rápido pro peito/pescoço do alvo (pull bem forte nos primeiros 0,2 s)
@@ -238,8 +238,8 @@ LS.Player = class extends LS.Fighter {
     const d = this.wdef(), I = LS.Input;
     const mob = !!(LS.Touch && LS.Touch.active);
     // cone: [mirando, atirando] em graus · pull: velocidade máxima da puxada em °/s · gain: força da puxada (por segundo)
-    const A = mob ? { cone: [8, 11], slow: 0.65, pull: [60, 100], gain: 11, range: 260, aimY: [1.3, 1.0] }
-                  : { cone: [2.2, 3.0], slow: 0.16, pull: [0.6, 1.2], gain: 1.5, range: 160, aimY: [1.1, 0.8] };
+    const A = mob ? { cone: [8, 11], slow: 0.65, pull: [60, 100], gain: 11, range: 260, aimY: [1.3, 1.0], snap: 1.9 }
+                  : { cone: [3.5, 4.5], slow: 0.30, pull: [8, 16], gain: 4, range: 220, aimY: [1.2, 0.9], snap: 1.4 }; // PC: ~15% da força do celular (antes: cone 2–3°, pull 0,6–1,2°/s, quase imperceptível)
     if (LS.settings.aimAssist === false || !this.alive || this.state !== 'ground' || !d || this.reloadT > 0 || this.healType || (this.scopeUp && !mob)) { this._aaTarget = null; this._wasFiring = false; return out; }
     if (this.scopeUp) { A.cone = [3.2, 3.2]; A.slow = 0.4; A.pull = [14, 14]; A.gain = 5; A.range = d.range; } // celular na luneta: só um pouco
     const firing = I.mouse.left;
@@ -284,11 +284,11 @@ LS.Player = class extends LS.Fighter {
     out.slow = 1 - A.slow * Math.max(0.35, k);       // menos sensível em cima do alvo (gruda)
     // o jogador arrastando o dedo pra longe do alvo manda mais: afrouxa a puxada (pode escapar / trocar de alvo)
     let free = 1;
-    if (mob) {
-      const m = Math.hypot(I.mouse.dx, I.mouse.dy);
-      if (m > 6 && ((-I.mouse.dx) * e.ey + (-I.mouse.dy) * e.ep) < 0) free = Math.max(0, 1 - m / 45);
+    { // quem arrasta o mouse/dedo pra longe do alvo manda: a puxada afrouxa (PC precisa de limiar maior: o mouse anda mais por quadro)
+      const m = Math.hypot(I.mouse.dx, I.mouse.dy), th = mob ? 6 : 12, rng = mob ? 45 : 70;
+      if (m > th && ((-I.mouse.dx) * e.ey + (-I.mouse.dy) * e.ep) < 0) free = Math.max(0, 1 - m / rng);
     }
-    const snap = mob && this._aaSnap > 0 ? 1.9 : 1; // primeiros 0,2 s do tiro: puxa quase o dobro
+    const snap = this._aaSnap > 0 ? A.snap : 1; // primeiros 0,2 s do tiro: puxa mais forte (celular quase o dobro, PC um pouco)
     const maxStep = (firing ? A.pull[1] : A.pull[0]) * Math.PI / 180 * dt * (0.5 + 0.5 * Math.max(k, 0.3)) * snap * free;
     const step = Math.min(e.err, e.err * Math.min(1, dt * A.gain * snap) * free, maxStep), inv = e.err > 1e-5 ? step / e.err : 0;
     out.yaw = -e.ey * inv; out.pitch = e.ep * inv;
