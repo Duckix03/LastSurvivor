@@ -56,7 +56,7 @@ const NAME_RE = /^[A-Za-z0-9_.\-À-ÿ]{3,16}$/;
 const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top', 'legs', 'neck'];
 const ITEM_RE = /^[a-zA-Z]{2,10}:[a-zA-Z0-9À-ÿ .\-]{1,24}$/; // itens da loja: "parte:valor" (ex.: hat:coroa)
 // snow = SnowTickets do evento de Natal; x* = progresso das missões do evento (xy = ano do evento, xc = missões resgatadas)
-const STAT_KEYS = ['games', 'wins', 'kills', 'xp', 'coins', 'dmg', 'best', 'snow', 'xy', 'xg', 'xk', 'xh', 'xw', 'xd', 'xmk', 'xmh', 'xc'];
+const STAT_KEYS = ['games', 'wins', 'kills', 'xp', 'coins', 'dmg', 'best', 'snow', 'xy', 'xg', 'xk', 'xh', 'xw', 'xd', 'xmk', 'xmh', 'xc', 'xday'];
 // preços em diamantes (iguais aos de js/cosmetics.js)
 const DIAMOND_PRICES = { 'costume:dino': 1800, 'costume:rei': 4000, 'costume:cyber': 3500, 'costume:anjo': 2200, 'costume:caveira': 1500, 'costume:gasmask': 1200, 'costume:ninja': 1000 };
 // itens só de codiguin (iguais aos de js/cosmetics.js) e as peças que cada fantasia exclusiva libera

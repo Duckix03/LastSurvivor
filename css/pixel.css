@@ -474,3 +474,6 @@ body.mobile .sh-grid.big .sh-img img { height: 100% !important; width: 100% !imp
 .xm-stars b { font-size: 14px !important; line-height: 1.1; }
 body.mobile .xm-stars .sh-img.big { height: 104px; }
 body.mobile .xm-stars b { font-size: 11px !important; }
+#panel-shop > .panel { position: relative; } /* a janelinha da loja cobre o painel todo, mesmo rolado */
+.xm-missions h4 small { margin-left: auto; font: 600 11px var(--body); letter-spacing: 0.5px; color: #9aa4b0; }
+body.mobile .xm-missions h4 small { font-size: 9px; }

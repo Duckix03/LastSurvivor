@@ -81,11 +81,16 @@ LS.Shop = {
         '<button class="gr-btn ten" data-sh="spin10"><b>10 + 1 GIROS</b><span>' + LS.icon('coin', 'coin-i') + ' ' + C.ROYALE_10.toLocaleString('pt-BR') + '</span></button></div></div>';
     }
     h += '<div class="panel-buttons"><button class="btn btn-primary" data-sh="back">VOLTAR</button></div><div id="sh-modal" class="hidden"></div>';
-    const body = document.getElementById('shop-body');
+    const body = document.getElementById('shop-body'), sc = body.closest('.panel-scroll'), key = this.view + '/' + this.tab;
+    const top = sc && this._key === key ? sc.scrollTop : 0; this._key = key; // redesenhar (resgatar missão, girar) não pula pro topo
     body.innerHTML = h; this.fillThumbs(body);
+    if (sc) sc.scrollTop = top;
     // o VOLTAR vai pra barra de baixo do painel (fica parado enquanto a loja rola)
     const panel = body.closest('.panel'), pb = body.querySelector(':scope > .panel-buttons');
     if (panel && pb && panel.classList.contains('wrapped')) { panel.querySelectorAll(':scope > .panel-buttons').forEach(x => x.remove()); panel.appendChild(pb); }
+    // a janelinha (prêmio, missão, compra) fica presa no painel, não no conteúdo que rola: senão, rolando pra baixo, ela aparecia lá em cima cortada
+    const md = body.querySelector('#sh-modal');
+    if (panel && md) { panel.querySelectorAll(':scope > #sh-modal').forEach(x => x.remove()); panel.appendChild(md); }
   },
   modal(html) { const m = document.getElementById('sh-modal'); m.innerHTML = '<div class="sh-modal-box">' + html + '</div>'; m.classList.remove('hidden'); this.fillThumbs(m); },
   closeModal() { const m = document.getElementById('sh-modal'); if (m) m.classList.add('hidden'); },
