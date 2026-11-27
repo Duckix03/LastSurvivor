@@ -53,7 +53,7 @@ LS.Cosmetics = {
     ['mask', 'gengibre', 'Rosto de Biscoito', 2], ['top', 'gengibre', 'Corpo de Biscoito', 3, 1], ['legs', 'gengibre', 'Pernas de Biscoito', 1]],
   EVENT_COSTUMES: [
     { id: 'frost', name: 'Frost Reaper', rarity: 5, look: { hat: 'gorro natal', mask: 'floco', top: 'natal', pattern: 'estrela', legs: 'natal', shirt: '#141416', accent: '#c8182a', pants: '#141416', hair: '#e8e8e8', hairStyle: 'curto', glasses: 'nenhum', beard: 'nenhuma', neck: 'nenhum' } },
-    { id: 'gengibre', name: 'Biscoito de Gengibre', rarity: 5, look: { skin: '#b8692e', hair: '#b8692e', hairStyle: 'careca', mask: 'gengibre', top: 'gengibre', pattern: 'liso', legs: 'gengibre', shirt: '#b8692e', accent: '#b8692e', pants: '#b8692e', hat: 'nenhum', glasses: 'nenhum', beard: 'nenhuma', neck: 'nenhum' } }
+    { id: 'gengibre', name: 'Biscoito de Gengibre', rarity: 5, look: { hairStyle: 'careca', mask: 'gengibre', top: 'gengibre', pattern: 'liso', legs: 'gengibre', shirt: '#b8692e', accent: '#b8692e', pants: '#b8692e', hat: 'nenhum', glasses: 'nenhum', beard: 'nenhuma', neck: 'nenhum' } }
   ],
   // fantasias completas: comprar dá todas as peças de uma vez. Pagas em DIAMANTES (dprice)
   COSTUMES: [

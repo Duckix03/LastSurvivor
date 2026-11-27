@@ -14,7 +14,8 @@ LS.Skin = {
   GLASSES: ['nenhum', 'escuros', 'estrela', 'viseira'],
   MASKS: ['nenhuma', 'bandana', 'máscara'],
   HATS: ['nenhum', 'gorro', 'chapéu', 'faixa'],
-  NECKS: ['nenhum'], // colares (pisca-pisca de Natal...)
+  NECKS: ['nenhum'],
+  COOKIE: '#b8692e', // cor do biscoito de gengibre (fixa: não depende do tom de pele, senão a roupa parecia pele = pelado) // colares (pisca-pisca de Natal...)
   TOPS: ['camiseta', 'jaqueta', 'moletom', 'regata', 'colete'],
   // trajes prontos (originais do LAST SURVIVOR)
   PRESETS: {
@@ -155,13 +156,13 @@ LS.Skin = {
       rect(H[5], '#111114', 0.06, [5, 8]);
     }
     else if (look.mask === 'gengibre') { // biscoito de gengibre: olhinhos de chocolate, bochecha rosa e sorriso de glacê
-      for (let y = 3; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, look.skin, 0.05);
+      H.forEach(r => rect(r, this.COOKIE, 0.05));                                 // a cabeça toda vira biscoito
       [[2, 3], [5, 3]].forEach(([x, y]) => px(fx + x, fy + y, '#fff6ea', 0));
       [[2, 4], [5, 4]].forEach(([x, y]) => px(fx + x, fy + y, '#2a1206', 0));
       [[1, 5], [6, 5]].forEach(([x, y]) => px(fx + x, fy + y, '#e8708a', 0));
       [[1, 6], [6, 6], [2, 7], [3, 7], [4, 7], [5, 7]].forEach(([x, y]) => px(fx + x, fy + y, '#fff6ea', 0));
       [F, H[0], H[1], H[5]].forEach(r => this.icing(px, r, 0));                   // glacê em volta da cabeça
-      rect(H[2], col(look.skin, 1.08), 0.06);
+      rect(H[2], col(this.COOKIE, 1.08), 0.06);
     }
     else if (look.mask === 'máscara') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#3a3d42', 0.08); px(fx + 2, fy + 6, '#1a1a1a', 0); px(fx + 5, fy + 6, '#1a1a1a', 0); }
     if (look.glasses === 'escuros') [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, '#101010', 0)); // o resto é 3D (lentes redondas)
@@ -240,7 +241,7 @@ LS.Skin = {
       [[1, 9], [6, 2], [5, 9], [2, 5]].forEach(([x, y]) => px(B[5][0] + x, B[5][1] + y, '#ffd6dc', 0)); // pontinhos de neve (os flocos são 3D)
       px(front[0] + 6, front[1] + 5, '#ffd6dc', 0); px(B[0][0] + 1, B[0][1] + 8, '#ffd6dc', 0); px(B[1][0] + 2, B[1][1] + 3, '#ffd6dc', 0);
     } else if (top === 'gengibre') { // biscoito de gengibre: corpo de biscoito com borda tostada e glacê em zigue-zague
-      const ck = look.skin, dk = col(look.skin, 0.78);
+      const ck = this.COOKIE, dk = col(ck, 0.78);
       B.forEach(r => rect(r, col(ck, 1.04), 0.06));
       [B[4], B[5]].forEach(r => { for (let y = 0; y < 12; y++) { px(r[0], r[1] + y, dk, 0.04); px(r[0] + 7, r[1] + y, dk, 0.04); } });
       [B[0], B[1], B[4], B[5]].forEach(r => { this.icing(px, r, 0); this.icing(px, r, 9); });
@@ -250,7 +251,7 @@ LS.Skin = {
     else if (top !== 'gengibre') [B[0], B[1], B[4], B[5]].forEach(r => rect(r, '#3a2412', 0.1, [11, 12])); // cinto
     // ---- braços ----
     const A = this.faceRects('arm');
-    const SLV = { jaqueta: acc, moletom: acc, terno: '#23262d', kimono: look.shirt, armadura: '#8a9099', couro: '#1c1c1f', natal: '#c8182a', gengibre: look.skin }; // roupas de manga comprida
+    const SLV = { jaqueta: acc, moletom: acc, terno: '#23262d', kimono: look.shirt, armadura: '#8a9099', couro: '#1c1c1f', natal: '#c8182a', gengibre: this.COOKIE }; // roupas de manga comprida
     const longS = !!SLV[top], sleeve = longS ? SLV[top] : look.shirt, sl = top === 'regata' ? 0 : longS ? 10 : 4;
     A.forEach((r, i) => { if (i === 2) rect(r, sl ? sleeve : look.skin, 0.06); else if (i === 3) rect(r, look.skin, 0.05); else { rect(r, sleeve, 0.06, [0, sl]); rect(r, look.skin, 0.05, [sl, 12]); } });
     if (top === 'natal') A.forEach((r, i) => { // manga com sombra por dentro, punho de pelinho (3D), luva preta com friso vermelho
@@ -259,7 +260,7 @@ LS.Skin = {
       rect(r, '#f4f4f4', 0.03, [8, 10]); rect(r, '#141416', 0.05, [10, 12]); px(r[0], r[1] + 10, '#c8182a', 0); px(r[0] + 3, r[1] + 10, '#c8182a', 0);
       px(r[0] + 1, r[1] + 11, look.skin, 0.03); px(r[0] + 2, r[1] + 11, look.skin, 0.03);
     });
-    if (top === 'gengibre') A.forEach((r, i) => { if (i < 2 || i > 3) this.icing(px, r, 7); }); // glacê no pulso
+    if (top === 'gengibre') A.forEach((r, i) => { if (i !== 2) rect(r, this.COOKIE, 0.06, i === 3 ? null : [10, 12]); if (i < 2 || i > 3) this.icing(px, r, 7); }); // mão de biscoito + glacê no pulso
     // ---- pernas ----
     const L = this.faceRects('leg');
     L.forEach((r, i) => { if (i === 2) rect(r, look.pants, 0.06); else if (i === 3) rect(r, '#1c1c1c', 0.1); else { rect(r, look.pants, 0.06, [0, 10]); rect(r, '#1c1c1c', 0.12, [10, 12]); } });
@@ -275,9 +276,9 @@ LS.Skin = {
       [L[0], L[1]].forEach(r => px(r[0] + 2, r[1] + 10, '#ffd23a', 0)); rect(L[3], '#f4f4f4', 0.03); // estrelinha dourada do lado
     }
     else if (lg === 'gengibre') { // biscoito: perna de biscoito, glacê no tornozelo e pé tostado
-      L.forEach(r => rect(r, col(look.skin, 1.04), 0.06));
-      sides.forEach(r => { this.icing(px, r, 7); rect(r, col(look.skin, 0.78), 0.04, [11, 12]); });
-      rect(L[3], col(look.skin, 0.72), 0.04);
+      L.forEach(r => rect(r, col(this.COOKIE, 1.04), 0.06));
+      sides.forEach(r => { this.icing(px, r, 7); rect(r, col(this.COOKIE, 0.78), 0.04, [11, 12]); });
+      rect(L[3], col(this.COOKIE, 0.72), 0.04);
     }
     else if (lg === 'chamas') sides.forEach(r => { for (let x = 0; x < r[2]; x++) { const h = 2 + Math.floor(rnd() * 4); for (let y = 0; y < h; y++) px(r[0] + x, r[1] + 9 - y, y > h - 2 ? '#ffe14a' : y > h * 0.5 ? '#ff8a1f' : '#e0301a', 0.06); } });
   },
