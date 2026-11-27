@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '95'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '96'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // versão do ONLINE (crossplay navegador ↔ app). Suba +1 quando mudar algo que quebra a partida online
 // (armas, mapa, protocolo de rede...) e suba junto o MIN_PROTO em server/src/worker.js, depois "npx wrangler deploy".
 // Quem estiver com versão mais velha (ex.: APK antigo) recebe o aviso pra atualizar em vez de entrar com regras diferentes.
@@ -143,7 +143,7 @@ LS.AMMO_TYPES = {
 // dmg por projétil, rate = tiros/segundo, recoil = graus de subida por tiro, spread = dispersão (rad)
 LS.WEAPONS = {
   m1911:  { name: 'M1911',      cat: 'Pistola',  ammo: 'light',  dmg: 22, rate: 4,   mag: 12, reload: 1.3, recoil: 1.6, spread: 0.018, range: 120, pellets: 1, auto: false, zoom: 1.3, color: 0x333333, len: 0.35, snd: { freq: 900,  dur: 0.12, body: 180, vol: 0.55 }, rarity: 1 },
-  deagle: { name: 'Desert Eagle', cat: 'Pistola', ammo: 'light', dmg: 48, rate: 2,   mag: 7,  reload: 1.6, recoil: 4.5, spread: 0.02,  range: 150, pellets: 1, auto: false, zoom: 1.35,  color: 0x9a9a9a, len: 0.42, snd: { freq: 600,  dur: 0.22, body: 110, vol: 0.8 }, rarity: 2 },
+  deagle: { name: 'Desert Eagle', cat: 'Pistola', ammo: 'light', dmg: 48, hsDmg: 200, rate: 2,   mag: 7,  reload: 1.6, recoil: 4.5, spread: 0.02,  range: 150, pellets: 1, auto: false, zoom: 1.35,  color: 0x9a9a9a, len: 0.42, snd: { freq: 600,  dur: 0.22, body: 110, vol: 0.8 }, rarity: 2 },
   mp5:    { name: 'MP5',        cat: 'SMG',      ammo: 'light',  dmg: 17, rate: 13,  mag: 30, reload: 2.0, recoil: 0.9, spread: 0.035, range: 110, pellets: 1, auto: true,  zoom: 1.4,  color: 0x222222, len: 0.6, snd: { freq: 1300, dur: 0.08, body: 220, vol: 0.45 }, rarity: 1 },
   ump:    { name: 'UMP',        cat: 'SMG',      ammo: 'light',  dmg: 21, rate: 10,  mag: 25, reload: 2.2, recoil: 1.1, spread: 0.03,  range: 120, pellets: 1, auto: true,  zoom: 1.45, color: 0x3a3a2a, len: 0.62, snd: { freq: 1100, dur: 0.09, body: 190, vol: 0.5 }, rarity: 2 },
   ak47:   { name: 'AK-47',      cat: 'Rifle',    ammo: 'rifle',  dmg: 32, rate: 9,   mag: 30, reload: 2.5, recoil: 1.8, spread: 0.025, range: 250, pellets: 1, auto: true,  zoom: 1.7,  color: 0x6b4423, len: 0.85, snd: { freq: 700,  dur: 0.14, body: 130, vol: 0.7 }, rarity: 2 },
