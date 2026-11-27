@@ -326,9 +326,6 @@ body.mobile #squad .sq b { font-size: 10px; } body.mobile #squad .sq i { height:
 .lb-item.xmas > span { background: linear-gradient(135deg, #ffffff, #bfefff) !important; color: #c8182a !important; }
 .lb-item.xmas em.xm-new { background: #fff; color: #c8182a; }
 .lb-item.xmas em.lb-badge { right: 8px; top: auto; bottom: -6px; background: #2ee6ff; color: #04222e; }
-/* com o botão do evento o menu ganha 1 item: aperta um pouco pra caber */
-body.xmas-on:not(.mobile) .lb-menu { gap: 4px; }
-body.xmas-on:not(.mobile) .lb-item { padding-top: 2px; padding-bottom: 2px; }
 .sh-views button.xmas { display: inline-flex; align-items: center; gap: 4px; }
 .sh-views button.xmas.on { background: linear-gradient(135deg, #ff6a7a, #c8182a 55%, #7a0a16) !important; color: #fff !important; border-color: #fff !important; }
 .sh-views button.xmas .snow-i { color: currentColor; }
