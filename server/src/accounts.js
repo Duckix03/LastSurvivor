@@ -55,7 +55,8 @@ const RESERVED = ['admin', 'adm', 'moderador', 'owner', 'dono', 'dev', 'suporte'
 const NAME_RE = /^[A-Za-z0-9_.\-À-ÿ]{3,16}$/;
 const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top', 'legs'];
 const ITEM_RE = /^[a-zA-Z]{2,10}:[a-zA-Z0-9À-ÿ .\-]{1,24}$/; // itens da loja: "parte:valor" (ex.: hat:coroa)
-const STAT_KEYS = ['games', 'wins', 'kills', 'xp', 'coins', 'dmg', 'best'];
+// snow = SnowTickets do evento de Natal; x* = progresso das missões do evento (xy = ano do evento, xc = missões resgatadas)
+const STAT_KEYS = ['games', 'wins', 'kills', 'xp', 'coins', 'dmg', 'best', 'snow', 'xy', 'xg', 'xk', 'xh', 'xw', 'xd', 'xmk', 'xmh', 'xc'];
 // preços em diamantes (iguais aos de js/cosmetics.js)
 const DIAMOND_PRICES = { 'costume:dino': 1800, 'costume:rei': 4000, 'costume:cyber': 3500, 'costume:anjo': 2200, 'costume:caveira': 1500, 'costume:gasmask': 1200, 'costume:ninja': 1000 };
 // itens só de codiguin (iguais aos de js/cosmetics.js) e as peças que cada fantasia exclusiva libera
@@ -65,6 +66,9 @@ const EXCLUSIVE = new Set(['hat:coroa diamante', 'hat:astronauta', 'hat:pirata',
   'pattern:glitch', 'pattern:circuito', 'pattern:diamante', ...Object.keys(EXCLUSIVE_COSTUMES)]);
 // peças que só vêm com uma fantasia de diamante
 const DIAMOND_PIECES = { 'costume:dino': ['hat:dino', 'pattern:escamas'] };
+// personagens de evento (Spin de Natal ou codiguin): o codiguin dá a fantasia com as peças. NÃO são protegidos (o spin é no jogo, igual ao Gold Royale)
+const EVENT_COSTUMES = { 'costume:frost': ['hat:gorro natal', 'mask:floco', 'top:natal', 'pattern:estrela', 'legs:natal'] };
+const EVENT_SET = new Set(Object.entries(EVENT_COSTUMES).flat(2)); // criador não pode dar item de evento
 const PIECE_SET = new Set(Object.values(DIAMOND_PIECES).flat());
 // esses só entram na conta pelo servidor (compra com diamante ou codiguin): o jogo não consegue se dar eles
 const PROTECTED = it => EXCLUSIVE.has(it) || it in DIAMOND_PRICES || PIECE_SET.has(it);
@@ -132,14 +136,15 @@ export class Accounts {
     if (!this.presT || now - this.presT > 10000) { this.presT = now; for (const [k, t] of P) if (now - t > 100000) P.delete(k); }
     const g = await this.gameCfg();
     if (this.mbT === undefined) { const all = (await this.st.get('mb:all')) || []; this.mbT = all.reduce((m, x) => Math.max(m, x.created), 0); }
-    return { online: P.size, theme: g.theme, maint: g.maint, msg: g.msg, mailT: this.mbT };
+    return { online: P.size, theme: g.theme, maint: g.maint, msg: g.msg, mailT: this.mbT, xmas: g.xmas };
   }
   // config do jogo (fica na memória depois da 1ª leitura: o "X jogando" pede isso toda hora)
-  async gameCfg() { return this.gcfg || (this.gcfg = Object.assign({ theme: 'auto', maint: false, msg: '' }, (await this.st.get('cfg:game')) || {})); }
+  async gameCfg() { return this.gcfg || (this.gcfg = Object.assign({ theme: 'auto', maint: false, msg: '', xmas: 'auto' }, (await this.st.get('cfg:game')) || {})); }
   async setGame(b) {
     const g = Object.assign({}, await this.gameCfg());
     if (b.theme !== undefined) { if (!THEMES.includes(b.theme)) return fail('Tema inválido.'); g.theme = b.theme; }
     if (b.maint !== undefined) g.maint = !!b.maint;
+    if (b.xmas !== undefined) { if (!['auto', 'on', 'off'].includes(b.xmas)) return fail('Opção inválida.'); g.xmas = b.xmas; } // evento de Natal
     if (b.msg !== undefined) g.msg = txt(b.msg, 160);
     this.gcfg = g; await this.st.put('cfg:game', g);
     return json({ game: g });
@@ -452,7 +457,7 @@ export class Accounts {
     a.profile = a.profile || this.cleanProfile({});
     const owned = a.profile.owned || (a.profile.owned = []);
     const had = owned.includes(item);
-    for (const x of [item, ...(EXCLUSIVE_COSTUMES[item] || DIAMOND_PIECES[item] || [])]) if (!owned.includes(x)) owned.push(x);
+    for (const x of [item, ...(EXCLUSIVE_COSTUMES[item] || DIAMOND_PIECES[item] || EVENT_COSTUMES[item] || [])]) if (!owned.includes(x)) owned.push(x);
     return !had;
   }
   async buyDiamond(a, b) {
@@ -567,7 +572,7 @@ export class Accounts {
     if (made.length >= L.perWeek) return fail(L.perWeek ? 'Você já criou ' + L.perWeek + ' codiguins essa semana. Volte em ' + Math.ceil((Math.min(...made) + WEEK_MS - now) / 864e5) + ' dia(s).' : 'Os codiguins de criador estão desligados no momento.', 429);
     const item = b.item ? String(b.item) : null;
     // exclusivos de codiguin só se o owner liberar; fantasias e peças de diamante nunca
-    if (item && (!L.items || !ITEM_RE.test(item) || (PROTECTED(item) && !(L.excl && EXCLUSIVE.has(item))))) return fail(L.items ? 'Esse item não pode ir em codiguin de criador.' : 'Itens em codiguin de criador estão desligados.');
+    if (item && (!L.items || !ITEM_RE.test(item) || (PROTECTED(item) && !(L.excl && EXCLUSIVE.has(item))) || EVENT_SET.has(item))) return fail(L.items ? 'Esse item não pode ir em codiguin de criador.' : 'Itens em codiguin de criador estão desligados.');
     if (item && !L.legend && ROYALE_LEGEND.has(item)) return fail('Itens lendários não estão liberados pra criadores.');
     const coins = nint(b.coins, 1e6), diamonds = nint(b.diamonds, 1e5), maxUses = nint(b.maxUses, 1e6), days = nint(b.days, 3650);
     if (coins > L.maxCoins) return fail('Máximo de ' + L.maxCoins.toLocaleString('pt-BR') + ' moedas por codiguin.');

@@ -198,6 +198,7 @@ LS.Presence = {
       const r = await fetch(LS.NET_URL.replace(/\/$/, '') + '/api/presence', { method: 'POST', body: JSON.stringify({ sid: this.sid }) }); // sem cabeçalho customizado = pedido "simples": o navegador não faz o OPTIONS antes
       const j = await r.json();
       if (typeof j.online === 'number') this.show(Math.max(1, j.online)); // no mínimo você
+      if (j.xmas) LS.Xmas.setServer(j.xmas); // evento de Natal: auto (dezembro) / forçado pelo admin
       if (j.theme) LS.LobbyThemes.setServer(j.theme); // tema do lobby escolhido pelo dono do jogo
       if (j.maint !== undefined) LS.Maint.set(j.maint, j.msg);
       if (j.mailT && LS.Mail) LS.Mail.seen(j.mailT); // chegou mensagem nova pra todos

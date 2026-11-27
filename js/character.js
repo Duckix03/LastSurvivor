@@ -142,6 +142,16 @@ LS.CharacterModel = class {
     if (look.hat === 'gorro') { add(8.8, 3, 8.8, 0, 7.6, 0, M(acc)); add(9, 1, 9, 0, 6.2, 0, M(new THREE.Color(acc).multiplyScalar(0.75).getHex())); }
     else if (look.hat === 'chapéu') { add(12, 0.6, 12, 0, 6.8, 0, M(0x6a4a2a)); add(7.6, 2.6, 7.6, 0, 8.4, 0, M(0x6a4a2a)); add(7.8, 0.7, 7.8, 0, 7.4, 0, M(acc)); }
     else if (look.hat === 'faixa') add(8.5, 1, 8.5, 0, 6.6, 0, M(acc));
+    else if (look.hat === 'gorro natal') { // Frost Reaper: gorro de Papai Noel com barra de pelinho e pompom que balança
+      const R = M(0xc8182a), Rd = M(0xa01020), W = M(0xf6f6f6);
+      add(10, 2, 10, 0, 6.9, 0, W);                 // barra de pelinho
+      add(9, 2.4, 9, 0, 9, -0.2, R); add(7.4, 2.2, 7.4, 0.3, 11.2, -0.8, R);
+      const fl = new THREE.Group(); fl.position.set(0.5 * S, 12.2 * S, -1.4 * S); g.add(fl); // ponta mole: cai pra trás e balança
+      const part = (w, h, d, x, y, z, mat) => { const m = new THREE.Mesh(LS.boxGeo(w * S, h * S, d * S), mat); m.position.set(x * S, y * S, z * S); m.castShadow = true; fl.add(m); return m; };
+      part(5.6, 2, 5.6, 0.3, 0.8, -0.6, R); part(4, 1.8, 4, 0.8, 1.6, -2.6, Rd); part(3, 2.4, 3, 1.2, 0.6, -4.4, R);
+      part(3, 3, 3, 1.4, -1.4, -5.6, W);            // pompom
+      this.fx.push(t => { fl.rotation.x = Math.sin(t * 2.1) * 0.08; fl.rotation.z = Math.sin(t * 1.6 + 1) * 0.06; });
+    }
     // ---- itens da loja ----
     const gold = 0xffc531, hairC = new THREE.Color(look.hair).getHex(), glow = c => new THREE.MeshBasicMaterial({ color: c });
     if (look.hat === 'coroa') {

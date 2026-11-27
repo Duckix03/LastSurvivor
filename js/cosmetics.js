@@ -6,7 +6,8 @@ LS.Cosmetics = {
   RARITY: [
     { name: 'COMUM', color: '#9aa4b0' }, { name: 'RARO', color: '#3ab4ff' },
     { name: 'ÉPICO', color: '#b060ff' }, { name: 'LENDÁRIO', color: '#ffc531' },
-    { name: 'CÓDIGO', color: '#2ee6ff' } // só sai em codiguin
+    { name: 'CÓDIGO', color: '#2ee6ff' }, // só sai em codiguin
+    { name: 'MÍTICO', color: '#ff3a4a' } // prêmio máximo de evento
   ],
   // cada parte do visual: campo no "look", nome e onde a câmera foca na foto 3D
   SLOTS: {
@@ -44,6 +45,12 @@ LS.Cosmetics = {
   ],
   // peças que só vêm junto com a fantasia (não vendem separado): [parte, valor, nome, raridade]
   COSTUME_PIECES: [['hat', 'dino', 'Capuz de Dino', 3], ['pattern', 'escamas', 'Escamas de Dino', 3]],
+  // EVENTO DE NATAL: só saem no Spin de Natal (SnowTickets) ou em codiguin. [parte, valor, nome, raridade]
+  EVENT_ITEMS: [['hat', 'gorro natal', 'Gorro de Natal', 2], ['mask', 'floco', 'Máscara Floco', 2], ['top', 'natal', 'Jaqueta Natalina', 3, 1],
+    ['pattern', 'estrela', 'Corrente Estrela', 1], ['legs', 'natal', 'Calça Natalina', 1]],
+  EVENT_COSTUMES: [
+    { id: 'frost', name: 'Frost Reaper', rarity: 5, look: { hat: 'gorro natal', mask: 'floco', top: 'natal', pattern: 'estrela', legs: 'natal', shirt: '#141416', accent: '#c8182a', pants: '#141416', hair: '#e8e8e8', hairStyle: 'curto', glasses: 'nenhum', beard: 'nenhuma' } }
+  ],
   // fantasias completas: comprar dá todas as peças de uma vez. Pagas em DIAMANTES (dprice)
   COSTUMES: [
     { id: 'rei', dprice: 4000, name: 'Rei do Galpão', rarity: 3, price: 7500, look: { hat: 'coroa', top: 'terno', shirt: '#b03030', pattern: 'liso', pants: '#111111', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', beard: 'cheia', accent: '#e0a020' } },
@@ -69,6 +76,8 @@ LS.Cosmetics = {
     this.COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: c.rarity, price: c.price, dprice: c.dprice, free: false, look: c.look }));
     this.COSTUME_PIECES.forEach(([slot, val, name, rarity]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity, price: 0, free: false, piece: true }));
     this.EXCLUSIVE.forEach(([slot, val, name]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity: 4, price: 0, free: false, code: true }));
+    this.EVENT_ITEMS.forEach(([slot, val, name, rarity, piece]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity, price: [300, 500, 800, 1200][rarity], free: false, ev: true, piece: !!piece }));
+    this.EVENT_COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: c.rarity, price: 0, free: false, ev: true, look: c.look }));
     this.EXCLUSIVE_COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: 4, price: 0, free: false, code: true, look: c.look }));
     this.byId = {}; this.items.forEach(i => { this.byId[i.id] = i; });
     // presets antigos (Sobrevivente, Militar...) viram fantasias grátis
@@ -118,6 +127,7 @@ LS.Cosmetics = {
     if (it.code) return 'Esse item só sai em codiguin.';
     if (it.piece) return 'Essa peça vem junto com a fantasia.';
     if (it.royale) return 'Esse item só sai no Gold Royale.';
+    if (it.ev) return 'Esse item só sai no Spin de Natal (ou em codiguin).';
     if (it.dprice) return 'Esse item é comprado com diamantes.';
     if (this.coins() < it.price) return 'Moedas insuficientes: faltam ' + (it.price - this.coins()).toLocaleString('pt-BR') + '.';
     LS.stats.coins -= it.price; LS.saveStats();
@@ -136,7 +146,7 @@ LS.Cosmetics = {
   // ---------- Gold Royale ----------
   // chance por raridade (comum muito mais fácil que lendário); repetido vira moedas de volta
   ROYALE_WEIGHT: [46, 32, 16, 6],
-  royalePool() { return this.items.filter(i => !i.free && !i.code && !i.piece && i.slot !== 'costume'); },
+  royalePool() { return this.items.filter(i => !i.free && !i.code && !i.piece && !i.ev && i.slot !== 'costume'); },
   spin() {
     const pool = this.royalePool(), W = this.ROYALE_WEIGHT;
     let tot = 0; pool.forEach(i => { tot += W[i.rarity]; });
@@ -145,6 +155,28 @@ LS.Cosmetics = {
     const dup = this.owns(pick.id), refund = dup ? Math.round(pick.price * 0.25) : 0;
     if (dup) { LS.stats.coins = this.coins() + refund; LS.saveStats(); } else this.give(pick.id);
     return { item: pick, dup, refund };
+  },
+  // ---------- Spin de Natal (SnowTickets) ----------
+  // peso de cada prêmio: a fantasia Frost Reaper é o prêmio máximo (3%). Repetido devolve tickets
+  // a Jaqueta Natalina não sai sozinha: só vem com a fantasia (assim juntar as outras peças não libera o Frost Reaper)
+  XMAS_W: { 'costume:frost': 3, 'hat:gorro natal': 20, 'mask:floco': 22, 'pattern:estrela': 27, 'legs:natal': 28 },
+  XMAS_COST: 60, XMAS_10: 600, XMAS_REFUND: [10, 15, 20, 30, 0, 60],
+  snow() { return LS.stats.snow || 0; },
+  xmasPool() { return Object.keys(this.XMAS_W).map(id => this.byId[id]).filter(Boolean); },
+  xmasDone() { return this.xmasPool().every(i => this.owns(i.id)); },
+  xspin() {
+    const pool = this.xmasPool(), W = this.XMAS_W;
+    let r = Math.random() * pool.reduce((s, i) => s + W[i.id], 0), pick = pool[0];
+    for (const i of pool) { r -= W[i.id]; if (r <= 0) { pick = i; break; } }
+    const dup = this.owns(pick.id), refund = dup ? this.XMAS_REFUND[pick.rarity] : 0;
+    if (dup) { LS.stats.snow = this.snow() + refund; LS.saveStats(); } else this.give(pick.id);
+    return { item: pick, dup, refund };
+  },
+  xpay(n) {
+    const cost = n >= 11 ? this.XMAS_10 : this.XMAS_COST * n;
+    if (this.snow() < cost) return false;
+    LS.stats.snow -= cost; LS.saveStats();
+    return true;
   },
   pay(n) {
     const cost = n >= 11 ? this.ROYALE_10 : this.ROYALE_COST * n;

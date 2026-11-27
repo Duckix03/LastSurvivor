@@ -33,6 +33,7 @@ LS.Wardrobe = {
       const sw = e.target.closest('[data-wcol]'); if (sw) { this.color(sw.dataset.wcol, sw.dataset.v); return; }
       const b = e.target.closest('[data-wbuy]'); if (b) { this.buy(); return; }
       const g = e.target.closest('[data-wroyale]'); if (g) { LS.Audio.click(); this.leave(); LS.Shop.open('royale'); }
+      const xb = e.target.closest('[data-wxmas]'); if (xb) { LS.Audio.click(); this.leave(); LS.Shop.open('xmas'); }
       const cd = e.target.closest('[data-wcode]'); if (cd) { LS.Audio.click(); this.leave(); LS.Shop.open('shop'); LS.Shop.openRedeem(); }
     });
   },
@@ -119,8 +120,9 @@ LS.Wardrobe = {
     const it = this.sel && C.byId[this.sel];
     if (it && !C.owns(it.id)) {
       const pieces = it.slot === 'costume' ? C.pieces(it).filter(p => !C.owns(p.id)).length : 0;
-      h += '<div id="wr-buybar" style="--rc:' + R[it.rarity].color + '"><div><span class="wr-rar">' + R[it.rarity].name + '</span><b>' + it.name + '</b><small>Provando' + (pieces ? ' · ' + pieces + ' peças' : '') + (it.royale ? ' · só sai no Gold Royale' : ' · você tem ' + (it.dprice ? LS.icon('gem', 'gem-i') + ' ' + C.diamonds().toLocaleString('pt-BR') : LS.icon('coin', 'coin-i') + ' ' + C.coins().toLocaleString('pt-BR'))) + '</small><span class="wr-err"></span></div>' +
-        (it.code ? '<button class="btn btn-primary" data-wcode="1">SÓ EM CODIGUIN</button>' : it.piece ? '<button class="btn btn-primary" disabled>VEM NA FANTASIA</button>' :
+      h += '<div id="wr-buybar" style="--rc:' + R[it.rarity].color + '"><div><span class="wr-rar">' + R[it.rarity].name + '</span><b>' + it.name + '</b><small>Provando' + (pieces ? ' · ' + pieces + ' peças' : '') + (it.ev ? (it.piece ? ' · vem com o Frost Reaper' : ' · evento de Natal') : it.royale ? ' · só sai no Gold Royale' : ' · você tem ' + (it.dprice ? LS.icon('gem', 'gem-i') + ' ' + C.diamonds().toLocaleString('pt-BR') : LS.icon('coin', 'coin-i') + ' ' + C.coins().toLocaleString('pt-BR'))) + '</small><span class="wr-err"></span></div>' +
+        (it.ev ? (LS.Xmas.active() ? '<button class="btn btn-primary xm-btn" data-wxmas="1">GIRAR NO SPIN DE NATAL</button>' : '<button class="btn btn-primary" data-wcode="1">SÓ EM CODIGUIN</button>') :
+          it.code ? '<button class="btn btn-primary" data-wcode="1">SÓ EM CODIGUIN</button>' : it.piece ? '<button class="btn btn-primary" disabled>VEM NA FANTASIA</button>' :
           it.royale ? '<button class="btn btn-primary" data-wroyale="1">GIRAR NO GOLD ROYALE</button>' : '<button class="btn btn-primary" data-wbuy="1">COMPRAR ' + LS.Shop.priceTag(it) + '</button>') + '</div>';
     } else if (it) {
       h += '<div id="wr-buybar" class="own" style="--rc:' + R[it.rarity].color + '"><div><span class="wr-rar">' + (it.free ? 'GRÁTIS' : R[it.rarity].name) + '</span><b>' + it.name + '</b></div><span class="wr-eq">EQUIPADO</span></div>';

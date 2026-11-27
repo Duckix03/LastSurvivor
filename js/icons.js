@@ -17,6 +17,7 @@ LS.ICONS = {
   keys: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>',
   gem: '<path d="M6 4h12l4 5-10 11L2 9z" fill="currentColor" fill-opacity=".25"/><path d="M2 9h20M9 4l-1.5 5L12 20M15 4l1.5 5L12 20"/>',
+  snow: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5M3.6 10.5l3.4-.9-.9-3.4M20.4 13.5l-3.4.9.9 3.4M6.1 17.8l.9-3.4-3.4-.9M17.9 6.2l-.9 3.4 3.4.9"/>',
   coin: '<circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity=".25"/><circle cx="12" cy="12" r="6"/><path d="M12 8.5v7M10 10.5h3a1.5 1.5 0 0 1 0 3h-2"/>',
   trophy: '<path d="M7 4h10v5a5 5 0 0 1-10 0z" fill="currentColor" fill-opacity=".25"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8M9 18h6"/>',
   alive: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14c3 0 5 2 5 5"/>',

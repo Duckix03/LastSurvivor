@@ -11,38 +11,50 @@
 <link rel="preconnect" href="https://lastsurvivor.lastsurvivorbr.workers.dev" crossorigin>
 <link rel="preload" href="fonts/tiny5-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/pixelify-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=102">
-<link rel="stylesheet" href="css/ui.css?v=102">
-<link rel="stylesheet" href="css/pixel.css?v=102">
+<link rel="stylesheet" href="css/style.css?v=103">
+<link rel="stylesheet" href="css/ui.css?v=103">
+<link rel="stylesheet" href="css/pixel.css?v=103">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
 <style>
 /* tela de carregamento (fica aqui no HTML pra aparecer na hora, antes de baixar o resto) */
 @font-face { font-family: 'PixBoot'; src: url(fonts/tiny5-latin-400-normal.woff2) format('woff2'); font-display: swap; }
-#boot { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: #fff; overflow: hidden;
-  background: radial-gradient(ellipse at 50% 120%, #ff8a5c 0%, #5a2a6e 38%, #1a1236 75%, #0b0f1c 100%); font-family: system-ui, sans-serif; transition: opacity .45s ease, transform .45s ease; }
+#boot { position: fixed; inset: 0; z-index: 99999; color: #fff; overflow: hidden; background: #0b0d16; font-family: system-ui, sans-serif; transition: opacity .45s ease, transform .45s ease; }
 #boot.out { opacity: 0; transform: scale(1.04); pointer-events: none; }
-#boot .bt-logo { font-family: 'PixBoot', 'Courier New', monospace; font-size: clamp(36px, 7.5vw, 72px); letter-spacing: 3px; text-shadow: 0 4px 0 #4a5068, 0 8px 0 #0b0d13; animation: btPop .5s steps(5) both; }
-#boot .bt-logo span { margin-left: .3em; color: #ffc531; text-shadow: 0 4px 0 #b85c00, 0 8px 0 #0b0d13; }
-#boot .bt-bar { width: min(420px, 70vw); height: 22px; padding: 3px; background: #12151f; border: 4px solid #0b0d13; box-shadow: inset 3px 3px 0 rgba(0,0,0,.5), 0 0 0 2px rgba(255,255,255,.12); }
+#boot .bt-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; opacity: 0; transform: scale(1.1); transition: opacity .7s ease, transform 14s cubic-bezier(.2,.6,.3,1); }
+#boot .bt-art.in { opacity: 1; transform: scale(1.0); }
+#boot .bt-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,6,16,.6) 0%, rgba(6,6,16,0) 24%, rgba(6,6,16,0) 58%, rgba(6,6,16,.94) 100%); }
+#boot .bt-logo { position: absolute; top: 4%; left: 3.2%; font-family: 'PixBoot', 'Courier New', monospace; font-size: clamp(26px, 4.4vw, 50px); letter-spacing: 3px; text-shadow: 0 3px 0 #4a5068, 0 6px 0 #0b0d13; animation: btPop .5s steps(5) both; }
+#boot .bt-logo span { margin-left: .3em; color: #ffc531; text-shadow: 0 3px 0 #b85c00, 0 6px 0 #0b0d13; }
+#boot .bt-ev { position: absolute; top: calc(4% + clamp(40px, 6.4vw, 72px)); left: 3.2%; display: none; font-family: 'PixBoot', monospace; font-size: 14px; letter-spacing: 2px; padding: 4px 10px; background: #c8182a; border: 3px solid #0b0d13; box-shadow: 0 4px 0 #0b0d13; }
+#boot.xmas .bt-ev { display: block; }
+#boot .bt-foot { position: absolute; left: 3.2%; right: 3.2%; bottom: 4.5%; }
+#boot .bt-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 7px; }
+#boot .bt-bar { height: 20px; padding: 3px; background: rgba(10,12,20,.85); border: 4px solid #0b0d13; box-shadow: inset 3px 3px 0 rgba(0,0,0,.5), 0 0 0 2px rgba(255,255,255,.12); }
 #boot .bt-bar i { display: block; height: 100%; width: 0; background: repeating-linear-gradient(90deg, #ffc531 0 12px, #ffad1f 12px 16px); box-shadow: inset 0 3px 0 rgba(255,255,255,.45), inset 0 -3px 0 rgba(140,60,0,.5); transition: width .25s steps(6); }
-#boot .bt-txt { font-family: 'PixBoot', 'Courier New', monospace; font-size: 16px; letter-spacing: 1px; color: #ffe0b0; }
-#boot .bt-tip { position: absolute; bottom: 7%; max-width: 80vw; text-align: center; font-size: 13px; color: rgba(255,255,255,.65); }
-#boot .bt-sky { position: absolute; left: 0; right: 0; bottom: 0; height: 22%; pointer-events: none; opacity: .55; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 60' preserveAspectRatio='none'%3E%3Cpath d='M0 60V34h18V22h14v14h10V12h16v20h12V26h20v-8h12v18h16V8h14v28h10V20h18v16h14V14h12v22h20V24h12v10h16V16h14v20h12V6h16v30h10V22h20v14h14V18h12v18h18V28h14v32z' fill='%23140a28'/%3E%3C/svg%3E") bottom/100% 100% no-repeat; }
+#boot.xmas .bt-bar i { background: repeating-linear-gradient(90deg, #e8283a 0 12px, #fff 12px 18px); box-shadow: inset 0 3px 0 rgba(255,255,255,.4), inset 0 -3px 0 rgba(90,0,10,.45); }
+#boot .bt-txt { font-family: 'PixBoot', 'Courier New', monospace; font-size: 16px; letter-spacing: 1px; color: #ffe0b0; text-shadow: 0 2px 0 #0b0d13; }
+#boot .bt-pct { font-family: 'PixBoot', 'Courier New', monospace; font-size: 24px; color: #ffc531; text-shadow: 0 3px 0 #0b0d13; }
+#boot .bt-tip { margin-top: 9px; font-size: 13px; color: rgba(255,255,255,.75); text-shadow: 0 1px 2px #000; }
 @keyframes btPop { from { opacity: 0; transform: scale(.6); } }
 </style>
 </head>
 <body>
-<div id="boot"><div class="bt-sky"></div><div class="bt-logo">LAST<span>SURVIVOR</span></div><div class="bt-bar"><i id="bt-fill"></i></div><div class="bt-txt" id="bt-txt">CARREGANDO…</div><div class="bt-tip" id="bt-tip"></div></div>
+<div id="boot"><img class="bt-art" id="bt-art" alt="" fetchpriority="high"><div class="bt-shade"></div><div class="bt-logo">LAST<span>SURVIVOR</span></div><div class="bt-ev" id="bt-ev">EVENTO DE NATAL</div>
+<div class="bt-foot"><div class="bt-row"><div class="bt-txt" id="bt-txt">CARREGANDO…</div><div class="bt-pct" id="bt-pct">0%</div></div><div class="bt-bar"><i id="bt-fill"></i></div><div class="bt-tip" id="bt-tip"></div></div></div>
 <script>
 // barra da tela de carregamento: anda sozinha devagar (até 90%) e pula nas etapas de verdade (main.js chama __bootP)
 (function () {
+  // arte da abertura: no Natal (dezembro, ou ligado pelo admin) é a do Frost Reaper
+  var xm = false; try { var xs = localStorage.getItem('ls_xmas') || 'auto'; xm = xs === 'on' || (xs === 'auto' && new Date().getMonth() === 11); } catch (e) { /* ignora */ }
+  var art = document.getElementById('bt-art'); art.onload = function () { art.className = 'bt-art in'; }; art.src = 'assets/splash/' + (xm ? 'xmas' : 'squad') + '.webp?v=103';
+  document.getElementById('boot').className = xm ? 'xmas' : '';
   var tips = ['Dica: agachar diminui o recuo da arma.', 'Dica: tiro na cabeça faz PANELA!', 'Dica: a bolinha de neve vira uma parede de gelo.', 'Dica: pegue colete e capacete logo no começo.', 'Dica: a zona fecha devagar, fique de olho no mapa.', 'Dica: no duelo, vença 5 rounds pra ganhar.'];
   document.getElementById('bt-tip').textContent = tips[Math.floor(Math.random() * tips.length)];
-  var p = 0, real = 0, t0 = Date.now(), fill = document.getElementById('bt-fill'), txt = document.getElementById('bt-txt');
+  var p = 0, real = 0, t0 = Date.now(), fill = document.getElementById('bt-fill'), txt = document.getElementById('bt-txt'), pct = document.getElementById('bt-pct');
   window.__bootP = function (v, label) { real = Math.max(real, v); if (label) txt.textContent = label; if (v >= 1) done(); };
-  function done() { fill.style.width = '100%'; setTimeout(function () { var b = document.getElementById('boot'); if (!b) return; b.classList.add('out'); setTimeout(function () { b.remove(); }, 500); }, 250); }
-  (function tick() { var s = (Date.now() - t0) / 1000, fake = 0.9 * (1 - Math.exp(-s / 3.5)); p = Math.max(p, Math.min(0.97, Math.max(fake, real))); fill.style.width = (p * 100).toFixed(1) + '%'; if (real < 1 && document.getElementById('boot')) requestAnimationFrame(tick); })();
+  function done() { fill.style.width = '100%'; pct.textContent = '100%'; setTimeout(function () { var b = document.getElementById('boot'); if (!b) return; b.classList.add('out'); setTimeout(function () { b.remove(); }, 500); }, 250); }
+  (function tick() { var s = (Date.now() - t0) / 1000, fake = 0.9 * (1 - Math.exp(-s / 3.5)); p = Math.max(p, Math.min(0.97, Math.max(fake, real))); fill.style.width = (p * 100).toFixed(1) + '%'; pct.textContent = Math.round(p * 100) + '%'; if (real < 1 && document.getElementById('boot')) requestAnimationFrame(tick); })();
   document.addEventListener('DOMContentLoaded', function () { window.__bootP(0.45, 'CARREGANDO O JOGO…'); });
   setTimeout(function () { if (document.getElementById('boot')) window.__bootP(1); }, 30000); // nunca fica preso
 })();
@@ -76,6 +88,7 @@
   <div class="lb-menu">
     <button class="lb-item hot" data-action="shop"><span><i data-icon="bag"></i></span>LOJA<em>NOVO</em></button>
     <button class="lb-item gold" data-action="royale"><span><i data-icon="crown"></i></span>GOLD ROYALE<em>NOVO</em></button>
+    <button class="lb-item xmas hidden" data-action="xmas"><span><i data-icon="snow"></i></span>SPIN DE NATAL<em class="lb-badge hidden" id="lb-xmas-n">0</em><em class="xm-new">EVENTO</em></button>
     <button class="lb-item" data-action="customize"><span><i data-icon="shirt"></i></span>GUARDA-ROUPA</button>
     <button class="lb-item" data-action="arsenal"><span><i data-icon="gun"></i></span>ARSENAL</button>
     <button class="lb-item" data-action="friends"><span><i data-icon="friends"></i></span>AMIGOS<em class="lb-badge hidden" id="lb-fr-badge">0</em></button>
@@ -159,6 +172,8 @@
   <div class="panel">
     <h2>NOVIDADES</h2>
     <div class="news-list">
+      <div><b>Evento de Natal</b><span>Em dezembro: cada abate dá SnowTickets (+5 na cabeça, +3 no corpo), missões dão de 50 a 300 e o Spin de Natal (do lado do Gold Royale) sorteia o personagem Frost Reaper e os acessórios dele.</span></div>
+      <div><b>Telas de carregamento novas</b><span>Artes em tela cheia feitas no Blender com os personagens do jogo, no estilo dos jogos de tiro.</span></div>
       <div><b>Solo, Duo e Squad</b><span>O Battle Royale agora tem 3 modos: sozinho, em dupla ou em esquadrão de 4. Escolha no banner do Battle Royale.</span></div>
       <div><b>HUD do seu jeito</b><span>No celular: Configurações → Geral → EDITAR HUD. Arraste os botões, mude tamanho e opacidade e passe o código do seu HUD pros amigos.</span></div>
       <div><b>Configurações na conta</b><span>Sensibilidade, som e HUD vão junto pra qualquer aparelho em que você entrar.</span></div>
@@ -398,8 +413,12 @@
 
 <!-- CARREGANDO -->
 <div id="loading" class="screen">
+  <img class="ld-art" id="ld-art" alt="" decoding="async">
+  <div class="ld-shade"></div>
+  <div class="ld-top"><div class="ld-logo">LAST<span>SURVIVOR</span></div><div class="ld-mode" id="ld-mode">BATTLE ROYALE</div></div>
+  <div class="ld-tag" id="ld-tag"></div>
   <div class="loading-box">
-    <h2>GERANDO ILHA...</h2>
+    <h2>GERANDO ILHA…</h2>
     <div class="loading-bar"><div id="loading-fill"></div></div>
     <p id="loading-tip">Dica: fique dentro da zona segura!</p>
   </div>
@@ -535,65 +554,67 @@
 </div>
 
 <script src="js/vendor/three.min.js"></script>
-<script src="js/config.js?v=102"></script>
-<script src="js/icons.js?v=102"></script>
-<script src="js/post.js?v=102"></script>
-<script src="js/console.js?v=102"></script>
-<script src="js/audio.js?v=102"></script>
-<script src="js/gunsound.js?v=102"></script>
-<script src="js/music.js?v=102"></script>
-<script src="js/input.js?v=102"></script>
-<script src="js/pixicons.js?v=102"></script>
-<script src="js/touch.js?v=102"></script>
-<script src="js/perf.js?v=102"></script>
-<script src="js/world.js?v=102"></script>
-<script src="js/sky.js?v=102"></script>
-<script src="js/worldbuild.js?v=102"></script>
-<script src="js/housekit.js?v=102"></script>
-<script src="js/houses.js?v=102"></script>
-<script src="js/skin.js?v=102"></script>
-<script src="js/character.js?v=102"></script>
-<script src="js/animlib.js?v=102"></script>
-<script src="js/itemmodels.js?v=102"></script>
-<script src="js/itemicons.js?v=102"></script>
-<script src="js/textures.js?v=102"></script>
-<script src="js/flora.js?v=102"></script>
-<script src="js/effects.js?v=102"></script>
-<script src="js/gelwall.js?v=102"></script>
-<script src="js/loot.js?v=102"></script>
-<script src="js/combat.js?v=102"></script>
-<script src="js/player.js?v=102"></script>
-<script src="js/bot.js?v=102"></script>
-<script src="js/zone.js?v=102"></script>
-<script src="js/plane.js?v=102"></script>
-<script src="js/net.js?v=102"></script>
-<script src="js/duel.js?v=102"></script>
-<script src="js/custommap.js?v=102"></script>
-<script src="js/hud.js?v=102"></script>
-<script src="js/victory.js?v=102"></script>
-<script src="js/esp.js?v=102"></script>
-<script src="js/lobbyscene.js?v=102"></script>
-<script src="js/lobbythemes.js?v=102"></script>
-<script src="js/lobby.js?v=102"></script>
-<script src="js/banners.js?v=102"></script>
-<script src="js/account.js?v=102"></script>
-<script src="js/mail.js?v=102"></script>
-<script src="js/cosmetics.js?v=102"></script>
-<script src="js/thumbs.js?v=102"></script>
-<script src="js/wardrobe.js?v=102"></script>
-<script src="js/shop.js?v=102"></script>
-<script src="js/friends.js?v=102"></script>
-<script src="js/profile.js?v=102"></script>
-<script src="js/conta.js?v=102"></script>
-<script src="js/modes.js?v=102"></script>
-<script src="js/menu.js?v=102"></script>
-<script src="js/spectate.js?v=102"></script>
-<script src="js/custom.js?v=102"></script>
-<script src="js/party.js?v=102"></script>
-<script src="js/hudedit.js?v=102"></script>
-<script src="js/game.js?v=102"></script>
-<script src="js/app.js?v=102"></script>
-<script src="js/uikit.js?v=102"></script>
-<script src="js/main.js?v=102"></script>
+<script src="js/config.js?v=103"></script>
+<script src="js/icons.js?v=103"></script>
+<script src="js/post.js?v=103"></script>
+<script src="js/console.js?v=103"></script>
+<script src="js/audio.js?v=103"></script>
+<script src="js/gunsound.js?v=103"></script>
+<script src="js/music.js?v=103"></script>
+<script src="js/input.js?v=103"></script>
+<script src="js/pixicons.js?v=103"></script>
+<script src="js/touch.js?v=103"></script>
+<script src="js/perf.js?v=103"></script>
+<script src="js/world.js?v=103"></script>
+<script src="js/sky.js?v=103"></script>
+<script src="js/worldbuild.js?v=103"></script>
+<script src="js/housekit.js?v=103"></script>
+<script src="js/houses.js?v=103"></script>
+<script src="js/skin.js?v=103"></script>
+<script src="js/character.js?v=103"></script>
+<script src="js/animlib.js?v=103"></script>
+<script src="js/itemmodels.js?v=103"></script>
+<script src="js/itemicons.js?v=103"></script>
+<script src="js/textures.js?v=103"></script>
+<script src="js/flora.js?v=103"></script>
+<script src="js/effects.js?v=103"></script>
+<script src="js/gelwall.js?v=103"></script>
+<script src="js/loot.js?v=103"></script>
+<script src="js/combat.js?v=103"></script>
+<script src="js/player.js?v=103"></script>
+<script src="js/bot.js?v=103"></script>
+<script src="js/zone.js?v=103"></script>
+<script src="js/plane.js?v=103"></script>
+<script src="js/net.js?v=103"></script>
+<script src="js/duel.js?v=103"></script>
+<script src="js/custommap.js?v=103"></script>
+<script src="js/hud.js?v=103"></script>
+<script src="js/victory.js?v=103"></script>
+<script src="js/esp.js?v=103"></script>
+<script src="js/lobbyscene.js?v=103"></script>
+<script src="js/lobbythemes.js?v=103"></script>
+<script src="js/lobby.js?v=103"></script>
+<script src="js/banners.js?v=103"></script>
+<script src="js/account.js?v=103"></script>
+<script src="js/mail.js?v=103"></script>
+<script src="js/cosmetics.js?v=103"></script>
+<script src="js/thumbs.js?v=103"></script>
+<script src="js/wardrobe.js?v=103"></script>
+<script src="js/shop.js?v=103"></script>
+<script src="js/xmas.js?v=103"></script>
+<script src="js/loading.js?v=103"></script>
+<script src="js/friends.js?v=103"></script>
+<script src="js/profile.js?v=103"></script>
+<script src="js/conta.js?v=103"></script>
+<script src="js/modes.js?v=103"></script>
+<script src="js/menu.js?v=103"></script>
+<script src="js/spectate.js?v=103"></script>
+<script src="js/custom.js?v=103"></script>
+<script src="js/party.js?v=103"></script>
+<script src="js/hudedit.js?v=103"></script>
+<script src="js/game.js?v=103"></script>
+<script src="js/app.js?v=103"></script>
+<script src="js/uikit.js?v=103"></script>
+<script src="js/main.js?v=103"></script>
 </body>
 </html>

@@ -288,6 +288,7 @@ LS.Profile = {
       '<button class="' + (tab === 'codes' ? 'on' : '') + '" data-pf="adm-tab" data-v="codes">GERADOR DE CODIGUIN</button>' +
       '<button class="' + (tab === 'cc' ? 'on' : '') + '" data-pf="adm-tab" data-v="cc">CRIADORES</button>' +
       '<button class="' + (tab === 'theme' ? 'on' : '') + '" data-pf="adm-tab" data-v="theme">TEMAS</button>' +
+      '<button class="' + (tab === 'event' ? 'on' : '') + '" data-pf="adm-tab" data-v="event">EVENTOS</button>' +
       '<button class="' + (tab === 'maint' ? 'on' : '') + '" data-pf="adm-tab" data-v="maint">MANUTENÇÃO</button>' +
       '<button class="' + (tab === 'mail' ? 'on' : '') + '" data-pf="adm-tab" data-v="mail">CORREIO</button></div>';
     if (tab === 'codes') { this.cgMode = 'admin'; return this.openCodes(tabs); }
@@ -295,6 +296,7 @@ LS.Profile = {
     if (tab === 'cc') return this.openCcLimits(tabs);
     if (tab === 'theme') return this.openThemes(tabs);
     if (tab === 'maint') return this.openMaint(tabs);
+    if (tab === 'event') return this.openEvent(tabs);
     if (tab === 'mail') { this.cgMode = 'mail'; return this.openMailAdm(tabs); }
     const on = LS.Console.dev;
     this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Dê ou tire selos de qualquer conta pelo ID.</p><div class="pf-row"><input id="pf-adm-id" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ID da conta"><button class="btn small" data-pf="adm-find">BUSCAR</button></div>' +
@@ -361,7 +363,7 @@ LS.Profile = {
   },
   cgPicker(tab) {
     const C = LS.Cosmetics, cc = this.cgMode === 'cc'; // criador: sem exclusivos de codiguin, de diamante, do Gold Royale nem peças de fantasia
-    const L = cc && this.ccData.limits, ok = i => !i.free && !(cc && ((i.code && !L.excl) || i.dprice || i.piece || (i.rarity === 3 && !L.legend))); // criador: Gold Royale até Épico (lendário só se liberado)
+    const L = cc && this.ccData.limits, ok = i => !i.free && !(cc && ((i.code && !L.excl) || i.dprice || i.piece || i.ev || (i.rarity === 3 && !L.legend))); // criador: Gold Royale até Épico (lendário só se liberado)
     const TABS = this.CG_TABS.filter(t => C.items.some(i => ok(i) && t.test(i))); // abas vazias somem
     this.cgTab = tab || this.cgTab || 'costume';
     const T = TABS.find(t => t.id === this.cgTab) || TABS[0]; this.cgTab = T.id;
@@ -492,6 +494,21 @@ LS.Profile = {
   },
   thPreview(id) { LS.LobbyThemes.setPreview(id); this.closeModal(); LS.UI.showScreen('menu-main'); LS.HUD.toast('Prévia: ' + LS.LobbyThemes.name(id) + ' (só pra você)'); },
   // ADMIN → MANUTENÇÃO: durante uma atualização só o owner e quem tem selo DEV entram
+  // ADMIN → EVENTOS: Natal liga sozinho de 1 a 31 de dezembro; dá pra forçar ligado (testar/estender) ou desligado
+  async openEvent(tabs) {
+    this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint"><b>Evento de Natal</b>: SnowTickets por abate, missões e o Spin de Natal (Frost Reaper). No <b>automático</b> ele fica ligado de 1 a 31 de dezembro. Chega pra todo mundo em até 1 minuto.</p>' +
+      '<div id="ev-adm" class="th-grid"><p class="pf-hint">Carregando…</p></div><p id="pf-err" class="pf-err hidden"></p>' +
+      '<div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>', 'adm wide');
+    let cur = LS.Xmas.server;
+    try { cur = (await LS.Account.adminGame()).xmas || 'auto'; } catch (e) { this.modalError(e.message); }
+    const opts = [['auto', 'Automático', 'dezembro inteiro', ['#3a4a6a', '#8a9ab8']], ['on', 'Ligado', 'forçado agora', ['#c8182a', '#ff8a8a']], ['off', 'Desligado', 'escondido', ['#222', '#555']]];
+    document.getElementById('ev-adm').innerHTML = opts.map(([id, name, sub, sw]) => '<div class="th-card' + (id === cur ? ' on' : '') + '"><div class="th-sw" style="background:linear-gradient(135deg,' + sw[0] + ',' + sw[1] + ')">' + (id === cur ? '<i>ATIVO</i>' : '') + '</div>' +
+      '<b>' + name + '</b><small>' + sub + '</small><div class="th-btns"><button class="btn small btn-primary" data-pf="ev-set" data-v="' + id + '"' + (id === cur ? ' disabled' : '') + '>APLICAR</button></div></div>').join('');
+  },
+  async evSet(v) {
+    try { const g = await LS.Account.adminGame({ xmas: v }); LS.Xmas.setServer(g.xmas); this.openAdmin('event'); setTimeout(() => { this.modalError('Evento de Natal: ' + ({ auto: 'automático', on: 'LIGADO', off: 'desligado' })[g.xmas]); const e = document.getElementById('pf-err'); if (e) e.classList.add('ok'); }, 300); }
+    catch (e) { this.modalError(e.message); }
+  },
   async openMaint(tabs) {
     this.modal('<h3>PAINEL ADMIN</h3>' + tabs + '<p class="pf-hint">Ligada, <b>só você e quem tem o selo DEV</b> entram no jogo. Os outros veem a tela "Estamos atualizando o jogo!" e o servidor recusa a fila e as salas. Chega pra todo mundo em até 1 minuto.</p>' +
       '<div id="mt-adm" class="mt-adm"><p class="pf-hint">Carregando…</p></div><p id="pf-err" class="pf-err hidden"></p>' +
@@ -618,6 +635,7 @@ LS.Profile = {
         case 'cc': this.openCc(); break;
         case 'ccl-save': this.ccLimSave(); break;
         case 'th-set': this.thSet(el.dataset.v); break;
+        case 'ev-set': this.evSet(el.dataset.v); break;
         case 'th-prev': this.thPreview(el.dataset.v); break;
         case 'th-stop': LS.LobbyThemes.setPreview(null); this.openAdmin('theme'); break;
         case 'mt-save': this.mtSave(); break;
