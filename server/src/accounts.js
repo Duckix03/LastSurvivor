@@ -80,6 +80,7 @@ const CODE_RE = /^[A-Z0-9-]{4,20}$/, CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ2345678
 const THEMES = ['auto', 'padrao', 'halloween', 'natal', 'anonovo', 'verao', 'junina'], STAFF = b => (b || []).includes('owner') || (b || []).includes('dev');
 // correio: até 12 itens por presente; mensagens valem no máximo 1 ano
 const MAIL_ITEMS = 12, MAIL_KEEP = 100;
+const XMAS_GEM = 25, XMAS_GEM_DAY = 4; // Spin de Natal: 25 diamantes por prêmio, no máximo 4 por dia (100 diamantes)
 const CC_DEFAULT = { perWeek: 5, maxUses: 100, maxCoins: 5000, maxDiamonds: 0, maxDays: 30, items: true, legend: false, excl: false }, WEEK_MS = 7 * 864e5;
 // lendários do Gold Royale (iguais aos de raridade 3 em js/cosmetics.js): criador só dá se o owner liberar
 const ROYALE_LEGEND = new Set(['hat:coroa', 'hat:auréola', 'top:armadura', 'pattern:galáxia']);
@@ -185,6 +186,7 @@ export class Accounts {
       if (path === '/api/redeem') return await this.redeemCode(me, body);
       if (path === '/api/buy') return await this.buyDiamond(me, body);
       if (path === '/api/daily') return await this.daily(me);
+      if (path === '/api/xmas/gems') return await this.xmasGems(me, body);
       if (path === '/api/mail/claim') return await this.mailClaim(me, body);
       if (path === '/api/mail/read') return await this.mailMark(me, 'read', Array.isArray(body.ids) ? body.ids : []);
       if (path === '/api/mail/delete') return await this.mailMark(me, 'del', [body.id]);
@@ -470,6 +472,17 @@ export class Accounts {
     a.diamonds = have - price; this.giveItem(a, item);
     delete a._token; await this.st.put('a:' + a.id, a);
     return json({ account: this.mine(a) });
+  }
+  // Spin de Natal: prêmio de 25 diamantes. O giro é no jogo, então o servidor só dá até XMAS_GEM_DAY prêmios por dia (por conta)
+  // e só com o evento ligado. Passou do limite: o jogo troca por moedas.
+  async xmasGems(a, b) {
+    const g = await this.gameCfg(), brt = new Date(Date.now() - 3 * 3600e3), on = g.xmas === 'on' || (g.xmas === 'auto' && brt.getUTCMonth() === 11);
+    if (!on) return fail('O evento de Natal não está ativo.', 403);
+    const day = Math.floor((Date.now() - 3 * 3600e3) / 864e5), x = a.xgem && a.xgem.d === day ? a.xgem : { d: day, n: 0 };
+    const k = Math.max(0, Math.min(nint(b.n, 11), XMAS_GEM_DAY - x.n));
+    x.n += k; a.xgem = x; a.diamonds = (a.diamonds || 0) + k * XMAS_GEM;
+    delete a._token; await this.st.put('a:' + a.id, a);
+    return json({ granted: k, each: XMAS_GEM, left: XMAS_GEM_DAY - x.n, diamonds: a.diamonds });
   }
   async daily(a) {
     const left = (a.dailyAt || 0) + DAILY_MS - Date.now();

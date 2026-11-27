@@ -50,7 +50,11 @@ LS.Cosmetics = {
   EVENT_ITEMS: [['hat', 'gorro natal', 'Gorro de Natal', 2], ['mask', 'floco', 'Máscara Floco', 2], ['top', 'natal', 'Jaqueta Natalina', 3, 1],
     ['pattern', 'estrela', 'Corrente Estrela', 1], ['legs', 'natal', 'Calça Natalina', 1],
     ['hat', 'tiara rena', 'Tiara de Rena', 2], ['neck', 'pisca', 'Colar Pisca-Pisca', 3],
-    ['mask', 'gengibre', 'Rosto de Biscoito', 2], ['top', 'gengibre', 'Corpo de Biscoito', 3, 1], ['legs', 'gengibre', 'Pernas de Biscoito', 1]],
+    ['mask', 'gengibre', 'Rosto de Biscoito', 2], ['top', 'gengibre', 'Corpo de Biscoito', 3, 1], ['legs', 'gengibre', 'Pernas de Biscoito', 1],
+    ['hat', 'elfo', 'Chapéu de Elfo', 2], ['neck', 'cachecol', 'Cachecol Natalino', 1], ['glasses', 'neve', 'Óculos de Neve', 1],
+    ['beard', 'noel', 'Barba de Noel', 2], ['pattern', 'suéter', 'Suéter Natalino', 1], ['mask', 'nariz rena', 'Nariz de Rena', 3]],
+  // prêmios em moeda do Spin de Natal (não são itens do guarda-roupa): moedas = o mais comum, diamantes = o segundo
+  XMAS_PRIZES: [{ id: 'xp:gems', name: '25 Diamantes', rarity: 1, prize: 'gems', amount: 25 }, { id: 'xp:coins', name: '100 Moedas', rarity: 0, prize: 'coins', amount: 100 }],
   EVENT_COSTUMES: [
     { id: 'frost', name: 'Frost Reaper', rarity: 5, look: { hat: 'gorro natal', mask: 'floco', top: 'natal', pattern: 'estrela', legs: 'natal', shirt: '#141416', accent: '#c8182a', pants: '#141416', hair: '#e8e8e8', hairStyle: 'curto', glasses: 'nenhum', beard: 'nenhuma', neck: 'nenhum' } },
     { id: 'gengibre', name: 'Biscoito de Gengibre', rarity: 5, look: { hairStyle: 'careca', mask: 'gengibre', top: 'gengibre', pattern: 'liso', legs: 'gengibre', shirt: '#b8692e', accent: '#b8692e', pants: '#b8692e', hat: 'nenhum', glasses: 'nenhum', beard: 'nenhuma', neck: 'nenhum' } }
@@ -84,6 +88,7 @@ LS.Cosmetics = {
     this.EVENT_COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: c.rarity, price: 0, free: false, ev: true, look: c.look }));
     this.EXCLUSIVE_COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: 4, price: 0, free: false, code: true, look: c.look }));
     this.byId = {}; this.items.forEach(i => { this.byId[i.id] = i; });
+    this.XMAS_PRIZES.forEach(p => { this.byId[p.id] = Object.assign({ slot: 'prize', ev: true, price: 0 }, p); }); // só no Spin de Natal
     // presets antigos (Sobrevivente, Militar...) viram fantasias grátis
     Object.keys(K.PRESETS).forEach(n => { const it = { id: 'costume:' + n, slot: 'costume', val: n, name: n, rarity: 0, price: 0, free: true, look: K.PRESETS[n] }; this.items.push(it); this.byId[it.id] = it; });
     const P = LS.playerProfile;
@@ -164,17 +169,21 @@ LS.Cosmetics = {
   // peso de cada prêmio: a fantasia Frost Reaper é o prêmio máximo (3%). Repetido devolve tickets
   // a Jaqueta Natalina e o Corpo de Biscoito não saem sozinhos: só vêm com o personagem (juntar as outras peças não libera ele)
   // Frost Reaper e Biscoito de Gengibre são os prêmios máximos (3% cada)
-  XMAS_W: { 'costume:frost': 3, 'costume:gengibre': 3, 'neck:pisca': 8, 'hat:tiara rena': 9, 'mask:gengibre': 9, 'hat:gorro natal': 12, 'mask:floco': 13, 'legs:gengibre': 12, 'pattern:estrela': 15, 'legs:natal': 16 },
+  XMAS_W: { 'costume:frost': 4, 'costume:gengibre': 4, 'mask:nariz rena': 6, 'neck:pisca': 8, 'hat:tiara rena': 9, 'mask:gengibre': 9, 'hat:elfo': 8, 'beard:noel': 7,
+    'hat:gorro natal': 12, 'mask:floco': 13, 'legs:gengibre': 12, 'neck:cachecol': 10, 'glasses:neve': 10, 'pattern:suéter': 10, 'pattern:estrela': 15, 'legs:natal': 16,
+    'xp:gems': 30, 'xp:coins': 45 },
   XMAS_COST: 60, XMAS_10: 600, XMAS_REFUND: [10, 15, 20, 30, 0, 60],
   snow() { return LS.stats.snow || 0; },
   // personagem de evento que traz essa peça (Jaqueta Natalina → Frost Reaper)
   pieceOf(it) { return this.items.find(c => c.slot === 'costume' && c.ev && c.look && c.look[it.slot] === it.val) || null; },
   xmasPool() { return Object.keys(this.XMAS_W).map(id => this.byId[id]).filter(Boolean); },
-  xmasDone() { return this.xmasPool().every(i => this.owns(i.id)); },
+  xmasDone() { return false; }, // sempre tem moedas e diamantes pra ganhar
   xspin() {
     const pool = this.xmasPool(), W = this.XMAS_W;
     let r = Math.random() * pool.reduce((s, i) => s + W[i.id], 0), pick = pool[0];
     for (const i of pool) { r -= W[i.id]; if (r <= 0) { pick = i; break; } }
+    if (pick.prize === 'coins') { LS.stats.coins = this.coins() + pick.amount; LS.saveStats(); return { item: pick, prize: 'coins', amount: pick.amount }; }
+    if (pick.prize === 'gems') return { item: pick, prize: 'gems', amount: pick.amount }; // o servidor que dá (LS.Shop.xspin)
     const dup = this.owns(pick.id), refund = dup ? this.XMAS_REFUND[pick.rarity] : 0;
     if (dup) { LS.stats.snow = this.snow() + refund; LS.saveStats(); } else this.give(pick.id);
     return { item: pick, dup, refund };

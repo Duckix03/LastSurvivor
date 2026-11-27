@@ -40,9 +40,11 @@ LS.Shop = {
   card(it, extra) {
     const C = LS.Cosmetics, R = C.RARITY[it.rarity], own = C.owns(it.id);
     return '<button class="sh-card' + (own ? ' own' : '') + (extra || '') + '" data-sh="item" data-v="' + it.id + '" style="--rc:' + R.color + '">' +
-      '<div class="sh-img"><img alt="" data-tid="' + it.id + '"></div><span class="sh-rar">' + R.name + '</span>' +
+      (it.prize ? this.prizeImg(it) : '<div class="sh-img"><img alt="" data-tid="' + it.id + '"></div>') + '<span class="sh-rar">' + R.name + '</span>' +
       '<b>' + it.name + '</b><span class="sh-price' + (it.ev && !own ? ' xmas' : it.code && !own ? ' code' : it.royale && !own ? ' royale' : '') + '">' + (own ? 'ADQUIRIDO ✓' : this.priceTag(it)) + '</span></button>';
   },
+  // prêmio em moeda do Spin de Natal (moedas / diamantes): ícone grande no lugar da foto 3D
+  prizeImg(it, big) { const g = it.prize === 'gems'; return '<div class="sh-img prize' + (big ? ' big' : '') + (g ? ' gem' : '') + '">' + LS.icon(g ? 'gem' : 'coin', 'pz-i') + '<em>+' + it.amount + '</em></div>'; },
   fillThumbs(root) { root.querySelectorAll('img[data-tid]').forEach(img => LS.Thumbs.into(img, LS.Cosmetics.byId[img.dataset.tid])); },
   render() {
     if (this.view === 'xmas' && !LS.Xmas.active()) this.view = 'shop';
@@ -94,9 +96,10 @@ LS.Shop = {
   },
   modal(html) { const m = document.getElementById('sh-modal'); m.innerHTML = '<div class="sh-modal-box">' + html + '</div>'; m.classList.remove('hidden'); this.fillThumbs(m); },
   closeModal() { const m = document.getElementById('sh-modal'); if (m) m.classList.add('hidden'); },
-  big(it) { const R = LS.Cosmetics.RARITY[it.rarity]; return '<div class="sh-big" style="--rc:' + R.color + '"><div class="sh-img big"><img alt="" data-tid="' + it.id + '"></div><span class="sh-rar">' + R.name + '</span><h3>' + it.name + '</h3></div>'; },
+  big(it) { const R = LS.Cosmetics.RARITY[it.rarity]; return '<div class="sh-big" style="--rc:' + R.color + '">' + (it.prize ? this.prizeImg(it, true) : '<div class="sh-img big"><img alt="" data-tid="' + it.id + '"></div>') + '<span class="sh-rar">' + R.name + '</span><h3>' + it.name + '</h3></div>'; },
   confirm(id) {
     const C = LS.Cosmetics, it = C.byId[id]; if (!it) return;
+    if (it.prize) { this.modal(this.big(it) + '<p class="sh-sub">Prêmio do Spin de Natal: ' + (it.prize === 'gems' ? 'vai direto pra sua conta (até ' + 4 + ' por dia).' : 'vai direto pra sua carteira.') + '</p><div class="pf-modal-btns"><button class="btn btn-primary" data-sh="close">OK</button></div>'); return; }
     const own = C.owns(id), extra = it.slot === 'costume' ? '<p class="sh-sub">Inclui: ' + C.pieces(it).map(p => p.name).join(', ') + '</p>' : '<p class="sh-sub">' + (C.SLOTS[it.slot] ? C.SLOTS[it.slot].label : '') + '</p>';
     this.modal(this.big(it) + extra + '<p id="sh-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn" data-sh="close">FECHAR</button>' +
       (own ? '<button class="btn btn-primary" data-sh="equip" data-v="' + id + '">EQUIPAR</button>' :
@@ -168,6 +171,12 @@ LS.Shop = {
     if (C.xmasDone()) return;
     if (!C.xpay(n)) { this.modal('<h3 class="sh-h">TICKETS INSUFICIENTES</h3><p class="sh-sub">Você precisa de ' + LS.icon('snow', 'snow-i') + ' ' + (n > 1 ? C.XMAS_10 : C.XMAS_COST) + ' e tem ' + LS.icon('snow', 'snow-i') + ' ' + C.snow().toLocaleString('pt-BR') + '. Faça abates (cabeça +' + LS.Xmas.TICKET_HEAD + ', corpo +' + LS.Xmas.TICKET_BODY + ') e complete missões!</p><div class="pf-modal-btns"><button class="btn btn-primary" data-sh="close">OK</button></div>'); return; }
     const res = []; for (let i = 0; i < n; i++) res.push(C.xspin());
+    // diamantes: quem dá é o servidor (até 4 por dia, com conta). O que passar do limite (ou sem conta) vira 100 moedas
+    const gems = res.filter(r => r.prize === 'gems');
+    this._gemP = gems.length ? (LS.Account.logged() ? LS.Account.xmasGems(gems.length).then(d => d.granted).catch(() => 0) : Promise.resolve(0)).then(k => {
+      gems.forEach((r, i) => { if (i >= k) { r.conv = true; LS.stats.coins = C.coins() + 100; } });
+      if (gems.length > k) LS.saveStats(); LS.Menu.render();
+    }) : null;
     LS.Menu.render(); LS.Xmas.ui();
     const sb = document.querySelector('#panel-shop .sh-coins.snow b'); if (sb) sb.textContent = C.snow().toLocaleString('pt-BR');
     this.animate(res);
@@ -192,16 +201,21 @@ LS.Shop = {
     tick();
   },
   showResult(res) {
+    if (this._gemP) { const p = this._gemP; this._gemP = null; p.then(() => this.showResult(res)); return; } // espera o servidor dar os diamantes
     const C = LS.Cosmetics, cur = this.view === 'xmas' ? LS.icon('snow', 'snow-i') : LS.icon('coin', 'coin-i');
     LS.Audio.victory();
     let html;
     if (res.length === 1) {
       const r = res[0];
-      html = '<div class="sh-new">' + (r.dup ? 'REPETIDO' : 'NOVO!') + '</div>' + this.big(r.item) + '<p class="sh-sub">' + (r.dup ? 'Você já tinha: +' + cur + ' ' + r.refund.toLocaleString('pt-BR') + ' de volta.' : 'Já está no seu guarda-roupa.') + '</p>' +
+      if (r.prize) html = '<div class="sh-new">PRÊMIO!</div>' + this.big(r.conv ? C.byId['xp:coins'] : r.item) + '<p class="sh-sub">' + (r.prize === 'coins' ? '+100 moedas na sua carteira.' : r.conv ? (LS.Account.logged() ? 'Você já pegou os 4 prêmios de diamante de hoje: virou +100 moedas.' : 'Diamante precisa de conta: virou +100 moedas. Entre na sua conta pra ganhar diamantes!') : '+25 diamantes na sua conta!') + '</p>' +
+        '<div class="pf-modal-btns"><button class="btn btn-primary" data-sh="close">OK</button></div>';
+      else html = '<div class="sh-new">' + (r.dup ? 'REPETIDO' : 'NOVO!') + '</div>' + this.big(r.item) + '<p class="sh-sub">' + (r.dup ? 'Você já tinha: +' + cur + ' ' + r.refund.toLocaleString('pt-BR') + ' de volta.' : 'Já está no seu guarda-roupa.') + '</p>' +
         '<div class="pf-modal-btns"><button class="btn" data-sh="close">OK</button>' + (r.dup ? '' : '<button class="btn btn-primary" data-sh="equip" data-v="' + r.item.id + '">EQUIPAR</button>') + '</div>';
     } else {
-      const refund = res.reduce((s, r) => s + r.refund, 0);
-      html = '<h3 class="sh-h">10 + 1 GIROS</h3><div class="gr-results">' + res.map(r => '<div class="gr-res' + (r.dup ? ' dup' : '') + '" style="--rc:' + C.RARITY[r.item.rarity].color + '"><div class="sh-img"><img alt="" data-tid="' + r.item.id + '"></div><b>' + r.item.name + '</b><small>' + (r.dup ? '+' + cur + ' ' + r.refund : 'NOVO') + '</small></div>').join('') + '</div>' +
+      const refund = res.reduce((s, r) => s + (r.refund || 0), 0), conv = res.filter(r => r.conv).length;
+      html = '<h3 class="sh-h">10 + 1 GIROS</h3><div class="gr-results">' + res.map(r => { const it = r.conv ? C.byId['xp:coins'] : r.item;
+        return '<div class="gr-res' + (r.dup ? ' dup' : '') + '" style="--rc:' + C.RARITY[it.rarity].color + '">' + (it.prize ? this.prizeImg(it) : '<div class="sh-img"><img alt="" data-tid="' + it.id + '"></div>') + '<b>' + it.name + '</b><small>' + (r.dup ? '+' + cur + ' ' + r.refund : it.prize ? 'PRÊMIO' : 'NOVO') + '</small></div>'; }).join('') + '</div>' +
+        (conv ? '<p class="sh-sub">' + conv + (conv > 1 ? ' diamantes viraram' : ' diamante virou') + ' 100 moedas (' + (LS.Account.logged() ? 'limite de 4 por dia' : 'diamante precisa de conta') + ').</p>' : '') +
         (refund ? '<p class="sh-sub">Repetidos devolveram ' + cur + ' ' + refund.toLocaleString('pt-BR') + '.</p>' : '') + '<div class="pf-modal-btns"><button class="btn btn-primary" data-sh="close">OK</button></div>';
     }
     this.render(); this.modal(html); // redesenha a grade (itens novos ficam "ADQUIRIDO") e mostra o prêmio
