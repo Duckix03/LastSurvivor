@@ -93,6 +93,6 @@ LS.Xmas = {
       const p = this.prog(i), done = this.claimed(i), ok = this.ready(i);
       return '<div class="xm-m' + (done ? ' done' : ok ? ' ok' : '') + '"><div class="xm-mt"><b>' + M[0] + '</b><div class="xm-bar"><i style="width:' + Math.round(p / M[2] * 100) + '%"></i></div><small>' + p.toLocaleString('pt-BR') + ' / ' + M[2].toLocaleString('pt-BR') + '</small></div>' +
         (done ? '<span class="xm-got">RESGATADO</span>' : '<button class="xm-claim" data-sh="xclaim" data-v="' + i + '"' + (ok ? '' : ' disabled') + '>' + LS.icon('snow', 'snow-i') + M[3] + '</button>') + '</div>';
-    }).join('') + '<p class="xm-hint">Cada abate dá ' + LS.icon('snow', 'snow-i') + this.TICKET_HEAD + ' na cabeça e ' + LS.icon('snow', 'snow-i') + this.TICKET_BODY + ' no corpo (battle royale e duelo).</p></div>';
+    }).join('') + '<p class="xm-hint">Cada abate dá ' + LS.icon('snow', 'snow-i') + this.TICKET_HEAD + ' na cabeça e ' + LS.icon('snow', 'snow-i') + this.TICKET_BODY + ' no corpo (battle royale e duelo). Repetido devolve tickets; a Jaqueta Natalina e o Corpo de Biscoito só vêm com o personagem.</p></div>';
   }
 };
