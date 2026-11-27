@@ -432,7 +432,7 @@ body.mobile .xm-bar { height: 6px; margin: 3px 0 1px; }
 body.mobile .xm-mt small { font-size: 9px; } body.mobile .xm-hint { font-size: 10px; }
 body.mobile .sh-tip { font-size: 11px; margin-top: 8px; }
 /* modos: cartões centralizados na altura (sem aquele vazio embaixo) */
-body.mobile #panel-modes .panel > .panel-scroll { display: flex; flex-direction: column; justify-content: center; }
+body.mobile #panel-modes .panel > .panel-scroll { display: flex; flex-direction: column; justify-content: flex-start; }
 body.mobile .modes-grid { gap: 12px !important; }
 /* lobby: botões da esquerda um pouco menores e mais espaçados */
 body.mobile .lb-menu { gap: 7px !important; }
@@ -442,8 +442,10 @@ body.mobile .lb-item em { font-size: 8px; }
 /* modos: os 3 cartões com a mesma altura e os botões alinhados embaixo (antes ficavam tortos) */
 body.mobile .modes-grid { align-items: stretch !important; }
 body.mobile .mode-card { height: auto !important; }
-body.mobile .mode-art, body.mobile .mode-shine { height: 168px !important; }
-body.mobile .mode-title { top: 168px !important; }
+/* a arte cresce até ocupar a altura do painel (sem sobrar espaço vazio) */
+body.mobile #panel-modes { --mah: max(150px, calc((100vh - 20px) / var(--pz, 1) - 205px)); }
+body.mobile .mode-art, body.mobile .mode-shine { height: var(--mah) !important; }
+body.mobile .mode-title { top: var(--mah) !important; }
 body.mobile .mode-info { flex: 1 1 auto; display: flex !important; flex-direction: column; }
 body.mobile .mode-sizes { margin-top: auto !important; padding-top: 8px; }
 /* missões: título e contador na mesma linha (lista mais curta) */
@@ -451,3 +453,17 @@ body.mobile .xm-mt { display: grid; grid-template-columns: 1fr auto; align-items
 body.mobile .xm-mt b { grid-column: 1; } body.mobile .xm-mt small { grid-column: 2; grid-row: 1; }
 body.mobile .xm-bar { grid-column: 1 / span 2; }
 body.mobile .gr-grid .sh-price { font-size: 10px !important; white-space: nowrap; padding: 1px 5px !important; } body.mobile .gr-grid .sh-card b { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* espaço útil: menos borda/título, conteúdo ocupa a largura toda */
+body.mobile .panel-screen > .panel { padding: 8px 12px 6px !important; }
+body.mobile .panel-screen > .panel > h2, body.mobile .lobby-panel h2 { margin: 0 0 6px !important; }
+body.mobile .sh-head { margin-bottom: 8px; }
+body.mobile .sh-tabs { margin-bottom: 8px; }
+/* loja: cartões esticam pra preencher a linha toda */
+body.mobile .sh-grid { grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)) !important; }
+body.mobile .sh-grid.big { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)) !important; }
+body.mobile .sh-grid .sh-img { height: 150px; }
+body.mobile .sh-grid.big .sh-img { height: calc((100vh - 20px) / var(--pz, 1) - 215px); min-height: 150px; }
+/* Spin de Natal: os 5 prêmios ocupam a largura toda e ficam maiores */
+body.mobile .gr.xm .gr-grid { grid-template-columns: repeat(5, 1fr) !important; }
+body.mobile .gr.xm .gr-grid .sh-img { height: 104px; }
+body.mobile .sh-grid.big .sh-img img { height: 100% !important; width: 100% !important; max-width: none !important; max-height: none !important; object-fit: cover; object-position: 50% 45%; }
