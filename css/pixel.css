@@ -390,3 +390,64 @@ body.mobile.xmas-on .sh-views button { font-size: 15px !important; padding: 6px 
 #loading #loading-tip { margin: 2px 0 0 !important; font: 500 13px var(--body); color: rgba(255, 255, 255, 0.78) !important; text-shadow: 0 1px 2px #000; }
 body.mobile #loading .ld-mode { font-size: 12px; } body.mobile #loading .ld-tag { display: none; }
 body.mobile #loading .loading-box h2 { font-size: 14px !important; } body.mobile #loading .loading-bar { height: 16px !important; border-width: 3px !important; }
+
+/* =====================================================================
+   CELULAR (v105): painéis mais compactos e organizados. Janela com margem (não cola nas bordas),
+   zoom menor, mais respiro entre os itens e a loja/spins com os botões de girar sempre à vista.
+   ===================================================================== */
+body.mobile .panel-screen { align-items: center !important; justify-content: center !important; }
+body.mobile .panel-screen > .panel {
+  width: calc((100vw - var(--sl, 0px) - var(--sr, 0px) - 28px) / var(--pz, 1)) !important; height: calc((100vh - 20px) / var(--pz, 1)) !important;
+  padding: 10px 14px 8px !important; }
+body.mobile .panel-screen > .panel > h2, body.mobile .lobby-panel h2 { font-size: 20px !important; margin: 0 0 10px !important; }
+body.mobile .panel-screen > .panel > .panel-buttons { margin-top: 6px !important; padding-top: 6px; }
+body.mobile .panel-buttons .btn { padding: 7px 18px; font-size: 14px; }
+/* loja / Gold Royale / Spin de Natal */
+body.mobile .sh-head { gap: 8px; margin-bottom: 10px; flex-wrap: nowrap; }
+body.mobile .sh-views { gap: 6px; flex: none; }
+body.mobile .sh-views button { font-size: 14px !important; padding: 6px 10px !important; white-space: nowrap; }
+body.mobile .sh-wallet { gap: 6px; flex-wrap: nowrap; min-width: 0; }
+body.mobile .sh-coins { padding: 4px 9px; font-size: 14px; gap: 5px; }
+body.mobile .sh-coins .svgi { width: 15px !important; height: 15px !important; }
+body.mobile .sh-codebtn, body.mobile .sh-daily { font-size: 12px !important; padding: 5px 9px !important; white-space: nowrap; }
+body.mobile .sh-tabs { gap: 5px; margin-bottom: 10px; flex-wrap: nowrap; overflow-x: auto; }
+body.mobile .sh-tabs button { font-size: 12px !important; padding: 5px 10px !important; white-space: nowrap; flex: none; }
+body.mobile .sh-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)) !important; gap: 8px !important; }
+body.mobile .sh-grid.big { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; }
+body.mobile .sh-card b { font-size: 12px; } body.mobile .sh-price { font-size: 12px; padding: 1px 8px; }
+body.mobile .gr { gap: 12px; align-items: flex-start; }
+body.mobile .gr-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important; gap: 7px !important; }
+body.mobile .gr-grid .sh-img { height: 74px; }
+/* coluna do prêmio: fica parada enquanto a lista rola, com os botões de girar sempre aparecendo */
+body.mobile .gr-side { width: 196px; gap: 8px; position: sticky; top: 0; }
+body.mobile .gr-star { padding: 6px 8px; }
+body.mobile .gr-star .sh-img.big { height: 118px; }
+body.mobile .gr-star b { font-size: 17px; } body.mobile .gr-star span, body.mobile .gr.xm .gr-star small { font-size: 9px; }
+body.mobile .gr-btn { padding: 6px 8px; } body.mobile .gr-btn b { font-size: 17px; } body.mobile .gr-btn span { font-size: 13px; }
+body.mobile .gr-odds { font-size: 10.5px; line-height: 1.4; margin: 8px 0 0; }
+body.mobile .xm-missions { margin-top: 10px; padding: 8px; }
+body.mobile .xm-missions h4 { font-size: 15px; margin-bottom: 6px; }
+body.mobile .xm-m { padding: 5px 7px; gap: 8px; margin-bottom: 5px; }
+body.mobile .xm-bar { height: 6px; margin: 3px 0 1px; }
+body.mobile .xm-mt small { font-size: 9px; } body.mobile .xm-hint { font-size: 10px; }
+body.mobile .sh-tip { font-size: 11px; margin-top: 8px; }
+/* modos: cartões centralizados na altura (sem aquele vazio embaixo) */
+body.mobile #panel-modes .panel > .panel-scroll { display: flex; flex-direction: column; justify-content: center; }
+body.mobile .modes-grid { gap: 12px !important; }
+/* lobby: botões da esquerda um pouco menores e mais espaçados */
+body.mobile .lb-menu { gap: 7px !important; }
+body.mobile .lb-item { font-size: 16px !important; padding: 6px 12px !important; width: 270px !important; }
+body.mobile .lb-item > span { width: 26px !important; height: 26px !important; }
+body.mobile .lb-item em { font-size: 8px; }
+/* modos: os 3 cartões com a mesma altura e os botões alinhados embaixo (antes ficavam tortos) */
+body.mobile .modes-grid { align-items: stretch !important; }
+body.mobile .mode-card { height: auto !important; }
+body.mobile .mode-art, body.mobile .mode-shine { height: 168px !important; }
+body.mobile .mode-title { top: 168px !important; }
+body.mobile .mode-info { flex: 1 1 auto; display: flex !important; flex-direction: column; }
+body.mobile .mode-sizes { margin-top: auto !important; padding-top: 8px; }
+/* missões: título e contador na mesma linha (lista mais curta) */
+body.mobile .xm-mt { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 8px; }
+body.mobile .xm-mt b { grid-column: 1; } body.mobile .xm-mt small { grid-column: 2; grid-row: 1; }
+body.mobile .xm-bar { grid-column: 1 / span 2; }
+body.mobile .gr-grid .sh-price { font-size: 10px !important; white-space: nowrap; padding: 1px 5px !important; } body.mobile .gr-grid .sh-card b { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
