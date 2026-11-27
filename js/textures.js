@@ -4,6 +4,7 @@
 'use strict';
 LS.Tex = {
   S: 256, cache: {}, mats: {},
+  snowU: { value: 0 }, // neve no mapa (0 = sem, 1 = tudo coberto): o mesmo valor vale pro chão e pras árvores
   rng(seed) { return () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; },
   // desenha repetindo nas bordas para a textura emendar sem costura
   wrap(g, fn) { const S = this.S; for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) { g.save(); g.translate(dx, dy); fn(); g.restore(); } },
@@ -156,10 +157,10 @@ LS.Tex = {
   terrainMaterial() {
     const G = this.get('grass'), D = this.get('dirt'), mat = new THREE.MeshLambertMaterial({ vertexColors: true });
     mat.onBeforeCompile = sh => {
-      Object.assign(sh.uniforms, { tGrass: { value: G.tex }, tDirt: { value: D.tex }, tGG: { value: G.gain }, tDG: { value: D.gain } });
+      Object.assign(sh.uniforms, { tGrass: { value: G.tex }, tDirt: { value: D.tex }, tGG: { value: G.gain }, tDG: { value: D.gain }, uSnow: this.snowU });
       sh.vertexShader = 'attribute float tmix; varying float vTMix; varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <begin_vertex>',
         '#include <begin_vertex>\n vTMix = tmix; vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
-      sh.fragmentShader = `uniform sampler2D tGrass; uniform sampler2D tDirt; uniform float tGG; uniform float tDG;
+      sh.fragmentShader = `uniform sampler2D tGrass; uniform sampler2D tDirt; uniform float tGG; uniform float tDG; uniform float uSnow;
         varying float vTMix; varying vec3 vWP; varying vec3 vWN;
         float th(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float tn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -184,9 +185,17 @@ LS.Tex = {
           vec3 rk = (texture2D(tDirt, vWP.zy / 3.4).rgb * an.x + texture2D(tDirt, vWP.xy / 3.4).rgb * an.z) * tDG;
           rk = mix(vec3(1.0), rk, 0.7) * (0.86 + 0.16 * sin(vWP.y * 1.3 + nMid * 5.0)) * (0.9 + 0.15 * nFine);
           float steep = smoothstep(0.32, 0.55, 1.0 - vWN.y);
-          diffuseColor.rgb *= mix(ground, rk, steep);`);
+          diffuseColor.rgb *= mix(ground, rk, steep);
+          // NEVE (evento de Natal): cobre a grama; nas ruas fica só um pouco (neve pisada), nas encostas e na areia molhada não pega,
+          // e umas manchas de grama aparecem no meio pra não ficar tudo chapado
+          if (uSnow > 0.0) {
+            float snowK = uSnow * (1.0 - smoothstep(0.6, 0.97, vTMix) * 0.85) * (1.0 - steep * 0.9) * smoothstep(0.9, 2.4, vWP.y);
+            snowK *= 0.95 * smoothstep(0.14, 0.36, nBig * 0.55 + nMid * 0.45 + 0.06);
+            vec3 snowC = vec3(0.8, 0.85, 0.93) * (0.92 + 0.06 * nFine + 0.06 * nMid);
+            diffuseColor.rgb = mix(diffuseColor.rgb, snowC, snowK);
+          }`);
     };
-    mat.customProgramCacheKey = () => 'terrain_tex_v2';
+    mat.customProgramCacheKey = () => 'terrain_tex_v3';
     return mat;
   }
 };

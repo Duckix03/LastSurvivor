@@ -20,6 +20,7 @@ LS.Loading = {
     return (this.last = (opts.length ? opts : pool)[Math.floor(Math.random() * (opts.length ? opts : pool).length)]);
   },
   show(mode, title) {
+    if (LS.Tex) LS.Tex.snowU.value = LS.Xmas && LS.Xmas.active() && mode !== 'duel' ? 1 : 0; // Natal: ilha coberta de neve
     const A = this.ARTS[this.pick(mode)], img = document.getElementById('ld-art');
     if (img) { img.classList.remove('in'); img.onload = () => img.classList.add('in'); img.style.objectPosition = A.pos; img.src = A.src; if (img.complete) img.classList.add('in'); }
     const tag = document.getElementById('ld-tag'); if (tag) tag.textContent = A.tag;
