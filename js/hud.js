@@ -77,6 +77,7 @@ LS.HUD = {
   update(dt, G) {
     const P = G.player, E = this.el;
     this._t(E.alive, G.aliveCount());
+    this.updateSquad(G);
     this._t(E.kills, G.mode === 'duel' ? LS.Duel.totalKills() : G.mode === 'custom' ? LS.Custom.kills : P.kills);
     this._t(E.timer, LS.util.fmtTime(G.time));
     // vida/colete
@@ -138,7 +139,7 @@ LS.HUD = {
     if (!P.alive && G.mode === 'duel') { const sp = LS.Duel.spectateTarget(); if (sp) pr = 'ASSISTINDO <b>' + sp.name + '</b>'; } // 2v2: morto, vendo o parceiro
     this._h(E.prompt, pr || '');
     // zona
-    const Z = G.zone, out = Z.isOutside(P.pos), gas = G.mode === 'duel';
+    const Z = G.zone, out = Z.isOutside(P.pos), gas = LS.hall();
     E['zone-info'].classList.toggle('danger', out);
     if (Z.finished) this._t(E['zone-text'], gas ? 'Gás fechado' : 'Zona final');
     else if (gas) this._t(E['zone-text'], (Z.shrinking ? 'Gás fechando: ' : 'Gás fecha em: ') + LS.util.fmtTime(Z.timer));
@@ -218,6 +219,11 @@ LS.HUD = {
       ctx.beginPath(); ctx.moveTo(14 * k, 0); ctx.lineTo(-10 * k, -3 * k); ctx.lineTo(-6 * k, -14 * k); ctx.lineTo(-11 * k, -14 * k); ctx.lineTo(-16 * k, -3 * k); ctx.lineTo(-18 * k, -3 * k); ctx.lineTo(-18 * k, 3 * k); ctx.lineTo(-16 * k, 3 * k); ctx.lineTo(-11 * k, 14 * k); ctx.lineTo(-6 * k, 14 * k); ctx.lineTo(-10 * k, 3 * k); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.restore();
     }
+    // aliados do esquadrão: bolinhas azuis
+    if (P.team != null) for (const f of G.fighters) if (f !== P && f.alive && f.team === P.team && f.state !== 'plane') {
+      ctx.save(); ctx.translate(f.pos.x, f.pos.z); ctx.scale(1 / sc, 1 / sc); const r = size / 440 * 9;
+      ctx.fillStyle = '#2fd6ff'; ctx.strokeStyle = '#06263a'; ctx.lineWidth = r * 0.45; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore();
+    }
     // tiros: ondas vermelhas onde alguém atirou
     const now = performance.now();
     for (const [f, s] of this.shots) {
@@ -241,6 +247,16 @@ LS.HUD = {
     ctx.fillStyle = '#ff8a1f'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.2 * k; ctx.lineJoin = 'round';
     ctx.beginPath(); ctx.moveTo(0, -11 * k); ctx.lineTo(8 * k, 8 * k); ctx.lineTo(0, 4 * k); ctx.lineTo(-8 * k, 8 * k); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.restore();
+  },
+  // esquadrão: nome e vida dos aliados (só no battle royale em times)
+  updateSquad(G) {
+    const now = performance.now(); if (now - (this._sqT || 0) < 250) return; this._sqT = now;
+    const el = this.$('squad'), P = G.player, on = G.mode === 'br' && P.team != null && (G.state === 'playing' || G.state === 'paused');
+    el.classList.toggle('hidden', !on); if (!on) { this._sqK = ''; return; }
+    const mates = G.fighters.filter(f => f !== P && f.team === P.team);
+    const key = mates.map(f => f.name + ':' + (f.alive ? Math.ceil(f.hp) : 'x')).join('|');
+    if (key === this._sqK) return; this._sqK = key;
+    el.innerHTML = mates.map(f => '<div class="sq' + (f.alive ? '' : ' dead') + (f.isPlayer === false && !(f instanceof LS.Bot) ? ' human' : '') + '"><b>' + LS.Profile.esc(f.name) + '</b><i><em style="width:' + (f.alive ? Math.max(0, f.hp) : 0) + '%"></em></i></div>').join('');
   },
   // minimapa redondo que gira com a câmera, com bússola na borda
   drawMinimap(G) {

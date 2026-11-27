@@ -179,8 +179,8 @@ LS.Net = {
   wsUrl(path) { return LS.NET_URL.replace(/^http/, 'ws').replace(/\/$/, '') + path; },
 
   // ---------- busca de partida ----------
-  // cb: { onQueue(n, left), onStart(data), onFail(motivo) }
-  find(cb) {
+  // cb: { onQueue(n, left), onStart(data), onFail(motivo) } · party: { group, gsize } (a party cai junta no mesmo esquadrão)
+  find(cb, party) {
     this.cancel();
     let done = false;
     const fail = why => { if (done) return; done = true; this.cancel(); cb.onFail(why); };
@@ -192,7 +192,7 @@ LS.Net = {
     const qping = () => { if (ws.readyState === 1) ws.send(JSON.stringify({ t: 'ping', c: performance.now(), r: Math.round(this._qRtt || 0) })); };
     this._qRtt = 0;
     ws.onopen = () => {
-      ws.send(JSON.stringify({ t: 'hello', proto: LS.NET_PROTO, ver: LS.VERSION, app: LS.IS_APP, rdy: 1, name: LS.playerProfile.name, look: LS.playerProfile.look, auth: LS.Account && LS.Account.token }));
+      ws.send(JSON.stringify({ t: 'hello', proto: LS.NET_PROTO, ver: LS.VERSION, app: LS.IS_APP, rdy: 1, name: LS.playerProfile.name, look: LS.playerProfile.look, auth: LS.Account && LS.Account.token, group: party ? party.group : undefined, gsize: party ? party.gsize : undefined }));
       qping(); pt = setInterval(qping, 1500);
     };
     ws.onerror = () => { clearTimeout(to); clearInterval(pt); fail('erro'); };
@@ -466,7 +466,7 @@ LS.Net = {
       case 'host': { const was = this.host === this.you; this.host = m.host; if (m.host === this.you) this.takeOverBots(); else if (was) this.demoteBots(); break; }
       case 'end': {
         if (G.ended || G.state === 'ended') break;
-        const win = m.winner === this.you;
+        const P = G.player, win = m.team != null && P.team != null ? m.team === P.team : m.winner === this.you; // esquadrão: venceu o seu time (mesmo com você morto)
         if (win) { G.endTimer = 2; G.pendingWin = true; }
         break;
       }
@@ -480,7 +480,7 @@ LS.Net = {
     for (const r of this.remotes.slice()) {
       if (r.netId[0] !== 'b' || !pool.length) continue;
       const b = pool.shift();
-      b.reset(); b.name = r.name; b.model.applyLook(r.model.look);
+      b.reset(); b.name = r.name; b.team = r.team; b.model.applyLook(r.model.look); // mesmo esquadrão (sem fogo amigo)
       const s = r.tgt; // o último pacote é o mais novo (o bot podia estar escondido, sem atualizar o boneco)
       if (s) { r.pos.set(s[1], s[2], s[3]); r.yaw = s[4]; r.state = ['plane', 'fall', 'chute', 'ground'][s[7]] || 'ground'; }
       const wid = s ? s[8] : (r.weapons[0] && r.weapons[0].id), g = s ? (s[9] || []) : null;
@@ -495,6 +495,7 @@ LS.Net = {
       this.remotes.splice(this.remotes.indexOf(r), 1);
       b.netId = r.netId; this.ents[r.netId] = b; G.bots.push(b);
     }
+    if (G.mode === 'br') G.markSquad(); // nome azul dos aliados vai pro boneco novo
   },
   // o servidor tirou a posse dos bots deste computador (ele estava travado/minimizado): os bots viram bonecos remotos de novo, controlados pelo novo host
   demoteBots() {
@@ -502,13 +503,14 @@ LS.Net = {
     for (const b of G.bots.slice()) {
       if (!b.netId || b.remote) continue;
       const r = new LS.RemoteFighter(b.name, b.model.look);
-      r.reset(); r.pos.copy(b.pos); r.yaw = b.yaw; r.alive = b.alive; r.hp = b.hp;
+      r.reset(); r.team = b.team; r.pos.copy(b.pos); r.yaw = b.yaw; r.alive = b.alive; r.hp = b.hp;
       r.model.root.visible = false; G.scene.add(r.model.root);
       if (b.model.root.parent) b.model.root.parent.remove(b.model.root);
       const i = G.fighters.indexOf(b); if (i >= 0) G.fighters[i] = r;
       G.bots.splice(G.bots.indexOf(b), 1);
       this.register(r, b.netId);
     }
+    if (G.mode === 'br') G.markSquad();
   },
   // acerto feito por algo controlado aqui: o servidor confere e calcula o dano
   reportHit(attacker, victim, head, weaponName) {

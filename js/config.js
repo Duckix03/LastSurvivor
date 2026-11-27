@@ -1,11 +1,11 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '96'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '97'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // versão do ONLINE (crossplay navegador ↔ app). Suba +1 quando mudar algo que quebra a partida online
 // (armas, mapa, protocolo de rede...) e suba junto o MIN_PROTO em server/src/worker.js, depois "npx wrangler deploy".
 // Quem estiver com versão mais velha (ex.: APK antigo) recebe o aviso pra atualizar em vez de entrar com regras diferentes.
-LS.NET_PROTO = 1;
+LS.NET_PROTO = 2; // 2: esquadrões de 4 e party
 // rodando dentro do app Android (Capacitor)?
 LS.IS_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 // onde baixar o APK mais novo (o GitHub Actions publica sempre aqui)
@@ -88,7 +88,8 @@ LS.GOOGLE_CLIENT_ID = '';
 LS.ISLAND_RADIUS = 340;     // raio útil da ilha
 LS.WATER_LEVEL = 0;
 LS.GEL = { name: 'Bola de Gelo', max: 4 }; // vira a parede de gel (js/gelwall.js)
-LS.BOT_COUNT = 30;
+LS.BOT_COUNT = 31; // + você = 32 = 8 esquadrões de 4
+LS.SQUAD = 4; // battle royale em esquadrões: os bots completam as vagas do seu time
 // bots sempre no NORMAL, de propósito (não tem mais escolha de dificuldade): dano dos tiros deles × dmg, mira entre skill[0] e skill[1]
 LS.BOT_LEVEL = { dmg: 0.55, skill: [0.35, 1] };
 LS.GRAVITY = 24;
@@ -222,6 +223,10 @@ LS.util = {
 };
 
 // mesmo time? (só existe time no duelo 2v2; no battle royale é cada um por si)
+// dentro do galpão (duelo offline ou duelo da party online)
+LS.hall = () => { const G = LS.Game; return !!G && (G.mode === 'duel' || (G.mode === 'custom' && !!LS.Custom && LS.Custom.arena === 'duel')); };
 LS.sameTeam = (a, b) => !!a && !!b && a.team != null && a.team === b.team;
+// times com alguém vivo (quem não tem time conta como um time sozinho)
+LS.teamsAlive = list => { const s = new Set(); for (const f of list) if (f.alive) s.add(f.team != null ? f.team : f); return s; };
 LS.BOT_NAMES = ['Viper', 'Shadow', 'Falcon', 'Ghost', 'Blaze', 'Raven', 'Storm', 'Titan', 'Nova', 'Hunter', 'Cobra', 'Wolf', 'Phantom', 'Reaper', 'Ace',
   'Tiger', 'Sniper_BR', 'Rex', 'Lince', 'Jaguar', 'Trovão', 'Fênix', 'Sombra', 'Zé_Bala', 'Kaiser', 'Onça', 'Dragão', 'Bravo', 'Raio', 'Furacão', 'Mamba', 'Orion'];

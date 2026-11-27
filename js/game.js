@@ -82,9 +82,12 @@ LS.Game = {
       this.fighters.forEach(f => f.reset());
       this.player.name = LS.playerProfile.name; this.player.model.applyLook(LS.playerProfile.look);
       this.bots.forEach(b => b.model.applyLook(LS.Skin.randomLook()));
+      // esquadrões de 4: você + 3 bots no seu time, o resto dos bots em times de 4
+      this.player.team = 0; this.bots.forEach((b, i) => { b.team = i < LS.SQUAD - 1 ? 0 : 1 + Math.floor((i - (LS.SQUAD - 1)) / LS.SQUAD); });
+      this.markSquad();
       this.plane.reset(); this.zone.reset();
       this.precompile();
-      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
+      this.time = 0; this.endTimer = 0; this.pendingWin = false; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
       const df = LS.BOT_LEVEL; this.botDamageMul = df.dmg; this.bots.forEach(b => { b.skill = LS.util.rand(df.skill[0], df.skill[1]); });
       this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
       document.getElementById('killfeed').innerHTML = '';
@@ -95,10 +98,25 @@ LS.Game = {
       this.state = 'playing';
       LS.Input.enabled = true; LS.Input.lock();
       LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
-      LS.HUD.centerMsg('LAST SURVIVOR', LS.Touch.active ? 'Toque no botão ⬆ para saltar do avião' : 'Pressione ESPAÇO para saltar do avião', 4);
+      LS.HUD.centerMsg('LAST SURVIVOR', (LS.Touch.active ? 'Toque no botão ⬆ para saltar do avião' : 'Pressione ESPAÇO para saltar do avião') + ' · seu esquadrão salta com você', 4);
       LS.stats.games++; LS.saveStats();
     });
   },
+  // nome azul em cima dos aliados (aparece até atrás da parede) — tira os das partidas anteriores
+  clearSquadTags() { for (const f of (this.botPool || []).concat(this.fighters || [])) if (f._sqTag) { if (f._sqTag.parent) f._sqTag.parent.remove(f._sqTag); f._sqTag.material.map.dispose(); f._sqTag.material.dispose(); f._sqTag = null; } },
+  markSquad() {
+    this.clearSquadTags();
+    const P = this.player;
+    for (const f of this.fighters) if (f !== P && LS.sameTeam(f, P)) {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d');
+      g.font = 'bold 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,0.8)'; g.strokeText(f.name, 128, 24); g.fillStyle = '#2fd6ff'; g.fillText(f.name, 128, 24);
+      g.beginPath(); g.moveTo(116, 46); g.lineTo(140, 46); g.lineTo(128, 60); g.closePath(); g.fill();
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+      s.scale.set(1.6, 0.4, 1); s.renderOrder = 20; s.position.set(0, 2.35, 0); f.model.root.add(s); f._sqTag = s;
+    }
+  },
+  squadUp(team) { return team != null && this.fighters.some(f => f.alive && f.team === team); },
 
   // partida online: mesma ilha, loot/avião/zona pela semente do servidor; bots só no host
   startOnline(d) {
@@ -117,9 +135,11 @@ LS.Game = {
       for (const b of this.botPool) { b.reset(); b.netId = null; if (b.model.root.parent) b.model.root.parent.remove(b.model.root); }
       this.player.reset(); this.player.name = LS.playerProfile.name; this.player.model.applyLook(LS.playerProfile.look);
       N.register(this.player, d.you);
+      const tm = v => (v === undefined || v === null ? null : v); // servidor antigo: sem times (todos contra todos)
+      const meP = d.players.find(p => p.pid === d.you); this.player.team = tm(meP && meP.team);
       const fighters = [this.player], host = d.host === d.you;
       for (const p of d.players) if (p.pid !== d.you) {
-        const r = new LS.RemoteFighter(p.name, p.look); r.reset(); r.name = p.name; this.scene.add(r.model.root); N.register(r, p.pid); fighters.push(r);
+        const r = new LS.RemoteFighter(p.name, p.look); r.reset(); r.name = p.name; r.team = tm(p.team); this.scene.add(r.model.root); N.register(r, p.pid); fighters.push(r);
       }
       const looks = LS.util.withSeed(d.seed + 99, () => d.bots.map(() => LS.Skin.randomLook())); // bots com a mesma cara pra todos
       this.bots = [];
@@ -128,12 +148,12 @@ LS.Game = {
         let b;
         if (host) { b = this.botPool[i]; b.reset(); b.skill = LS.util.rand(df.skill[0], df.skill[1]); this.bots.push(b); }
         else { b = new LS.RemoteFighter(bd.name, looks[i]); b.reset(); }
-        b.name = bd.name; b.model.applyLook(looks[i]); this.scene.add(b.model.root); N.register(b, bd.id); fighters.push(b);
+        b.name = bd.name; b.team = tm(bd.team); b.model.applyLook(looks[i]); this.scene.add(b.model.root); N.register(b, bd.id); fighters.push(b);
       });
       if (host) N.send({ t: 'diff', dmg: df.dmg });
-      this.fighters = fighters;
+      this.fighters = fighters; this.markSquad();
       this.precompile();
-      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
+      this.time = 0; this.endTimer = 0; this.pendingWin = false; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
       this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
       document.getElementById('killfeed').innerHTML = '';
       const tip = document.getElementById('loading-tip'), tipTxt = tip ? tip.textContent : '';
@@ -145,8 +165,8 @@ LS.Game = {
         document.getElementById('bigmap').classList.add('hidden');
         this.state = 'playing'; LS.Input.enabled = true; LS.Input.lock();
         LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
-        const humans = d.players.length;
-        LS.HUD.centerMsg('PARTIDA ONLINE', humans + ' jogadores + ' + d.bots.length + ' bots · ' + (LS.Touch.active ? 'toque no ⬆ pra saltar' : 'ESPAÇO para saltar'), 4);
+        const humans = d.players.length, mates = this.fighters.filter(f => f !== this.player && f.remote && f.netId && f.netId[0] === 'p' && LS.sameTeam(f, this.player)).length;
+        LS.HUD.centerMsg('PARTIDA ONLINE', humans + ' jogadores + ' + d.bots.length + ' bots · ' + (mates ? 'sua party está no seu esquadrão · ' : '') + (LS.Touch.active ? 'toque no ⬆ pra saltar' : 'ESPAÇO para saltar'), 4);
         LS.stats.games++; LS.saveStats();
       };
       this._onlineGo = go;
@@ -163,7 +183,7 @@ LS.Game = {
     LS.UI.showScreen('loading');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
-      LS.Net.leave(); LS.Duel.exit(); this.mode = 'duel'; this.lastKiller = null; LS.HUD.clearShots(); LS.Victory.hide(); this.zone.rng = null;
+      LS.Net.leave(); LS.Duel.exit(); this.clearSquadTags(); this.mode = 'duel'; this.lastKiller = null; LS.HUD.clearShots(); LS.Victory.hide(); this.zone.rng = null;
       for (const b of this.botPool) { b.reset(); b.netId = null; if (b.model.root.parent) b.model.root.parent.remove(b.model.root); }
       const size = LS.Modes.duelSize, df = LS.BOT_LEVEL, n = size * 2 - 1;
       const names = LS.BOT_NAMES.slice().sort(() => Math.random() - 0.5);
@@ -180,7 +200,7 @@ LS.Game = {
       this.fighters = mine.concat(foes);
       LS.Loot.clear(); LS.Effects.clear();
       this.plane.active = false; this.plane.mesh.visible = false;
-      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
+      this.time = 0; this.endTimer = 0; this.pendingWin = false; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
       LS.Duel.enter(this.scene, mine, foes); // monta o galpão, o 1º mapa e começa o round 1
       this.precompile();
       document.getElementById('killfeed').innerHTML = '';
@@ -200,8 +220,8 @@ LS.Game = {
     LS.UI.showScreen('loading');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
-      LS.Duel.exit(); LS.Victory.hide(); LS.HUD.clearShots(); this.mode = 'custom'; this.lastKiller = null; this.zone.rng = null;
-      this.time = 0; this.endTimer = 0; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
+      LS.Duel.exit(); this.clearSquadTags(); LS.Victory.hide(); LS.HUD.clearShots(); this.mode = 'custom'; this.lastKiller = null; this.zone.rng = null;
+      this.time = 0; this.endTimer = 0; this.pendingWin = false; this.ended = false; LS.Spectate.stop(); LS.GelWall.clear();
       LS.Custom.setup(d);
       this.precompile();
       document.getElementById('killfeed').innerHTML = '';
@@ -238,6 +258,8 @@ LS.Game = {
   },
   onKill(victim, killer, weapon, head) {
     victim.placement = this.aliveCount() + 1;
+    // esquadrão inteiro caiu: a colocação é a do time
+    if (this.mode === 'br' && victim.team != null && !this.squadUp(victim.team)) { const pl = LS.teamsAlive(this.fighters).size + 1; for (const f of this.fighters) if (f.team === victim.team) f.placement = pl; }
     const mine = killer === this.player || victim === this.player;
     LS.HUD.killFeed(killer && killer !== victim ? killer.name : '', victim.name, weapon || '?', head, mine);
     if (this.mode === 'duel' || this.mode === 'custom') {
@@ -250,9 +272,11 @@ LS.Game = {
       LS.HUD.centerMsg('ELIMINOU ' + victim.name.toUpperCase(), (head ? 'Tiro na cabeça! · ' : '') + this.player.kills + ' abate(s)', 1.8);
     }
     if (victim === this.player) this.lastKiller = killer && killer !== victim ? killer : null;
-    if (victim === this.player) { this.pendingWin = false; LS.Spectate.start(killer, weapon, head); } // killcam + cartão + espectador (js/spectate.js)
-    else if (this.player.alive && this.aliveCount() === 1) { this.endTimer = 2; this.pendingWin = true; }
-    else LS.Spectate.onKill(victim, killer);
+    // só sobrou o seu esquadrão (mesmo com você morto, se um aliado sobreviveu): vitória
+    const ts = LS.teamsAlive(this.fighters), P = this.player, mineUp = P.team != null ? ts.has(P.team) : P.alive;
+    if (ts.size === 1 && mineUp && !this.pendingWin) { this.endTimer = 2; this.pendingWin = true; }
+    if (victim === P) LS.Spectate.start(killer, weapon, head); // killcam + cartão + espectador (aliados primeiro)
+    else if (!this.pendingWin) LS.Spectate.onKill(victim, killer);
   },
   onGunshot(shooter) { LS.HUD.gunshot(shooter); // indicador na tela / minimapa de onde vem o tiro
     for (const b of this.bots) if (b !== shooter && b.alive && b.state === 'ground') b.hearShot(shooter); },
@@ -304,7 +328,7 @@ LS.Game = {
     if (LS.Lobby.built) { LS.Lobby.model.applyLook(LS.playerProfile.look); LS.Lobby.syncUI(); }
   },
   // fim da partida: ganhou = comemoração "LAST SURVIVOR!" antes do menu; perdeu = menu direto
-  finish(win) { if (win) this.celebrate(); else this.endMatch(false); },
+  finish(win) { if (win && this.player.alive) this.celebrate(); else this.endMatch(win); }, // seu time venceu com você morto: direto pro resultado
   celebrate() {
     if (this.state === 'victory') return;
     LS.Spectate.stop();
@@ -353,7 +377,7 @@ LS.Game = {
     t.textContent = win ? 'VITÓRIA!' : duel ? 'DERROTA' : 'FIM DE JOGO';
     t.className = win ? 'win' : 'lose';
     document.getElementById('end-sub').textContent = duel ? (LS.Duel.size > 1 ? (win ? 'Seu time venceu o 2v2!' : 'Seu time perdeu o 2v2. Tente de novo!') : (win ? 'Você venceu o duelo contra ' : 'Você perdeu o duelo contra ') + LS.Duel.opp.name + '!')
-      : win ? 'Você é o último sobrevivente da ilha!' : this.lastKiller ? 'Você foi eliminado por ' + this.lastKiller.name + '. Tente novamente!' : 'Você foi eliminado. Tente novamente!';
+      : win ? (P.alive ? 'Seu esquadrão é o último de pé na ilha!' : 'Você caiu, mas o seu esquadrão venceu!') : this.lastKiller ? 'Você foi eliminado por ' + this.lastKiller.name + '. Tente novamente!' : 'Você foi eliminado. Tente novamente!';
     const rw = LS.Menu.award(P, win);
     document.getElementById('end-xp').textContent = '+' + rw.xp + ' XP · +' + rw.coins + ' moedas' + (rw.levelUp ? ' · SUBIU PARA O NÍVEL ' + rw.level + '!' : '');
     // botão pra ver o perfil do oponente (duelo) ou de quem te eliminou (bot)
@@ -417,7 +441,7 @@ LS.Game = {
     this.lastDt = dt;
     // música do lobby e ambiente do reverb (galpão no duelo), conferidos poucas vezes por segundo
     const nowMs = performance.now();
-    if (!(nowMs < this._sndT)) { this._sndT = nowMs + 400; if (LS.Music) LS.Music.sync(); if ((this.state === 'menu' || this.state === 'lobby') && LS.Lobby.built) LS.Lobby.applyTheme(); if (LS.Maint && LS.Maint.on) LS.Maint.sync(); if (LS.Audio.ctx) LS.Audio.setEnv(this.mode === 'duel' && this.state !== 'menu' && this.state !== 'lobby' ? 'hall' : 'open'); }
+    if (!(nowMs < this._sndT)) { this._sndT = nowMs + 400; if (LS.Music) LS.Music.sync(); if ((this.state === 'menu' || this.state === 'lobby') && LS.Lobby.built) LS.Lobby.applyTheme(); if (LS.Maint && LS.Maint.on) LS.Maint.sync(); if (LS.Audio.ctx) LS.Audio.setEnv(LS.hall() && this.state !== 'menu' && this.state !== 'lobby' ? 'hall' : 'open'); }
     this.fpsAcc += dt; this.fpsFrames++;
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS' + (LS.Net.online && LS.Net.rtt ? ' · ' + Math.round(LS.Net.rtt) + ' ms' + (LS.Net.exT > 60 ? ' · ex ' + Math.round(100 * LS.Net.exN / LS.Net.exT) + '%' + ' · d ' + Math.round(LS.Net.interpMs) : '') : ''); this.fpsAcc = 0; this.fpsFrames = 0; LS.Net.exN = 0; LS.Net.exT = 0; }
     // atrás de um painel (loja, perfil, configurações...) ou da pausa/fim, a cena 3D fica parada: não redesenha à toa (pesava muito no celular)
@@ -486,7 +510,7 @@ LS.Game = {
     LS.HUD.update(dt, this);
     if (this.endTimer > 0) {
       this.endTimer -= dt;
-      if (this.endTimer <= 0) this.finish(this.pendingWin && P.alive);
+      if (this.endTimer <= 0) this.finish(this.pendingWin);
     }
   }
 };

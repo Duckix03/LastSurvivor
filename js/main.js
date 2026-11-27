@@ -112,7 +112,7 @@ LS.UI = {
       case 'mute': LS.Menu.toggleMute(); break;
       case 'fullscreen': LS.Menu.toggleFullscreen(); break;
       case 'lobby-start': LS.Touch.goFull(); LS.Lobby.startSearch(); break;
-      case 'lobby-cancel': LS.Lobby.cancelSearch(); break;
+      case 'lobby-cancel': LS.Lobby.cancelSearch(); LS.Party.cancelled(); break;
       case 'lobby-random': LS.Lobby.random(); break;
       case 'lobby-reset': LS.Lobby.reset(); break;
       case 'lobby-back': LS.Lobby.cancelSearch(); LS.Wardrobe.leave(); LS.Game.quitToMenu(); break;
@@ -160,6 +160,7 @@ window.addEventListener('load', () => {
   LS.Profile.init();
   LS.Conta.init(); // aba CONTA das configurações (e a página de login com Google aberta pelo app)
   LS.Shop.init(); LS.Friends.init(); LS.Custom.init(); LS.Menu.initBanners();
+  LS.Party.init(); // party com amigos (até 4 no BR, 2 no duelo)
   LS.Menu.init();
   document.getElementById('arsenal-list').addEventListener('click', e => { const b = e.target.closest('[data-wpn]'); if (b) { LS.Audio.init(); LS.Audio.click(); LS.Menu.pickLobbyWeapon(b.dataset.wpn); } });
   LS.UI.bindSettings();
@@ -171,6 +172,6 @@ window.addEventListener('load', () => {
   document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => LS.UI.onAction(b.dataset.action)));
   window.addEventListener('keydown', e => {
     if (e.code === 'Escape' && LS.UI.subPanelOpen()) LS.UI.back();
-    else if (e.code === 'Escape' && LS.UI.current === 'lobby') { if (LS.Lobby.searching) LS.Lobby.cancelSearch(); else { LS.Wardrobe.leave(); LS.Game.quitToMenu(); } }
+    else if (e.code === 'Escape' && LS.UI.current === 'lobby') { if (LS.Lobby.searching) { LS.Lobby.cancelSearch(); LS.Party.cancelled(); } else { LS.Wardrobe.leave(); LS.Game.quitToMenu(); } }
   });
 });

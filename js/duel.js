@@ -30,7 +30,7 @@ LS.DuelZone = class extends LS.Zone {
   pickNext() {
     const A = LS.Duel.ARENA, ph = this.phases[Math.min(this.phase, this.phases.length - 1)];
     this.nextR = ph.r;
-    const off = Math.max(0, this.radius - ph.r) * 0.35, a = Math.random() * Math.PI * 2;
+    const off = Math.max(0, this.radius - ph.r) * 0.35, a = (this.rng || Math.random)() * Math.PI * 2; // online: semente (gás igual pra dupla)
     const x = LS.util.clamp(this.center.x + Math.cos(a) * off, A.x - 12, A.x + 12);
     const z = LS.util.clamp(this.center.y + Math.sin(a) * off, A.z - 7, A.z + 7);
     this.next = new THREE.Vector2(x, z);
@@ -89,7 +89,7 @@ LS.Duel = {
     this.brZone = this.brZone || G.zone;
     this.brZone.wall.visible = false; this.brZone.nextRing.visible = false;
     this.zone.wall.visible = true; this.hemi.intensity = 0.18;
-    G.zone = this.zone;
+    G.zone = this.zone; this.zone.rng = null; // offline: gás sorteado na hora
     this.active = true; this.score = [0, 0]; this.round = 0; this.kills = 0; this.dmg = 0;
     this.loadout = null; this.used = []; this.shopN = 0;
     this.firstPicker = Math.random() < 0.5 ? 'me' : 'foe'; // quem escolhe primeiro é sorteado

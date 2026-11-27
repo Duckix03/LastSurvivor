@@ -202,7 +202,7 @@ LS.Audio = {
   // tipo do chão debaixo do jogador (pros passos)
   surface() {
     const G = LS.Game, P = G && G.player; if (!P) return 'grass';
-    if (G.mode === 'duel') return 'concrete';
+    if (LS.hall()) return 'concrete';
     if (G.mode === 'custom') { const C = LS.CustomMap.C; return Math.hypot(P.pos.x - C.x, P.pos.z - C.z) > C.R ? 'sand' : 'grass'; }
     const h = LS.World.heightAt(P.pos.x, P.pos.z);
     if (P.pos.y > h + 0.25) return 'wood'; // em cima de algo (casa, caixa)

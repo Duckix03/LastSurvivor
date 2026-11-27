@@ -82,7 +82,7 @@ LS.Fighter.prototype._physics = function (dt, wish, opts) {
   }
 };
 LS.Fighter.prototype.clampToIsland = function () {
-  if (LS.Game.mode === 'duel') return; // o galpão do duelo fica no mar (as paredes seguram)
+  if (LS.hall()) return; // o galpão do duelo fica no mar (as paredes seguram)
   if (LS.Game.mode === 'custom') { LS.CustomMap.inside(this); return; } // ilha plana: não passa da borda
   const d = Math.hypot(this.pos.x, this.pos.z), M = 360;
   if (d > M) { this.pos.x *= M / d; this.pos.z *= M / d; }

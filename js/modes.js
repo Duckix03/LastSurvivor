@@ -2,7 +2,7 @@
 'use strict';
 LS.MODES = {
   br: {
-    name: 'BATTLE ROYALE', tag: 'CLÁSSICO', place: 'Ilha · Solo',
+    name: 'BATTLE ROYALE', tag: 'ESQUADRÕES', place: 'Ilha · Esquadrões de 4',
     desc: 'Salte do avião, junte loot e seja o último em pé.'
   },
   duel: {
@@ -32,18 +32,22 @@ LS.Modes = {
   // dados do modo com o que muda conforme o tamanho do time
   info(id) {
     const m = Object.assign({}, LS.MODES[id || this.id]);
-    if ((id || this.id) === 'br') { m.players = 31; m.sub = 'Ilha · Solo · 31 jogadores'; }
+    if ((id || this.id) === 'br') { m.players = 32; m.sub = 'Ilha · Esquadrões de 4 · 32 jogadores'; }
     else { const t = this.duelSize; m.players = t * 2; m.vs = t + 'v' + t; m.sub = 'Galpão · ' + m.vs + (t > 1 ? ' equipes' : '') + ' · Primeiro a 5'; }
     return m;
   },
   cur() { return this.info(this.id); },
   set(id) {
     if (!LS.MODES[id]) return;
+    if (LS.Party && !LS.Party.allowMode(id)) return; // party: só o líder troca (duelo com 3+: escolhe quem fica)
     this.id = id;
     try { localStorage.setItem(this.KEY, id); } catch (e) { /* ignora */ }
+    if (id === 'duel' && LS.Party && LS.Party.inParty()) this.duelSize = 2; // duelo em party: sempre 2v2
     this.render();
+    if (LS.Party) { LS.Party.modeChanged(id); LS.Party.render(); }
   },
   setSize(n) {
+    if (LS.Party && LS.Party.inParty() && n !== 2) { LS.Party.toast('Em party o duelo é 2v2 (você + seu amigo).'); n = 2; }
     this.duelSize = n === 2 ? 2 : 1;
     try { localStorage.setItem(this.SIZE_KEY, String(this.duelSize)); } catch (e) { /* ignora */ }
     this.render();

@@ -13,7 +13,20 @@ LS.Bot = class extends LS.Fighter {
     this.strafeT = 0; this.strafeDir = 1; this.aimErr = new THREE.Vector3(); this.lockT = 0;
     this.lootTarget = null; this.alertPos = null; this.alertT = 0; this.lastSeenT = -99; this.wantJump = false;
     this.wanderGoal = null; this.crouchT = 0;
+    this.leadT = 0; this.lead = null; this.followJumpT = 0; this.followLand = false;
   }
+  // esquadrão: o humano do time (você, ou um amigo no online) que esse bot acompanha
+  squadLead() {
+    const G = LS.Game;
+    if (G.mode !== 'br' || this.team == null) return null;
+    if (G.time >= this.leadT) {
+      this.leadT = G.time + 1;
+      this.lead = G.fighters.find(f => f !== this && f.alive && f.team === this.team && (f.isPlayer || (f.remote && f.netId && f.netId[0] === 'p'))) || null;
+    }
+    return this.lead && this.lead.alive ? this.lead : null;
+  }
+  // lugar do bot em volta do líder (cada um num canto, pra não se amontoar)
+  squadSpot(L) { const i = (this.netId ? this.netId.charCodeAt(this.netId.length - 1) : this.name.length) % 6, a = i * 1.047 + 0.5, r = 3.5 + (i % 2) * 1.5; return { x: L.pos.x + Math.cos(a) * r, z: L.pos.z + Math.sin(a) * r }; }
   preferredRange() {
     const d = this.wdef(); if (!d) return 0;
     return { 'Escopeta': 7, 'SMG': 14, 'Pistola': 16, 'Rifle': 30, 'Sniper': 70 }[d.cat];
@@ -92,7 +105,7 @@ LS.Bot = class extends LS.Fighter {
     } else this.targetVisible = false;
     if (this.target && G.time - this.lastSeenT > 6) this.target = null;
     // duelo: sempre sabe mais ou menos onde o oponente mais perto está (vai caçar em vez de vagar)
-    if (G.mode === 'duel' && !this.targetVisible) {
+    if (LS.hall() && !this.targetVisible) {
       let o = null, od = Infinity;
       for (const f of G.fighters) { if (f === this || !f.alive || LS.sameTeam(this, f)) continue; const d = this.pos.distanceToSquared(f.pos); if (d < od) { od = d; o = f; } }
       if (this.target && (!this.target.alive || LS.sameTeam(this, this.target))) this.target = null;
@@ -113,7 +126,7 @@ LS.Bot = class extends LS.Fighter {
     const outsideNow = Math.hypot(this.pos.x - Z.center.x, this.pos.z - Z.center.y) > Z.radius - 3;
 
     // 4) estado
-    const armed = this.hasUsableWeapon();
+    const armed = this.hasUsableWeapon(), L = this.squadLead();
     if (this.target && armed && !(outsideNow && this.hp < 50)) this.ai = 'fight';
     else if (this.target && !armed) this.ai = 'flee';
     else if (outsideNow || (outDist > 0 && Z.timer < 25)) this.ai = 'zone';
@@ -123,6 +136,11 @@ LS.Bot = class extends LS.Fighter {
       if (this.lootTarget) this.ai = 'loot';
       else if (this.alertPos && this.alertT > 0) this.ai = 'investigate';
       else this.ai = 'wander';
+      // esquadrão: não se afasta do líder (o loot tem que estar perto dele também)
+      if (L) {
+        const dl = Math.hypot(L.pos.x - this.pos.x, L.pos.z - this.pos.z), lootFar = this.lootTarget && Math.hypot(this.lootTarget.pos.x - L.pos.x, this.lootTarget.pos.z - L.pos.z) > 22;
+        if ((this.ai === 'wander' && dl > 9) || (this.ai === 'investigate' && dl > 45) || (this.ai === 'loot' && (lootFar || dl > 28))) this.ai = 'follow';
+      }
     }
     // pega itens próximos
     const near = LS.Loot.nearest(this.pos, 1.6, it => this.wantsItem(it));
@@ -146,6 +164,12 @@ LS.Bot = class extends LS.Fighter {
     this.updateTimers(dt);
     this.alertT -= dt;
     if (this.state === 'plane') {
+      const L = this.squadLead();
+      if (L) { // esquadrão: salta logo depois do líder e cai perto dele
+        if (L.state !== 'plane' && !this.followJumpT) this.followJumpT = G.time + LS.util.rand(0.25, 1.1);
+        if (this.followJumpT && G.time >= this.followJumpT && G.plane.canJump()) { G.jumpFromPlane(this); this.followLand = true; this.landing = null; }
+        return;
+      }
       if (G.plane.progress >= this.jumpAt && G.plane.canJump()) {
         G.jumpFromPlane(this);
         const spots = LS.World.lootSpots;
@@ -155,6 +179,8 @@ LS.Bot = class extends LS.Fighter {
       return;
     }
     if (this.state !== 'ground') {
+      const L = this.squadLead();
+      if (L && L.state !== 'plane') this.landing = this.squadSpot(L); // vai atrás do líder no ar
       if (!this.landing) this.landing = { x: this.pos.x, z: this.pos.z }; // pulou forçado (fim da rota do avião)
       const w = this.goTo(this.landing.x, this.landing.z, dt);
       this.diving = Math.hypot(this.landing.x - this.pos.x, this.landing.z - this.pos.z) > 50;
@@ -215,6 +241,13 @@ LS.Bot = class extends LS.Fighter {
         break;
       }
       case 'heal': this.crouch = true; speed = 0; break;
+      case 'follow': { // esquadrão: volta pra perto do líder
+        const L = this.squadLead(); if (!L) break;
+        const s = this.squadSpot(L), d = Math.hypot(s.x - this.pos.x, s.z - this.pos.z);
+        if (d > 1.5) { wish = this.goTo(s.x, s.z, dt); if (d > 10) { this.running = true; speed = 7.4; } }
+        this.crouch = !!L.crouch && d < 4;
+        break;
+      }
       case 'loot': {
         const it = this.lootTarget;
         if (it && it.alive) { wish = this.goTo(it.pos.x, it.pos.z, dt); if (this.pos.distanceTo(it.pos) > 15) { this.running = true; speed = 7.4; } }

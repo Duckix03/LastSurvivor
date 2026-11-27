@@ -148,3 +148,10 @@ e adicione o id em `EXCLUSIVE` no `server/src/accounts.js` (fantasia: `EXCLUSIVE
 - Só entra quem é **amigo do dono** da sala (e com a senha, se tiver). Espectadores recebem a posição de todo mundo; jogadores continuam com o anti-wallhack.
 - A autoridade é a mesma da partida normal (vida, tiros, dano), sem bots e sem fogo amigo. Não dá kill, moedas nem XP.
 - Teste local: `npx wrangler dev --var SHOP_SECS:60` deixa a loja com 60 s (padrão 15 s).
+
+## 👥 Party e esquadrões (v97)
+
+- O Battle Royale online agora é em **esquadrões de 4** (32 vagas = 8 times). Cada party fica no mesmo time e os bots completam; sem fogo amigo; vence o último time de pé.
+- Rotas novas: `/ws/party` (PartyHub, um só no mundo: convites, líder, modo, "vamos!") e `/ws/pduel/<id>` (PartyDuel: a dupla da party contra 2 bots no galpão).
+- Dois Durable Objects novos já estão no `wrangler.toml` (migração `v4`). O PartyHub usa a hibernação de WebSocket (conexão aberta sem gastar a cota do plano grátis).
+- `MIN_PROTO` subiu pra **2**: rode `npx wrangler deploy` e publique o site **juntos** (versões antigas do jogo pedem pra atualizar).
