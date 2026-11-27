@@ -13,7 +13,16 @@ LS.Flora = {
   },
   material(tex) {
     const k = '_m' + tex;
-    if (!this[k]) { const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: this.toonGrad() }); this[k] = LS.Tex.triplanar(m, tex); }
+    if (!this[k]) {
+      const m = LS.Tex.triplanar(new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: this.toonGrad() }), tex), base = m.onBeforeCompile;
+      m.onBeforeCompile = sh => { // neve em cima das copas e dos arbustos (só nas faces viradas pra cima)
+        base(sh); sh.uniforms.uSnow = LS.Tex.snowU;
+        sh.fragmentShader = 'uniform float uSnow;\n' + sh.fragmentShader.replace('diffuseColor.rgb *= texture2D(tpMap, tpUV * tpScale).rgb * tpGain;',
+          'diffuseColor.rgb *= texture2D(tpMap, tpUV * tpScale).rgb * tpGain;\n if (uSnow > 0.0) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.84, 0.88, 0.95), uSnow * 0.8 * smoothstep(0.55, 0.92, vTpN.y));');
+      };
+      m.customProgramCacheKey = () => 'tp_' + tex + '_flora_snow';
+      this[k] = m;
+    }
     return this[k];
   },
   // junta peças (geometria + posição/escala/rotação + cor) numa malha só, com faces chapadas
