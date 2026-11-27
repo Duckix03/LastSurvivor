@@ -41,7 +41,7 @@ const HEAR_R = 320;        // até onde um tiro é ouvido
 // tabela de armas (igual a js/config.js): o dano é calculado aqui, não no navegador
 const WEAPONS = {
   m1911: { dmg: 22, rate: 4, range: 120, pellets: 1, cat: 'Pistola', hs: 0.06 },
-  deagle: { dmg: 48, rate: 2, range: 150, pellets: 1, cat: 'Pistola', hs: 0.09 },
+  deagle: { dmg: 48, hsDmg: 200, rate: 2, range: 150, pellets: 1, cat: 'Pistola', hs: 0.09 }, // hsDmg: dano FIXO na cabeça (substitui o multiplicador); 200 mata mesmo com capacete nível 3 (corta 50%) e vida 100
   mp5: { dmg: 17, rate: 13, range: 110, pellets: 1, cat: 'SMG', hs: 0.075 },
   ump: { dmg: 21, rate: 10, range: 120, pellets: 1, cat: 'SMG', hs: 0.075 },
   ak47: { dmg: 32, rate: 9, range: 250, pellets: 1, cat: 'Rifle', hs: 0.09 },
@@ -413,7 +413,7 @@ export class Match {
         shot.left--;
         const head = ok.head && shot.w !== 'punch';
         const fall = ok.dist > w.range ? Math.max(0.25, Math.min(1, 1 - (ok.dist - w.range) / (w.range * 0.6))) : 1;
-        let dmg = w.dmg * fall * (head ? (w.cat === 'Sniper' ? 2.5 : 1.8) : 1);
+        let dmg = (head && w.hsDmg ? w.hsDmg : w.dmg * (head ? (w.cat === 'Sniper' ? 2.5 : 1.8) : 1)) * fall;
         if (a.id[0] === 'b') dmg *= this.botDmg;
         this.applyDamage(v, a, dmg, head, shot.w, false);
         break;
