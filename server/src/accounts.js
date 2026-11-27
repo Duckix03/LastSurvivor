@@ -13,6 +13,7 @@
 //   POST /api/profile  {look, bio, avatarBg, cover, weapon}   salva o visual e o perfil
 //   POST /api/rename   {name}                  troca o nome (único; custa 10.000 moedas, mudar só maiúsculas é grátis)
 //   POST /api/stats    {stats}                 salva as estatísticas
+//   POST /api/settings {settings}             salva as configurações do jogador (sensibilidade, gráficos, HUD do celular)
 //   GET  /api/profile/<id>                     perfil público de alguém (pelo ID)
 //   POST /api/like/<id>                        curte / descurte
 //   POST /api/admin/claim {key}                vira OWNER usando a chave secreta (ADMIN_KEY)
@@ -166,6 +167,7 @@ export class Accounts {
       if (path === '/api/profile') return await this.saveProfile(me, body);
       if (path === '/api/rename') return await this.rename(me, body);
       if (path === '/api/stats') return await this.saveStats(me, body);
+      if (path === '/api/settings') return await this.saveSettings(me, body);
       m = path.match(/^\/api\/like\/(\d{10})$/);
       if (m) return await this.like(me, m[1]);
       if (path === '/api/admin/claim') return await this.claim(me, body);
@@ -232,7 +234,7 @@ export class Accounts {
     return tok;
   }
   // o que o dono da conta vê (sem a senha)
-  mine(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, renameAt: a.renameAt || 0, google: a.google ? { email: a.google.email } : null, hasPass: !!a.hash, freeRename: !!a.autoName, diamonds: a.diamonds || 0, dailyAt: a.dailyAt || 0 }; }
+  mine(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, renameAt: a.renameAt || 0, google: a.google ? { email: a.google.email } : null, hasPass: !!a.hash, freeRename: !!a.autoName, diamonds: a.diamonds || 0, dailyAt: a.dailyAt || 0, settings: a.settings || null }; }
   pub(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, created: a.created }; }
 
   cleanProfile(p, old) {
@@ -355,6 +357,34 @@ export class Accounts {
     const h = await this.takeHandoff(b.code); if (!h) return fail('Código vencido. Tente entrar de novo.', 401);
     const a = await this.st.get('a:' + h.id); if (!a) return fail('Conta não encontrada.', 404);
     return json({ token: await this.newToken(a.id), account: this.mine(a) });
+  }
+  // configurações do jogador (sensibilidade, gráficos, HUD do celular...): só o que o jogo conhece, com limites
+  cleanSettings(x) {
+    if (!x || typeof x !== 'object') return null;
+    const o = {}, n = (k, a, b) => { const v = +x[k]; if (isFinite(v) && x[k] !== null && x[k] !== '') o[k] = Math.max(a, Math.min(b, v)); };
+    n('sensitivity', 0.05, 5); n('volume', 0, 1); n('musicVol', 0, 1); n('renderDistance', 100, 800); n('resScale', 0.3, 1.5); n('vivid', 0, 1);
+    n('btnSize', 0.5, 2); n('btnAlpha', 0, 1); n('uiSize', 0.5, 2); n('fpsCap', 0, 240);
+    for (const k of ['sensGeneral', 'sensRedDot', 'sens4x', 'sens6x', 'sens8x']) n(k, 1, 100);
+    for (const k of ['showFps', 'perfMode', 'postfx', 'aimAssist', 'muted', 'autoQ']) if (typeof x[k] === 'boolean') o[k] = x[k];
+    if (['low', 'medium', 'high', 'ultra'].includes(x.quality)) o.quality = x.quality;
+    if (typeof x.filter === 'string' && /^[a-z]{2,12}$/.test(x.filter)) o.filter = x.filter;
+    if (x.hud && typeof x.hud === 'object' && x.hud.it && typeof x.hud.it === 'object') { // HUD do celular: { id: [dx, dy, tamanho, opacidade] }
+      const it = {}; let c = 0;
+      for (const k of Object.keys(x.hud.it)) {
+        const v = x.hud.it[k]; if (!/^[a-z0-9-]{2,16}$/.test(k) || !Array.isArray(v) || v.length !== 4 || ++c > 32) continue;
+        const r = v.map(Number); if (r.some(q => !isFinite(q))) continue;
+        it[k] = [Math.max(-1000, Math.min(1000, Math.round(r[0]))), Math.max(-1000, Math.min(1000, Math.round(r[1]))), Math.max(40, Math.min(200, Math.round(r[2]))), Math.max(15, Math.min(100, Math.round(r[3])))];
+      }
+      o.hud = { v: 1, it };
+    }
+    o._t = Math.min(Date.now() + 60000, Math.max(0, +x._t || Date.now()));
+    return o;
+  }
+  async saveSettings(a, b) {
+    const s = this.cleanSettings(b.settings); if (!s) return fail('Configurações inválidas.');
+    if (a.settings && (a.settings._t || 0) > s._t) return json({ t: a.settings._t, settings: a.settings }); // já tem uma mais nova (outro aparelho)
+    a.settings = s; delete a._token; await this.st.put('a:' + a.id, a);
+    return json({ t: s._t });
   }
   async saveProfile(a, b) {
     a.profile = this.cleanProfile(b, a.profile);

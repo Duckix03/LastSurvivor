@@ -7,7 +7,8 @@ LS.Game = {
 
   init() {
     const q = LS.settings.quality;
-    this.renderer = new THREE.WebGLRenderer({ antialias: q !== 'low', powerPreference: 'high-performance' });
+    const mob = LS.Gfx.mobile(); // celular: anti-serrilhado só nos níveis altos (no fraco pesa)
+    this.renderer = new THREE.WebGLRenderer({ antialias: q !== 'low' && !(mob && (LS.settings.autoQ ? (LS.settings.autoTier | 0) < 4 : q !== 'high')), powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.getElementById('game-container').appendChild(this.renderer.domElement);
@@ -82,8 +83,9 @@ LS.Game = {
       this.fighters.forEach(f => f.reset());
       this.player.name = LS.playerProfile.name; this.player.model.applyLook(LS.playerProfile.look);
       this.bots.forEach(b => b.model.applyLook(LS.Skin.randomLook()));
-      // esquadrões de 4: você + 3 bots no seu time, o resto dos bots em times de 4
-      this.player.team = 0; this.bots.forEach((b, i) => { b.team = i < LS.SQUAD - 1 ? 0 : 1 + Math.floor((i - (LS.SQUAD - 1)) / LS.SQUAD); });
+      // times do modo (solo 1, duo 2, squad 4): você + bots no seu time, o resto dos bots em times do mesmo tamanho
+      const T = this.teamN = LS.Modes.brSize || 4;
+      this.player.team = 0; this.bots.forEach((b, i) => { b.team = i < T - 1 ? 0 : 1 + Math.floor((i - (T - 1)) / T); });
       this.markSquad();
       this.plane.reset(); this.zone.reset();
       this.precompile();
@@ -98,7 +100,7 @@ LS.Game = {
       this.state = 'playing';
       LS.Input.enabled = true; LS.Input.lock();
       LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
-      LS.HUD.centerMsg('LAST SURVIVOR', (LS.Touch.active ? 'Toque no botão ⬆ para saltar do avião' : 'Pressione ESPAÇO para saltar do avião') + ' · seu esquadrão salta com você', 4);
+      LS.HUD.centerMsg('LAST SURVIVOR', (LS.Touch.active ? 'Toque no botão ⬆ para saltar do avião' : 'Pressione ESPAÇO para saltar do avião') + (T > 1 ? ' · ' + (T === 2 ? 'sua dupla salta' : 'seu esquadrão salta') + ' com você' : ' · cada um por si'), 4);
       LS.stats.games++; LS.saveStats();
     });
   },
@@ -116,6 +118,8 @@ LS.Game = {
       s.scale.set(1.6, 0.4, 1); s.renderOrder = 20; s.position.set(0, 2.35, 0); f.model.root.add(s); f._sqTag = s;
     }
   },
+  // nome do time no texto (solo: nenhum)
+  teamName() { const n = this.teamN || 4; return n === 2 ? 'time' : n > 2 ? 'esquadrão' : ''; },
   squadUp(team) { return team != null && this.fighters.some(f => f.alive && f.team === team); },
 
   // partida online: mesma ilha, loot/avião/zona pela semente do servidor; bots só no host
@@ -137,6 +141,7 @@ LS.Game = {
       N.register(this.player, d.you);
       const tm = v => (v === undefined || v === null ? null : v); // servidor antigo: sem times (todos contra todos)
       const meP = d.players.find(p => p.pid === d.you); this.player.team = tm(meP && meP.team);
+      this.teamN = d.size === 1 || d.size === 2 ? d.size : 4; // tamanho do time da partida (servidor antigo: squad)
       const fighters = [this.player], host = d.host === d.you;
       for (const p of d.players) if (p.pid !== d.you) {
         const r = new LS.RemoteFighter(p.name, p.look); r.reset(); r.name = p.name; r.team = tm(p.team); this.scene.add(r.model.root); N.register(r, p.pid); fighters.push(r);
@@ -379,7 +384,7 @@ LS.Game = {
     t.textContent = win ? 'VITÓRIA!' : duel ? 'DERROTA' : 'FIM DE JOGO';
     t.className = win ? 'win' : 'lose';
     document.getElementById('end-sub').textContent = duel ? (LS.Duel.size > 1 ? (win ? 'Seu time venceu o 2v2!' : 'Seu time perdeu o 2v2. Tente de novo!') : (win ? 'Você venceu o duelo contra ' : 'Você perdeu o duelo contra ') + LS.Duel.opp.name + '!')
-      : win ? (P.alive ? 'Seu esquadrão é o último de pé na ilha!' : 'Você caiu, mas o seu esquadrão venceu!') : this.lastKiller ? 'Você foi eliminado por ' + this.lastKiller.name + '. Tente novamente!' : 'Você foi eliminado. Tente novamente!';
+      : win ? (this.teamName() ? (P.alive ? 'Seu ' + this.teamName() + ' é o último de pé na ilha!' : 'Você caiu, mas o seu ' + this.teamName() + ' venceu!') : 'Você é o último de pé na ilha!') : this.lastKiller ? 'Você foi eliminado por ' + this.lastKiller.name + '. Tente novamente!' : 'Você foi eliminado. Tente novamente!';
     const rw = LS.Menu.award(P, win);
     document.getElementById('end-xp').textContent = '+' + rw.xp + ' XP · +' + rw.coins + ' moedas' + (rw.levelUp ? ' · SUBIU PARA O NÍVEL ' + rw.level + '!' : '');
     // botão pra ver o perfil do oponente (duelo) ou de quem te eliminou (bot)
@@ -439,12 +444,17 @@ LS.Game = {
   // ---------- Loop ----------
   loop() {
     requestAnimationFrame(this.loop);
+    if (LS.Gfx.skip(this.state)) return; // limite de FPS (tela de 120 Hz desenhava o dobro à toa; lobby do celular a 30)
     const raw = this.clock.getDelta(), dt = Math.min(raw, 0.05) * LS.Console.timeScale; // raw = tempo real do quadro (online: abaixo de 20 FPS roda a simulação em fatias, em vez de câmera lenta)
     this.lastDt = dt;
     // música do lobby e ambiente do reverb (galpão no duelo), conferidos poucas vezes por segundo
     const nowMs = performance.now();
     if (!(nowMs < this._sndT)) { this._sndT = nowMs + 400; if (LS.Music) LS.Music.sync(); if ((this.state === 'menu' || this.state === 'lobby') && LS.Lobby.built) LS.Lobby.applyTheme(); if (LS.Maint && LS.Maint.on) LS.Maint.sync(); if (LS.Audio.ctx) LS.Audio.setEnv(LS.hall() && this.state !== 'menu' && this.state !== 'lobby' ? 'hall' : 'open'); }
     this.fpsAcc += dt; this.fpsFrames++;
+    const playingNow = this.state === 'playing' && !LS.UI.subPanelOpen();
+    if (playingNow && !this._wasPlaying) LS.Gfx.newMatch();
+    this._wasPlaying = playingNow; LS.Gfx.frame(raw, playingNow); // gráfico automático mede o FPS da partida
+    if (this.fpsAcc >= 0.5) LS.HUD.setPing(LS.Net.online && LS.Net.rtt && (this.state === 'playing' || this.state === 'paused') ? LS.Net.rtt : null);
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS' + (LS.Net.online && LS.Net.rtt ? ' · ' + Math.round(LS.Net.rtt) + ' ms' + (LS.Net.exT > 60 ? ' · ex ' + Math.round(100 * LS.Net.exN / LS.Net.exT) + '%' + ' · d ' + Math.round(LS.Net.interpMs) : '') : ''); this.fpsAcc = 0; this.fpsFrames = 0; LS.Net.exN = 0; LS.Net.exT = 0; }
     // atrás de um painel (loja, perfil, configurações...) ou da pausa/fim, a cena 3D fica parada: não redesenha à toa (pesava muito no celular)
     const U = LS.UI, covered = (U.subPanelOpen() || ['pause', 'endscreen', 'loading'].includes(U.current)) && !(this.state === 'paused' && LS.Net.online);
@@ -464,7 +474,13 @@ LS.Game = {
       this.camera.lookAt(0, 10, 0);
       LS.World.updateSky(0.3, this.scene, new THREE.Vector3(0, 0, 0), dt);
     }
-    if (this.state !== 'menu' || this.built) LS.Post.render(this.scene, this.camera);
+    if (this.state !== 'menu' || this.built) {
+      const R = this.renderer;
+      if (LS.Gfx.mobile() && R.shadowMap.enabled && !this._high) { R.shadowMap.autoUpdate = false; R.shadowMap.needsUpdate = ((this._shF = (this._shF | 0) + 1) & 1) === 0; } // celular: sombra a cada 2 quadros
+      LS.Gfx.cullBefore(this); // longe: personagem (e as peças pequenas) não é desenhado
+      LS.Post.render(this.scene, this.camera);
+      LS.Gfx.cullAfter();
+    }
     LS.ESP.draw(); // comando esp (desenha só quando ligado)
     LS.Input.endFrame();
   },

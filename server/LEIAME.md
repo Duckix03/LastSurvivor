@@ -155,3 +155,11 @@ e adicione o id em `EXCLUSIVE` no `server/src/accounts.js` (fantasia: `EXCLUSIVE
 - Rotas novas: `/ws/party` (PartyHub, um só no mundo: convites, líder, modo, "vamos!") e `/ws/pduel/<id>` (PartyDuel: a dupla da party contra 2 bots no galpão).
 - Dois Durable Objects novos já estão no `wrangler.toml` (migração `v4`). O PartyHub usa a hibernação de WebSocket (conexão aberta sem gastar a cota do plano grátis).
 - `MIN_PROTO` subiu pra **2**: rode `npx wrangler deploy` e publique o site **juntos** (versões antigas do jogo pedem pra atualizar).
+
+## 🎮 Solo / Duo / Squad, configurações na conta (v101)
+
+- `/ws/find?s=1|2|4`: uma fila (Matchmaker) por tamanho de time. Sem `s` = Squad (versões antigas continuam funcionando).
+- A partida manda `size` (tamanho do time) e `caps: ['hits']` no `start`: o jogo novo junta os acertos do mesmo tiro (escopeta) num pacote `hits`.
+- Party: o limite segue o modo (Solo 1, Duo 2, Squad 4, Duelo 2). Trocar pra um modo menor pede pro líder escolher quem fica.
+- `POST /api/settings {settings}`: configurações do jogador na conta (sensibilidade, som, HUD do celular). Gráfico fica em cada aparelho.
+- Sem migração nova: é só `npx wrangler deploy`.

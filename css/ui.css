@@ -1909,7 +1909,7 @@ body.mobile #squad .sq { width: 120px; }
 .pm-row .btn { flex: none; }
 .pm-tag { font: 400 11px var(--display); letter-spacing: 0.5px; color: var(--mut); padding: 4px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.06); }
 .pm-tag.ok { color: #4ae680; background: rgba(74, 230, 128, 0.12); }
-.pm-foot { display: flex; justify-content: flex-end; margin-top: 12px; } .pm-foot .btn { flex: none; }
+.pm-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; } .pm-foot .btn { flex: none; }
 
 /* aviso rápido da party */
 #party-toast { position: fixed; left: 50%; bottom: 26px; z-index: 80; transform: translate(-50%, 30px); opacity: 0; pointer-events: none; padding: 10px 18px; border-radius: 12px; max-width: 88vw; text-align: center;

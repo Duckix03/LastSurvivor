@@ -26,25 +26,49 @@ Object.assign(LS.World, {
   },
   finalizeBoxes(scene) {
     if (!this.unitBox) { this.unitBox = new THREE.BoxGeometry(1, 1, 1); this.unitBox.translate(0, 0.5, 0); }
-    // cada cor com muitas caixas é dividida em pedaços de 330 m com esfera de recorte própria:
-    // antes TODAS as casas do mapa eram desenhadas sempre (e de novo no passe de sombra)
-    const C = 330, v = new THREE.Vector3(), sc = new THREE.Vector3(), qq = new THREE.Quaternion();
+    // todas as caixas da mesma "família" (sem textura / com a mesma textura, com ou sem sombra) viram UM InstancedMesh por pedaço
+    // de 330 m, com a cor em cada caixa (instanceColor). Antes era um por COR: ~450 draw calls só de casas (muitas com 1 caixa só).
+    // MAPA IGUAL EM TODOS OS APARELHOS: o three.js gasta 4 Math.random() (o sorteio com semente do mapa) a cada malha/geometria/material
+    // criado. Pra árvores e pedras (geradas depois daqui) ficarem no MESMO lugar da versão antiga, os materiais por cor continuam sendo
+    // criados como antes e a diferença de malhas é "queimada" no sorteio no final.
+    const C = 330, v = new THREE.Vector3(), sc = new THREE.Vector3(), qq = new THREE.Quaternion(), col = new THREE.Color();
+    const chunkKey = (mm, n) => (n < 400 ? 'all' : Math.floor(mm.elements[12] / C) + '|' + Math.floor(mm.elements[14] / C));
+    const fam = {}, glassMat = {};
+    let oldChunks = 0;
     for (const k in this.boxBatches) {
-      const bt = this.boxBatches[k];
-      const mat = bt.color === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, shininess: 120, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }) : bt.tex ? LS.Tex.material(bt.color, bt.tex) : this.mat(bt.color);
-      const chunks = {};
-      for (const mm of bt.mats) { const ck = bt.mats.length < 400 ? 'all' : Math.floor(mm.elements[12] / C) + '|' + Math.floor(mm.elements[14] / C); (chunks[ck] || (chunks[ck] = [])).push(mm); }
-      for (const ck in chunks) {
-        const list = chunks[ck], box = new THREE.Box3();
-        for (const mm of list) { mm.decompose(v, qq, sc); const r = Math.hypot(sc.x, sc.y, sc.z) * 0.5; box.expandByPoint(new THREE.Vector3(v.x - r, v.y - r, v.z - r)); box.expandByPoint(new THREE.Vector3(v.x + r, v.y + sc.y + r, v.z + r)); }
-        const g = new THREE.BufferGeometry(); g.setIndex(this.unitBox.index); for (const a in this.unitBox.attributes) g.setAttribute(a, this.unitBox.attributes[a]);
-        g.boundingSphere = box.getBoundingSphere(new THREE.Sphere());
-        const im = new THREE.InstancedMesh(g, mat, list.length);
-        list.forEach((mm, i) => im.setMatrixAt(i, mm));
-        im.castShadow = bt.shadow; im.receiveShadow = true; im.frustumCulled = true;
-        scene.add(im);
-      }
+      const bt = this.boxBatches[k], glass = bt.color === LS.GLASS;
+      // igual ao código antigo: material por cor (fica no cache; quem pedir essa cor depois recebe o mesmo)
+      if (glass) glassMat[k] = new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, shininess: 120, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+      else if (bt.tex) LS.Tex.material(bt.color, bt.tex); else this.mat(bt.color);
+      const seen = {}; for (const mm of bt.mats) seen[chunkKey(mm, bt.mats.length)] = 1; oldChunks += Object.keys(seen).length;
+      const fk = glass ? 'glass' + k : (bt.tex || 'plain') + (bt.shadow ? 's' : 'n');
+      const f = fam[fk] || (fam[fk] = { glass, gk: k, tex: bt.tex, shadow: bt.shadow, items: [] });
+      for (const mm of bt.mats) f.items.push([mm, bt.color]);
     }
+    const R = Math.random; let used = 0;
+    Math.random = () => { used++; return R(); };
+    try {
+      for (const fk in fam) {
+        const f = fam[fk];
+        const mat = f.glass ? glassMat[f.gk] : f.tex ? LS.Tex.material(0xffffff, f.tex) : this.mat(0xffffff);
+        const chunks = {};
+        for (const it of f.items) { const ck = chunkKey(it[0], f.items.length); (chunks[ck] || (chunks[ck] = [])).push(it); }
+        for (const ck in chunks) {
+          const list = chunks[ck], box = new THREE.Box3();
+          for (const it of list) { it[0].decompose(v, qq, sc); const r = Math.hypot(sc.x, sc.y, sc.z) * 0.5; box.expandByPoint(new THREE.Vector3(v.x - r, v.y - r, v.z - r)); box.expandByPoint(new THREE.Vector3(v.x + r, v.y + sc.y + r, v.z + r)); }
+          const g = new THREE.BufferGeometry(); g.setIndex(this.unitBox.index); for (const a in this.unitBox.attributes) g.setAttribute(a, this.unitBox.attributes[a]);
+          g.boundingSphere = box.getBoundingSphere(new THREE.Sphere());
+          const im = new THREE.InstancedMesh(g, mat, list.length);
+          list.forEach((it, i) => { im.setMatrixAt(i, it[0]); if (!f.glass) im.setColorAt(i, col.set(it[1])); });
+          if (im.instanceColor) im.instanceColor.needsUpdate = true;
+          im.castShadow = f.shadow; im.receiveShadow = true; im.frustumCulled = true;
+          scene.add(im);
+        }
+      }
+    } finally { Math.random = R; }
+    const want = oldChunks * 2 * 4; // antes: 1 geometria + 1 malha por pedaço, 4 sorteios cada
+    if (used > want) console.warn('finalizeBoxes: sorteio passou do antigo', used, want);
+    for (let n = used; n < want; n++) R();
     this.boxBatches = {};
   },
   // parede ao longo de X (axis='x') ou Z, com porta opcional no centro

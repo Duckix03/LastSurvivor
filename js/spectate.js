@@ -124,7 +124,7 @@ LS.Spectate = {
     this.phase = 'over'; this.overT = 5;
     const w = list[0];
     if (w) { if (w !== this.target) this.setTarget(w); const n = list.length;
-      this.el.over.innerHTML = '<small>FIM DE JOGO</small><b>' + (n > 1 ? 'ESQUADRÃO DE ' + w.name : w.name) + '</b><span>' + (n > 1 ? 'SÃO OS LAST SURVIVORS!' : 'É O LAST SURVIVOR!') + '</span>'; }
+      this.el.over.innerHTML = '<small>FIM DE JOGO</small><b>' + (n > 1 ? ((G.teamN || 4) === 2 ? 'DUPLA DE ' : 'ESQUADRÃO DE ') + w.name : w.name) + '</b><span>' + (n > 1 ? 'SÃO OS LAST SURVIVORS!' : 'É O LAST SURVIVOR!') + '</span>'; }
     else this.el.over.innerHTML = '<small>FIM DE JOGO</small><b>NINGUÉM</b><span>SOBREVIVEU</span>';
     this.el.over.classList.add('show'); this.el.spec.classList.remove('hidden'); this.el.death.classList.add('hidden');
     document.body.classList.add('ls-spec'); this.el.fx.className = 'sp-fx';

@@ -1,12 +1,12 @@
-// PARTY: jogar com amigos. Até 4 no Battle Royale (o esquadrão inteiro é a party, completado com bots)
-// e 2 no Duelo (a dupla contra 2 bots no galpão, online).
+// PARTY: jogar com amigos. Battle Royale: até 4 no Squad e 2 no Duo (o time é a party, completado com bots; no Solo
+// não tem party). Duelo: 2 (a dupla contra 2 bots no galpão, online).
 //  - Fica conectado no servidor (PartyHub) enquanto o jogo está aberto e você tem conta
 //  - Convite só pra amigo online · os amigos aparecem do seu lado no lobby (P2, P3 e P4)
 //  - O líder escolhe o modo e aperta JOGAR; os outros esperam. Trocou pro Duelo com 3 ou 4? Escolhe quem fica, os outros saem
 'use strict';
 LS.Party = {
   ws: null, you: null, party: null, invites: [], st: 'lobby', retry: 0, nextTry: 0, pingT: 0, deadTok: null, stopped: false,
-  CAP: { br: 4, duel: 2 }, MODE_NAME: { br: 'Battle Royale', duel: 'Duelo' },
+  MODE_NAME: { br: 'Battle Royale', duel: 'Duelo' }, SIZE_NAME: { 1: 'Solo', 2: 'Duo', 4: 'Squad' },
 
   init() {
     const play = document.querySelector('#menu-main .lb-play');
@@ -24,7 +24,8 @@ LS.Party = {
       else if (a === 'kick') { if (el.dataset.sure !== '1') { el.dataset.sure = '1'; el.classList.add('sure'); setTimeout(() => { if (el.isConnected) { el.dataset.sure = ''; el.classList.remove('sure'); } }, 2500); return; } this.send({ t: 'kick', acc }); }
       else if (a === 'leave') this.send({ t: 'leave' });
       else if (a === 'close') this.closeModal();
-      else if (a === 'keep') { this.send({ t: 'mode', mode: 'duel', keep: [acc] }); this.closeModal(); }
+      else if (a === 'keep') { this.keepSel = this.keepSel || []; const i = this.keepSel.indexOf(acc); if (i >= 0) this.keepSel.splice(i, 1); else { if (this.keepSel.length >= this.keepNeed) this.keepSel.shift(); this.keepSel.push(acc); } this.renderModal(); }
+      else if (a === 'keepok') { if (this.keepSel.length !== this.keepNeed) return; this.send({ t: 'mode', mode: this.keepMode, size: this.keepSize, keep: this.keepSel, confirm: 1 }); this.closeModal(); }
       else if (a === 'accept' || a === 'decline') { const p = el.dataset.party; this.send({ t: a, party: p }); this.invites = this.invites.filter(i => i.party !== p); this.renderInvites(); }
       else if (a === 'friends') { this.closeModal(); LS.Friends.open(); }
     };
@@ -39,7 +40,10 @@ LS.Party = {
   inParty() { return !!this.party && this.party.members.length > 1; },
   isLeader() { return !this.inParty() || this.party.leader === this.you; },
   mode() { return this.inParty() ? this.party.mode : LS.Modes.id; },
-  cap(mode) { return this.CAP[mode || this.mode()] || 4; },
+  size() { return this.inParty() ? (this.party.mode === 'duel' ? 2 : this.party.size || 4) : (LS.Modes.id === 'duel' ? 2 : LS.Modes.brSize); },
+  // tamanho máximo da party no modo: duelo 2; battle royale = o time (solo 1, duo 2, squad 4)
+  cap(mode, size) { mode = mode || this.mode(); return mode === 'duel' ? 2 : (size || (mode === this.mode() ? this.size() : 4)); },
+  modeLabel(mode, size) { return mode === 'duel' ? 'Duelo' : 'Battle Royale ' + (this.SIZE_NAME[size || 4] || 'Squad'); },
   online() { return !!this.ws && this.ws.readyState === 1 && !!this.you; },
   send(o) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); },
   toast(t) {
@@ -95,7 +99,7 @@ LS.Party = {
       case 'dup': this.toast('Sua conta abriu o jogo em outro lugar: a party ficou lá.'); return;
       case 'invite': {
         this.invites = this.invites.filter(i => i.party !== m.party);
-        this.invites.push({ party: m.party, from: m.from, name: m.name, look: m.look, mode: m.mode, n: m.n, exp: Date.now() + 58000 });
+        this.invites.push({ party: m.party, from: m.from, name: m.name, look: m.look, mode: m.mode, size: m.size, n: m.n, exp: Date.now() + 58000 });
         if (this.invites.length > 3) this.invites.shift();
         this.renderInvites(); if (this.st === 'lobby') LS.Audio.alert();
         return;
@@ -110,7 +114,8 @@ LS.Party = {
     if (this.inParty()) {
       // o modo é o do líder (no duelo em party é sempre 2v2)
       this.applying = true;
-      if (LS.Modes.id !== p.mode) LS.Modes.set(p.mode);
+      if (p.mode === 'br') { if (LS.Modes.id !== 'br' || LS.Modes.brSize !== (p.size || 4)) LS.Modes.setBr(p.size || 4); }
+      else if (LS.Modes.id !== p.mode) LS.Modes.set(p.mode);
       if (p.mode === 'duel' && LS.Modes.duelSize !== 2) LS.Modes.setSize(2);
       this.applying = false;
       if (!was) this.toast(this.isLeader() ? 'Party formada! Você é o líder.' : 'Você entrou na party de ' + this.leaderName() + '!');
@@ -121,13 +126,19 @@ LS.Party = {
 
   // ---------- regras do modo (chamadas pelo LS.Modes) ----------
   // pode trocar pra esse modo? (só o líder; duelo com mais de 2: escolhe quem fica)
-  allowMode(id) {
+  allowMode(id) { return this.allowTo(id, id === 'duel' ? 2 : LS.Modes.brSize); },
+  allowBr(n) { return this.allowTo('br', n); },
+  allowTo(mode, size) {
     if (this.applying || !this.inParty()) return true;
     if (!this.isLeader()) { this.toast('Só o líder da party escolhe o modo.'); return false; }
-    if (id === 'duel' && this.party.members.length > 2) { this.openKeep(); return false; }
+    if (this.party.members.length > this.cap(mode, size)) { this.openKeep(mode, size); return false; }
     return true;
   },
-  modeChanged(id) { if (!this.applying && this.inParty() && this.isLeader() && this.party.mode !== id) this.send({ t: 'mode', mode: id }); },
+  modeChanged() {
+    if (this.applying || !this.inParty() || !this.isLeader()) return;
+    const mode = LS.Modes.id, size = mode === 'duel' ? 2 : LS.Modes.brSize;
+    if (this.party.mode !== mode || (mode === 'br' && (this.party.size || 4) !== size)) this.send({ t: 'mode', mode, size });
+  },
 
   // ---------- JOGAR ----------
   // em party o líder chama todo mundo; quem não é líder espera. Devolve true se a party cuidou do JOGAR
@@ -138,6 +149,7 @@ LS.Party = {
     if (off.length) { this.toast(off.map(m => m.name).join(', ') + ' está offline.'); return true; }
     if (busy.length) { this.toast('Esperando ' + busy.map(m => m.name).join(', ') + ' voltar pro lobby.'); return true; }
     if (this.party.mode === 'duel' && this.party.members.length !== 2) { this.toast('O duelo em party é de 2 jogadores.'); return true; }
+    if (this.party.members.length > this.cap()) { this.toast('A party tem gente demais pra esse modo.'); return true; }
     this.send({ t: 'go' });
     return true;
   },
@@ -148,26 +160,28 @@ LS.Party = {
     if (LS.Lobby.searching) LS.Lobby.cancelSearch(); // estava buscando sozinho: vai com a party
     if (LS.Custom.ws && !LS.Custom.inGame) LS.Custom.leave(true); // estava numa sala personalizada: sai dela
     if (m.mode === 'duel') LS.Custom.joinDuel(m.id, m.ticket);
-    else LS.Lobby.startSearch({ group: m.group, gsize: m.gsize });
+    else LS.Lobby.startSearch({ group: m.group, gsize: m.gsize, size: m.size || 4 });
   },
   // alguém cancelou a busca: a party toda cancela junto
   cancelled() { if (this.inParty()) this.send({ t: 'cancel' }); },
   invite(acc, name) {
     if (!this.online()) { this.toast('Conectando na party… tente de novo em instantes.'); return; }
     if (this.inParty() && !this.isLeader()) { this.toast('Só o líder pode convidar.'); return; }
-    if (this.members().length >= this.cap()) { this.toast(this.mode() === 'duel' ? 'No duelo a party é de 2. Troque pro Battle Royale pra chamar mais gente.' : 'A party já está cheia.'); return; }
-    this.send({ t: 'invite', to: acc, mode: LS.Modes.id });
+    if (this.cap() < 2) { this.toast('No Solo não tem party. Troque pra Duo ou Squad pra jogar com amigos.'); return; }
+    if (this.members().length >= this.cap()) { this.toast(this.fullMsg()); return; }
+    this.send({ t: 'invite', to: acc, mode: LS.Modes.id, size: LS.Modes.id === 'duel' ? 2 : LS.Modes.brSize });
     this._sent = this._sent || {}; this._sent[acc] = Date.now();
     this.renderModal();
   },
 
+  fullMsg() { return this.mode() === 'duel' ? 'No duelo a party é de 2. Troque pro Battle Royale pra chamar mais gente.' : this.cap() === 2 ? 'No Duo a party é de 2. Troque pro Squad pra chamar mais gente.' : 'A party já está cheia (4 jogadores).'; },
   // ---------- telas ----------
   esc(s) { return LS.Profile.esc(String(s == null ? '' : s)); },
   avatar(look) { try { return LS.Profile.headshot(Object.assign({}, LS.defaultProfile.look, look || {}), 0); } catch (e) { return ''; } },
   // barrinha em cima do JOGAR: você + amigos + vagas (+)
   render() {
     const bar = document.getElementById('party-bar'); if (!bar) return;
-    const logged = LS.Account.logged() && !!LS.NET_URL, cap = this.cap(), list = this.inParty() ? this.members() : [];
+    const logged = LS.Account.logged() && !!LS.NET_URL, cap = Math.max(1, this.cap()), list = this.inParty() ? this.members() : [];
     const me = { acc: this.you, name: LS.playerProfile.name, look: LS.playerProfile.look, on: true };
     const order = list.length ? [list.find(m => m.acc === this.you) || me].concat(list.filter(m => m.acc !== this.you)) : [me];
     const lead = this.inParty() ? this.party.leader : this.you, amLead = this.isLeader();
@@ -183,7 +197,7 @@ LS.Party = {
       } else h += '<button class="pb-slot add" data-pa="' + (logged ? 'slot' : 'login') + '" title="Chamar amigo pra party"><div class="pb-av"><span>+</span></div><b>CONVIDAR</b></button>';
     }
     h += '</div>';
-    if (this.inParty()) h += '<div class="pb-info"><span><b>PARTY ' + list.length + '/' + cap + '</b> · ' + this.MODE_NAME[this.party.mode] + (amLead ? ' · você é o líder' : ' · líder: ' + this.esc(this.leaderName())) + '</span><button data-pa="leave">SAIR</button></div>';
+    if (this.inParty()) h += '<div class="pb-info"><span><b>PARTY ' + list.length + '/' + cap + '</b> · ' + this.modeLabel(this.party.mode, this.party.size) + (amLead ? ' · você é o líder' : ' · líder: ' + this.esc(this.leaderName())) + '</span><button data-pa="leave">SAIR</button></div>';
     bar.innerHTML = h;
     bar.classList.toggle('in', this.inParty());
     const btn = document.querySelector('#menu-main .lb-play-btn');
@@ -196,7 +210,7 @@ LS.Party = {
     if (this.st !== 'lobby' || !this.invites.length) { box.innerHTML = ''; return; }
     box.innerHTML = this.invites.map(i => {
       const av = this.avatar(i.look), left = Math.max(0, (i.exp - Date.now()) / 1000);
-      return '<div class="pi-card"><div class="pb-av">' + (av ? '<img src="' + av + '" alt="">' : '') + '</div><div class="pi-txt"><b>' + this.esc(i.name) + '</b><span>te chamou pra party · ' + this.MODE_NAME[i.mode] + ' (' + i.n + '/' + this.cap(i.mode) + ')</span></div>' +
+      return '<div class="pi-card"><div class="pb-av">' + (av ? '<img src="' + av + '" alt="">' : '') + '</div><div class="pi-txt"><b>' + this.esc(i.name) + '</b><span>te chamou pra party · ' + this.modeLabel(i.mode, i.size) + ' (' + i.n + '/' + this.cap(i.mode, i.size || 4) + ')</span></div>' +
         '<div class="pi-btns"><button class="btn small btn-primary" data-pa="accept" data-party="' + i.party + '">ACEITAR</button><button class="btn small" data-pa="decline" data-party="' + i.party + '">RECUSAR</button></div>' +
         '<i class="pi-time" style="animation-duration:' + left.toFixed(1) + 's"></i></div>';
     }).join('');
@@ -204,23 +218,28 @@ LS.Party = {
   // lista de amigos pra convidar
   async openInvite() {
     if (this.inParty() && !this.isLeader()) { this.toast('Só o líder pode convidar.'); return; }
-    if (this.members().length >= this.cap() && this.inParty()) { this.toast(this.mode() === 'duel' ? 'No duelo a party é de 2. Troque pro Battle Royale pra chamar mais gente.' : 'A party já está cheia (4 jogadores).'); return; }
+    if (this.cap() < 2) { this.toast('No Solo não tem party. Troque pra Duo ou Squad pra jogar com amigos.'); return; }
+    if (this.members().length >= this.cap() && this.inParty()) { this.toast(this.fullMsg()); return; }
     this.modal = 'invite'; this.friends = null; this.renderModal();
     document.getElementById('party-modal').classList.remove('hidden');
     try { const d = await LS.Account.api('/api/friends'); this.friends = d.friends || []; LS.Friends.data = d; } catch (e) { this.friends = []; this.fErr = e.message; }
     this.renderModal();
   },
   // duelo é em dupla: o líder escolhe quem fica
-  openKeep() { this.modal = 'keep'; this.renderModal(); document.getElementById('party-modal').classList.remove('hidden'); },
+  openKeep(mode, size) { this.modal = 'keep'; this.keepMode = mode; this.keepSize = size; this.keepNeed = this.cap(mode, size) - 1; this.keepSel = []; this.renderModal(); document.getElementById('party-modal').classList.remove('hidden'); },
   closeModal() { this.modal = null; const el = document.getElementById('party-modal'); if (el) el.classList.add('hidden'); },
   renderModal() {
     const el = document.getElementById('party-modal'); if (!el || !this.modal) return;
     let h;
     if (this.modal === 'keep') {
-      if (!this.inParty() || this.party.members.length <= 2) { this.closeModal(); return; }
-      h = '<div class="pm-box"><h3>DUELO É EM DUPLA</h3><p>Escolha quem joga com você. Os outros saem da party (podem ser chamados de novo no Battle Royale).</p><div class="pm-list">' +
-        this.others().map(m => { const av = this.avatar(m.look); return '<div class="pm-row"><div class="pb-av">' + (av ? '<img src="' + av + '" alt="">' : '') + '</div><b>' + this.esc(m.name) + '</b><button class="btn small btn-primary" data-pa="keep" data-acc="' + m.acc + '">FICA COMIGO</button></div>'; }).join('') +
-        '</div><div class="pm-foot"><button class="btn" data-pa="close">CANCELAR</button></div></div>';
+      if (!this.inParty() || this.party.members.length <= this.keepNeed + 1) { this.closeModal(); return; }
+      const sel = this.keepSel || [], need = this.keepNeed, lbl = this.modeLabel(this.keepMode, this.keepSize);
+      h = need === 0
+        ? '<div class="pm-box"><h3>SOLO É SOZINHO</h3><p>No Solo não tem party: os seus amigos saem da party (podem ser chamados de novo no Duo ou Squad).</p>' +
+          '<div class="pm-foot"><button class="btn" data-pa="close">CANCELAR</button><button class="btn btn-primary" data-pa="keepok">JOGAR SOLO</button></div></div>'
+        : '<div class="pm-box"><h3>' + (this.keepMode === 'duel' ? 'DUELO É EM DUPLA' : lbl.toUpperCase().replace('BATTLE ROYALE ', '') + ': ' + (need + 1) + ' JOGADORES') + '</h3><p>Escolha ' + (need === 1 ? 'quem joga' : need + ' pessoas pra jogar') + ' com você. Os outros saem da party (podem ser chamados de novo depois).</p><div class="pm-list">' +
+          this.others().map(m => { const av = this.avatar(m.look), on = sel.includes(m.acc); return '<div class="pm-row' + (on ? ' on' : '') + '"><div class="pb-av">' + (av ? '<img src="' + av + '" alt="">' : '') + '</div><b>' + this.esc(m.name) + '</b><button class="btn small' + (on ? ' btn-primary' : '') + '" data-pa="keep" data-acc="' + m.acc + '">' + (on ? 'FICA ✓' : 'FICA COMIGO') + '</button></div>'; }).join('') +
+          '</div><div class="pm-foot"><button class="btn" data-pa="close">CANCELAR</button><button class="btn btn-primary" data-pa="keepok"' + (sel.length === need ? '' : ' disabled') + '>CONFIRMAR ' + sel.length + '/' + need + '</button></div></div>';
     } else {
       const fr = this.friends, inP = new Set(this.members().map(m => m.acc)), inv = new Set(this.party ? this.party.inv : []), full = this.members().length >= this.cap();
       const rows = !fr ? '<p class="fr-empty">Carregando amigos…</p>' : !fr.length ? '<p class="fr-empty">Você ainda não tem amigos. Adicione pelo ID ou pelo nome!</p><button class="btn btn-primary" data-pa="friends">ADICIONAR AMIGOS</button>' :
@@ -230,7 +249,7 @@ LS.Party = {
             '<button class="btn small btn-primary" data-pa="invite" data-acc="' + f.id + '" data-name="' + this.esc(f.name) + '"' + (full ? ' disabled' : '') + '>CONVIDAR</button>';
           return '<div class="pm-row' + (f.online ? '' : ' off') + '"><div class="pb-av' + (f.online ? ' on' : '') + '">' + (av ? '<img src="' + av + '" alt="">' : '') + '</div><b>' + this.esc(f.name) + '<small>' + (f.online ? 'Online' : 'Offline') + '</small></b>' + btn + '</div>';
         }).join('');
-      h = '<div class="pm-box"><h3>CHAMAR PRA PARTY</h3><p>' + (this.mode() === 'duel' ? 'Duelo: você + 1 amigo contra 2 bots.' : 'Battle Royale: até 4 no mesmo esquadrão (o resto é completado com bots).') + ' ' + this.members().length + '/' + this.cap() + '</p>' +
+      h = '<div class="pm-box"><h3>CHAMAR PRA PARTY</h3><p>' + (this.mode() === 'duel' ? 'Duelo: você + 1 amigo contra 2 bots.' : this.cap() === 2 ? 'Duo: você + 1 amigo na mesma dupla.' : 'Squad: até 4 no mesmo esquadrão (o resto é completado com bots).') + ' ' + this.members().length + '/' + this.cap() + '</p>' +
         (this.online() ? '' : '<p class="pf-err">Conectando na party…</p>') + '<div class="pm-list">' + rows + '</div><div class="pm-foot"><button class="btn" data-pa="close">FECHAR</button></div></div>';
     }
     el.innerHTML = h;

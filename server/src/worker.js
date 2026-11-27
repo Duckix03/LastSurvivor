@@ -20,7 +20,8 @@ export { Accounts };
 const MIN_PROTO = 2;   // 2: esquadrões de 4 (times) e party
 const SEARCH_MS = 30000;   // tempo procurando jogadores
 const MAX_PLAYERS = 32;    // vagas da partida (jogadores + bots): 8 esquadrões de 4
-const SQUAD = 4, MAX_TEAMS = MAX_PLAYERS / SQUAD;
+const SQUAD = 4, MAX_TEAMS = MAX_PLAYERS / SQUAD; // squad (padrão). Solo = times de 1, Duo = times de 2: uma fila pra cada
+const teamSz = v => (v === 1 || v === 2 ? v : SQUAD);
 const JOIN_MS = 12000;     // tempo pra todos entrarem na sala depois do matchmaking
 const READY_MS = 20000;    // depois do 'start', tempo máximo esperando todo mundo terminar de carregar o mapa (aí manda o 'go' de qualquer jeito)
 const DEFER_MS = 500, DEFER_MAX = 6; // fila: se alguém ainda está entrando (conferindo a conta) na hora de fechar a partida, espera até 3 s
@@ -81,7 +82,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: PREFLIGHT });
     const url = new URL(req.url);
     if (url.pathname === '/' || url.pathname === '/health') return new Response('Last Survivor server ok', { headers: cors });
-    if (url.pathname === '/ws/find') return env.MATCHMAKER.get(env.MATCHMAKER.idFromName(mmName(env)), hint(env)).fetch(req);
+    if (url.pathname === '/ws/find') { const sz = teamSz(+url.searchParams.get('s')); return env.MATCHMAKER.get(env.MATCHMAKER.idFromName(mmName(env) + (sz === SQUAD ? '' : '-s' + sz)), hint(env)).fetch(req); } // solo/duo/squad: filas separadas
     if (url.pathname.startsWith('/api/')) return accountsDO(env).fetch(req);
     if (url.pathname === '/room/new' || url.pathname === '/room/list') return roomRoutes(req, env, url); // salas personalizadas
     const rm = url.pathname.match(/^\/ws\/room\/(\d{7})$/);
@@ -99,8 +100,12 @@ export default {
 export class Matchmaker {
   constructor(state, env) { this.state = state; this.env = env; this.queue = []; this.deadline = 0; this.timer = null; this.ticker = null; this.pending = 0; this.defers = 0; }
 
+  // tamanho dos times desta fila (cada fila é um objeto: solo, duo ou squad)
+  get squad() { return this.size || SQUAD; }
+  get maxTeams() { return Math.floor(MAX_PLAYERS / this.squad); }
   async fetch(req) {
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('websocket esperado', { status: 426, headers: cors });
+    this.size = teamSz(+new URL(req.url).searchParams.get('s'));
     const [client, server] = Object.values(new WebSocketPair());
     server.accept();
     const p = { ws: server, name: 'Jogador', look: null, token: rid(16), ready: false };
@@ -112,7 +117,7 @@ export class Matchmaker {
         p.app = !!m.app; p.look = m.look && typeof m.look === 'object' ? m.look : null; p.rdy = !!m.rdy; // rdy: cliente novo, que avisa quando terminou de carregar
         // party: quem tem o mesmo "group" (código secreto que o PartyHub deu) cai no mesmo esquadrão
         p.group = typeof m.group === 'string' && /^[a-z0-9]{16}$/.test(m.group) ? m.group : null;
-        p.gsize = Math.max(1, Math.min(SQUAD, num(m.gsize, 1) | 0)); p.t = Date.now();
+        p.gsize = Math.max(1, Math.min(this.squad, num(m.gsize, 1) | 0)); p.t = Date.now();
         this.pending++; // ainda conferindo a conta: o fechamento da fila espera esse jogador (senão 2 pessoas que entraram juntas caíam em filas separadas)
         this.joinQueue(p, m).catch(() => { }).then(() => { this.pending = Math.max(0, this.pending - 1); });
       } else if (m.t === 'ping') { // ping na fila: responde e guarda o ping do jogador (vai escolher o host da partida)
@@ -136,7 +141,7 @@ export class Matchmaker {
     this.queue.push(p);
     if (!this.deadline) this.armTimer();
     this.broadcastQueue();
-    if (this.units(false).length >= MAX_TEAMS) this.flush();
+    if (this.units(false).length >= this.maxTeams) this.flush();
   }
   armTimer() {
     this.deadline = Date.now() + SEARCH_MS;
@@ -151,7 +156,7 @@ export class Matchmaker {
     for (const p of this.queue) {
       const k = p.group ? 'g' + p.group : 't' + p.token;
       let u = map.get(k); if (!u) { u = []; u.t = p.t; u.size = p.group ? p.gsize : 1; map.set(k, u); out.push(u); }
-      if (u.length < SQUAD) u.push(p);
+      if (u.length < this.squad) u.push(p);
     }
     return ready ? out.filter(u => u.length >= u.size || now - u.t > 6000) : out;
   }
@@ -164,7 +169,7 @@ export class Matchmaker {
       this.defers++; clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), DEFER_MS); return;
     }
     this.defers = 0;
-    const units = this.units(true).slice(0, MAX_TEAMS), group = [];
+    const units = this.units(true).slice(0, this.maxTeams), group = [];
     units.forEach((u, ti) => u.forEach(p => { p.team = ti; group.push(p); }));
     // quem passou de 4 numa party (não devia acontecer) também sai da fila
     const taken = new Set(group), extra = this.queue.filter(p => p.group && !taken.has(p) && units.some(u => u[0].group === p.group));
@@ -175,7 +180,7 @@ export class Matchmaker {
     if (group.length < 2) { for (const p of group) { send(p.ws, { t: 'nomatch' }); try { p.ws.close(1000, 'nomatch'); } catch (e) { } } return; }
     const id = rid(12), seed = Math.floor(Math.random() * 2 ** 31);
     const roster = group.map((p, i) => ({ token: p.token, pid: 'p' + (i + 1), name: p.name, look: p.look, rtt: p.rtt || 0, rdy: !!p.rdy, team: p.team }));
-    await this.env.MATCH.get(this.env.MATCH.idFromName(id), hint(this.env)).fetch('https://match/init', { method: 'POST', body: JSON.stringify({ id, seed, roster }) });
+    await this.env.MATCH.get(this.env.MATCH.idFromName(id), hint(this.env)).fetch('https://match/init', { method: 'POST', body: JSON.stringify({ id, seed, roster, size: this.squad }) });
     for (const p of group) { send(p.ws, { t: 'match', id, token: p.token }); try { p.ws.close(1000, 'match'); } catch (e) { } }
   }
 }
@@ -232,7 +237,7 @@ export class Match {
 
   init(d) {
     this.reset();
-    this.id = d.id; this.seed = d.seed | 0; this.roster = d.roster;
+    this.id = d.id; this.seed = d.seed | 0; this.roster = d.roster; this.size = teamSz(d.size);
     for (const r of this.roster) { const e = this.newEnt(r.pid, r.pid, r.name); if (num(r.rtt) > 0) e.rtt = Math.min(5000, num(r.rtt)); this.ents.set(r.pid, e); }
     this.joinTimer = setTimeout(() => this.start(), JOIN_MS);
   }
@@ -259,7 +264,7 @@ export class Match {
     const names = BOT_NAMES.slice().sort(() => rnd() - 0.5);
     let ti = 0;
     for (let i = 0; i < nBots; i++) {
-      while (ti < count.length && count[ti] >= SQUAD) ti++;
+      while (ti < count.length && count[ti] >= (this.size || SQUAD)) ti++;
       if (ti >= count.length) count.push(0);
       count[ti]++;
       const id = 'b' + i, e = this.newEnt(id, this.host, names[i % names.length]); e.team = ti; this.ents.set(id, e); bots.push({ id, name: names[i % names.length], team: ti });
@@ -270,7 +275,7 @@ export class Match {
     // Agora os clientes novos (rdy) avisam 'ready' quando terminam e todos começam juntos no 'go'. Cliente antigo não espera ninguém.
     this.need = new Set(humans.filter(r => r.rdy).map(r => r.pid)); this.ready = new Set(); this.goSent = false;
     const sync = this.need.size > 0 ? 1 : 0;
-    for (const [pid, ws] of this.socks) send(ws, { t: 'start', you: pid, host: this.host, seed: this.seed, players, bots, sync: sync && this.need.has(pid) ? 1 : 0 });
+    for (const [pid, ws] of this.socks) send(ws, { t: 'start', you: pid, host: this.host, seed: this.seed, players, bots, size: this.size || SQUAD, caps: ['hits'], sync: sync && this.need.has(pid) ? 1 : 0 });
     if (sync) this.goTimer = setTimeout(() => this.sendGo(), READY_MS); else { this.goSent = true; this.goTm = Date.now() - this.t0; }
     this.tick = setInterval(() => this.broadcastSnap(), TICK_MS);
     this.idleT = setInterval(() => this.checkIdle(), 1000);
@@ -437,6 +442,11 @@ export class Match {
           const msg = JSON.stringify({ t: 'fire', i: ent.id, o, d, w: m.w });
           for (const [rp, ws] of this.socks) if (rp !== pid && this.hears(rp, ent, o, d, w.range)) { try { ws.send(msg); } catch (e) { } }
         }
+        break;
+      }
+      case 'hits': { // vários acertos num pacote só (as balas da escopeta saíam uma mensagem cada): cada um passa pela mesma conferência
+        if (!Array.isArray(m.l)) return;
+        for (const h of m.l.slice(0, 12)) if (h && typeof h === 'object') this.onMsg(pid, Object.assign({}, h, { t: 'hit' }));
         break;
       }
       case 'hit': { // acerto informado por quem atirou: o servidor confere (ritmo, alcance, posição do alvo NO MOMENTO do tiro, parede) e calcula o dano
@@ -928,7 +938,10 @@ export class Room extends Match {
 //  - Duelo: só 2. Trocou pro duelo com 3 ou 4? O líder escolhe quem fica, os outros saem da party
 // Usa a hibernação do Cloudflare (a conexão fica aberta sem gastar a cota do plano grátis): o estado das parties
 // fica guardado no storage e cada conexão guarda quem ela é (serializeAttachment).
-const PARTY_CAP = { br: SQUAD, duel: 2 }, PARTY_GRACE = 30000, INVITE_MS = 60000;
+const PARTY_GRACE = 30000, INVITE_MS = 60000;
+// tamanho máximo da party: duelo 2; battle royale = o time do modo (solo 1, duo 2, squad 4)
+const partyCap = (mode, size) => (mode === 'duel' ? 2 : teamSz(size));
+const MODE_TXT = { duel: 'Duelo', 1: 'Solo', 2: 'Duo', 4: 'Squad' };
 // visual do boneco: só as chaves conhecidas, textos curtos (cada conexão hibernada guarda no máximo 2 KB)
 const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top', 'legs', 'costume'];
 const cleanLook = l => { if (!l || typeof l !== 'object') return null; const o = {}; for (const k of LOOK_KEYS) if (typeof l[k] === 'string' && l[k].length <= 28) o[k] = l[k]; return o; };
@@ -958,7 +971,7 @@ export class PartyHub {
   // estado da party pra todos os membros
   view(p) {
     const S = this.sockMap(), now = Date.now();
-    return { id: p.id, leader: p.leader, mode: p.mode, members: p.members.map(acc => { const i = p.info[acc] || {}, ws = S.get(acc), a = ws ? this.att(ws) : {};
+    return { id: p.id, leader: p.leader, mode: p.mode, size: p.mode === 'duel' ? 2 : teamSz(p.size), members: p.members.map(acc => { const i = p.info[acc] || {}, ws = S.get(acc), a = ws ? this.att(ws) : {};
       return { acc, name: i.name || '?', look: i.look || null, badges: i.badges || [], on: !!ws, st: a.st || 'lobby' }; }),
       inv: Object.keys(p.inv).filter(acc => p.inv[acc] > now) };
   }
@@ -986,7 +999,7 @@ export class PartyHub {
       case 'st': a.st = d.s === 'game' ? 'game' : 'lobby'; this.setAtt(ws, a); if (p) this.push(p); return;
       case 'look': a.look = cleanLook(d.look); this.setAtt(ws, a); if (p) { p.info[me].look = a.look; this.push(p); await this.save(); } return;
       case 'invite': {
-        const to = String(d.to || ''), mode = d.mode === 'duel' ? 'duel' : 'br';
+        const to = String(d.to || ''), mode = d.mode === 'duel' ? 'duel' : 'br', size = teamSz(d.size);
         if (to === me) return;
         let fr = []; // amigos conferidos na hora (a lista não fica na conexão: pode passar de 2 KB)
         try { const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('global')).fetch('https://accounts/internal/friends', { method: 'POST', body: JSON.stringify({ id: me }) }); fr = (await r.json()).friends || []; } catch (e) { }
@@ -995,18 +1008,19 @@ export class PartyHub {
         if (p && p.leader !== me) return this.note(ws, 'Só o líder da party pode convidar.');
         const tws = S.get(to); if (!tws) return this.note(ws, 'Esse amigo não está online agora.');
         if (p && p.members.includes(to)) return this.note(ws, 'Ele já está na sua party.');
-        const m = p ? p.mode : mode;
-        if (p && p.members.length >= PARTY_CAP[m]) return this.note(ws, m === 'duel' ? 'No duelo a party é de 2. Troque pro Battle Royale pra chamar mais gente.' : 'A party já está cheia (4 jogadores).');
-        if (!p) { const id = rid(10); p = this.parties[id] = { id, leader: me, mode, members: [me], info: {}, inv: {}, off: {} }; p.info[me] = { name: a.name, look: a.look, badges: a.badges }; }
+        const m = p ? p.mode : mode, cap = p ? partyCap(p.mode, p.size) : partyCap(mode, size);
+        if (cap < 2) return this.note(ws, 'No Solo não tem party. Troque pra Duo ou Squad pra jogar com amigos.');
+        if (p && p.members.length >= cap) return this.note(ws, m === 'duel' ? 'No duelo a party é de 2. Troque pro Battle Royale pra chamar mais gente.' : cap === 2 ? 'No Duo a party é de 2. Troque pro Squad pra chamar mais gente.' : 'A party já está cheia (4 jogadores).');
+        if (!p) { const id = rid(10); p = this.parties[id] = { id, leader: me, mode, size: mode === 'duel' ? 2 : size, members: [me], info: {}, inv: {}, off: {} }; p.info[me] = { name: a.name, look: a.look, badges: a.badges }; }
         p.inv[to] = Date.now() + INVITE_MS;
-        send(tws, { t: 'invite', party: p.id, from: me, name: a.name, look: a.look, mode: p.mode, n: p.members.length });
+        send(tws, { t: 'invite', party: p.id, from: me, name: a.name, look: a.look, mode: p.mode, size: partyCap(p.mode, p.size), n: p.members.length });
         this.note(ws, 'Convite enviado!');
         this.push(p); await this.save(); return;
       }
       case 'accept': {
         const q = this.parties[String(d.party || '')];
         if (!q || !(q.inv[me] > Date.now())) return this.note(ws, 'Esse convite expirou.');
-        if (q.members.length >= PARTY_CAP[q.mode]) { delete q.inv[me]; await this.save(); return this.note(ws, 'Essa party já está cheia.'); }
+        if (q.members.length >= partyCap(q.mode, q.size)) { delete q.inv[me]; await this.save(); return this.note(ws, 'Essa party já está cheia.'); }
         if (p && p !== q) this.drop(p, me);
         delete q.inv[me];
         if (!q.members.includes(me)) { q.members.push(me); q.info[me] = { name: a.name, look: a.look, badges: a.badges }; }
@@ -1027,13 +1041,14 @@ export class PartyHub {
       case 'uninvite': { if (lead) { delete p.inv[String(d.acc || '')]; this.push(p); await this.save(); } return; }
       case 'mode': {
         if (!lead) return;
-        const mode = d.mode === 'duel' ? 'duel' : 'br';
-        if (mode === 'duel' && p.members.length > 2) { // duelo é em dupla: o líder escolhe quem fica, o resto sai
-          const keep = Array.isArray(d.keep) ? d.keep.map(String).filter(x => x !== me && p.members.includes(x)) : [];
-          if (keep.length !== 1) return this.note(ws, 'Escolha quem fica com você no duelo.');
-          for (const acc of p.members.slice()) if (acc !== me && acc !== keep[0]) this.drop(p, acc, 'O líder trocou pro Duelo (só 2 jogadores) e você saiu da party.');
+        const mode = d.mode === 'duel' ? 'duel' : 'br', size = mode === 'duel' ? 2 : teamSz(d.size), cap = partyCap(mode, size);
+        if (p.members.length > cap) { // time menor que a party (duelo/duo: 2, solo: 1): o líder escolhe quem fica, o resto sai
+          const keep = Array.isArray(d.keep) ? [...new Set(d.keep.map(String))].filter(x => x !== me && p.members.includes(x)) : [];
+          if (keep.length !== cap - 1 || (cap === 1 && !d.confirm)) return this.note(ws, cap === 1 ? 'Confirme: no Solo a party é desfeita.' : 'Escolha quem fica com você.');
+          const txt = MODE_TXT[mode === 'duel' ? 'duel' : size];
+          for (const acc of p.members.slice()) if (acc !== me && !keep.includes(acc)) this.drop(p, acc, 'O líder trocou pro ' + txt + (cap === 1 ? ' (sozinho) e a party foi desfeita.' : ' (só ' + cap + ' jogadores) e você saiu da party.'));
         }
-        p.mode = mode; this.push(p); await this.save(); return;
+        p.mode = mode; p.size = size; this.push(p); await this.save(); return;
       }
       case 'cancel': { // alguém cancelou a busca: cancela pra party toda
         if (!p) return;
@@ -1053,7 +1068,9 @@ export class PartyHub {
           for (const pl of players) { const w = S.get(pl.acc); if (w) send(w, { t: 'go', mode: 'duel', id, ticket: pl.ticket }); }
         } else {
           const group = rid(16);
-          for (const acc of p.members) { const w = S.get(acc); if (w) send(w, { t: 'go', mode: 'br', group, gsize: p.members.length }); }
+          const size = teamSz(p.size);
+          if (p.members.length > size) return this.note(ws, 'A party tem gente demais pra esse modo.');
+          for (const acc of p.members) { const w = S.get(acc); if (w) send(w, { t: 'go', mode: 'br', group, gsize: p.members.length, size }); }
         }
         return;
       }
