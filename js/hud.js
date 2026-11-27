@@ -75,13 +75,13 @@ LS.HUD = {
     return (this._skull = c.toDataURL());
   },
   // abate do jogador: caveira no meio da tela (headshot: ela racha) + nome de quem caiu, pequeno
-  killPop(name, head, n) {
+  killPop(name, head, n, snow) {
     let el = this.el.killpop;
     if (!el) { el = this.el.killpop = document.createElement('div'); el.id = 'kill-pop'; this.el.hud.appendChild(el); }
     const img = '<img src="' + this.skullImg() + '" alt="">';
     el.innerHTML = '<div class="kp-skull' + (head ? ' head' : '') + '">' + (head ? '<i class="kp-l">' + img + '</i><i class="kp-r">' + img + '</i><b class="kp-shot"></b>' +
       '<u class="kp-bits">' + '<s></s>'.repeat(6) + '</u>' : img) + (n > 1 ? '<em>x' + n + '</em>' : '') + '</div>' +
-      '<span>' + String(name || '').replace(/[<>&"]/g, '') + '</span>';
+      '<span>' + String(name || '').replace(/[<>&"]/g, '') + '</span>' + (snow ? '<b class="kp-snow">' + LS.icon('snow', 'snow-i') + '+' + snow + '</b>' : '');
     el.className = ''; void el.offsetWidth; el.className = 'show' + (head ? ' head' : '');
     clearTimeout(this._kpT); this._kpT = setTimeout(() => { el.className = ''; }, 1900);
   },

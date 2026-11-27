@@ -72,7 +72,7 @@ LS.Game = {
 
   startMatch() {
     LS.Audio.init();
-    LS.UI.showScreen('loading');
+    LS.UI.showScreen('loading'); LS.Loading.show('br');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
       LS.Duel.exit(); this.mode = 'br'; this.lastKiller = null; LS.HUD.clearShots(); LS.Victory.hide();
@@ -101,7 +101,7 @@ LS.Game = {
       LS.Input.enabled = true; LS.Input.lock();
       LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
       LS.HUD.centerMsg('LAST SURVIVOR', (LS.Touch.active ? 'Toque no botão ⬆ para saltar do avião' : 'Pressione ESPAÇO para saltar do avião') + (T > 1 ? ' · ' + (T === 2 ? 'sua dupla salta' : 'seu esquadrão salta') + ' com você' : ' · cada um por si'), 4);
-      LS.stats.games++; LS.saveStats();
+      LS.stats.games++; LS.saveStats(); LS.Xmas.newMatch();
     });
   },
   // nome azul em cima dos aliados (aparece até atrás da parede) — tira os das partidas anteriores
@@ -125,7 +125,7 @@ LS.Game = {
   // partida online: mesma ilha, loot/avião/zona pela semente do servidor; bots só no host
   startOnline(d) {
     LS.Audio.init();
-    LS.UI.showScreen('loading');
+    LS.UI.showScreen('loading'); LS.Loading.show('br', 'PARTIDA ONLINE…');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
       LS.Duel.exit(); this.mode = 'br'; this.lastKiller = null; LS.HUD.clearShots(); LS.Victory.hide();
@@ -172,7 +172,7 @@ LS.Game = {
         LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
         const humans = d.players.length, mates = this.fighters.filter(f => f !== this.player && f.remote && f.netId && f.netId[0] === 'p' && LS.sameTeam(f, this.player)).length;
         LS.HUD.centerMsg('PARTIDA ONLINE', humans + ' jogadores + ' + d.bots.length + ' bots · ' + (mates ? 'sua party está no seu esquadrão · ' : '') + (LS.Touch.active ? 'toque no ⬆ pra saltar' : 'ESPAÇO para saltar'), 4);
-        LS.stats.games++; LS.saveStats();
+        LS.stats.games++; LS.saveStats(); LS.Xmas.newMatch();
       };
       this._onlineGo = go;
       if (d.sync) { // servidor novo: carreguei o mapa; espera os outros jogadores carregarem também (senão o host dos bots podia chegar depois e deixar os outros numa ilha vazia)
@@ -185,7 +185,7 @@ LS.Game = {
   // modo DUELO: 1v1 contra um bot, ou 2v2 (você + bot parceiro contra 2 bots) no galpão (offline). Regras em js/duel.js
   startDuel() {
     LS.Audio.init();
-    LS.UI.showScreen('loading');
+    LS.UI.showScreen('loading'); LS.Loading.show('duel');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
       LS.Net.leave(); LS.Duel.exit(); this.clearSquadTags(); this.mode = 'duel'; this.lastKiller = null; LS.HUD.clearShots(); LS.Victory.hide(); this.zone.rng = null;
@@ -215,14 +215,14 @@ LS.Game = {
       if (LS.Duel.shopOpen) { LS.Input.enabled = false; LS.Input.unlock(); } // loja do round 1 aberta: mouse solto pra clicar nas armas
       else { LS.Input.enabled = true; LS.Input.lock(); }
       LS.Audio.stopAll();
-      LS.stats.games++; LS.saveStats();
+      LS.stats.games++; LS.saveStats(); LS.Xmas.newMatch();
     });
   },
 
   // SALA PERSONALIZADA (online, só amigos): ilha plana, times, rounds. Regras em js/custom.js
   startCustom(d) {
     LS.Audio.init();
-    LS.UI.showScreen('loading');
+    LS.UI.showScreen('loading'); LS.Loading.show('custom');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
       LS.Duel.exit(); this.clearSquadTags(); LS.Victory.hide(); LS.HUD.clearShots(); this.mode = 'custom'; this.lastKiller = null; this.zone.rng = null;
@@ -265,16 +265,17 @@ LS.Game = {
     victim.placement = this.aliveCount() + 1;
     // esquadrão inteiro caiu: a colocação é a do time
     if (this.mode === 'br' && victim.team != null && !this.squadUp(victim.team)) { const pl = LS.teamsAlive(this.fighters).size + 1; for (const f of this.fighters) if (f.team === victim.team) f.placement = pl; }
+    const snow = killer === this.player && victim !== this.player ? LS.Xmas.onKill(head) : 0; // evento de Natal: tickets por abate
     const mine = killer === this.player || victim === this.player;
     LS.HUD.killFeed(killer && killer !== victim ? killer.name : '', victim.name, weapon || '?', head, mine);
     if (this.mode === 'duel' || this.mode === 'custom') {
-      if (killer === this.player && victim !== this.player) { LS.Audio.kill(); LS.HUD.killPop(victim.name, head, this.killStreak()); }
+      if (killer === this.player && victim !== this.player) { LS.Audio.kill(); LS.HUD.killPop(victim.name, head, this.killStreak(), snow); }
       if (victim === this.player) LS.Spectate.start(killer, weapon, head); else LS.Spectate.onKill(victim, killer); // killcam também no duelo e na sala
       if (this.mode === 'custom') LS.Custom.onKill(victim, killer); else LS.Duel.onKill(victim, killer); return;
     }
     if (killer === this.player && victim !== this.player) {
       LS.Audio.kill();
-      LS.HUD.killPop(victim.name, head, this.killStreak()); // caveira (headshot: racha ao meio)
+      LS.HUD.killPop(victim.name, head, this.killStreak(), snow); // caveira (headshot: racha ao meio)
     }
     if (victim === this.player) this.lastKiller = killer && killer !== victim ? killer : null;
     // só sobrou o seu esquadrão (mesmo com você morto, se um aliado sobreviveu): vitória
@@ -380,6 +381,7 @@ LS.Game = {
     const P = this.player;
     if (win) { if (!celebrated) LS.Audio.victory(); LS.stats.wins++; } else LS.Audio.defeat();
     LS.stats.kills += P.kills; LS.saveStats();
+    LS.Xmas.endMatch(win, P);
     const t = document.getElementById('end-title'), duel = this.mode === 'duel', sc = LS.Duel.score;
     t.textContent = win ? 'VITÓRIA!' : duel ? 'DERROTA' : 'FIM DE JOGO';
     t.className = win ? 'win' : 'lose';

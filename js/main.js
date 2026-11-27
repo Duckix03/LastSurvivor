@@ -118,6 +118,7 @@ LS.UI = {
       case 'modes': LS.Modes.open(); break;
       case 'shop': LS.Shop.open('shop'); break;
       case 'royale': LS.Shop.open('royale'); break;
+      case 'xmas': LS.Shop.open('xmas'); break;
       case 'friends': LS.Friends.open(); break;
       case 'custom': LS.Custom.open(); break;
       case 'mute': LS.Menu.toggleMute(); break;
@@ -175,7 +176,7 @@ window.addEventListener('load', () => {
   LS.Mail.init(); // correio (avisos e presentes do dono do jogo)
   LS.Profile.init();
   LS.Conta.init(); // aba CONTA das configurações (e a página de login com Google aberta pelo app)
-  LS.Shop.init(); LS.Friends.init(); LS.Custom.init(); LS.Menu.initBanners();
+  LS.Shop.init(); LS.Xmas.init(); LS.Friends.init(); LS.Custom.init(); LS.Menu.initBanners();
   LS.Party.init(); // party com amigos (até 4 no BR, 2 no duelo)
   LS.HudEdit.init(); // HUD personalizado do celular (posição, tamanho e opacidade)
   LS.Menu.init();

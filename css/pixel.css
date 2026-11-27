@@ -319,3 +319,77 @@ body.mobile .mode-sizes { margin-top: 8px !important; } body.mobile .mode-sizes 
 body.mobile #squad { top: calc(90px / var(--hz, 1)) !important; bottom: auto !important; left: calc(var(--sl, 0px) + 10px) !important; gap: 2px; zoom: var(--hz, 1); }
 body.mobile #squad .sq { width: 104px !important; padding: 1px 6px 2px; border-width: 2px !important; line-height: 1.1; }
 body.mobile #squad .sq b { font-size: 10px; } body.mobile #squad .sq i { height: 3px; margin-top: 2px; }
+
+/* ===== EVENTO DE NATAL: Spin de Natal, SnowTickets e missões ===== */
+.svgi.snow-i { width: 1.05em; height: 1.05em; vertical-align: -0.18em; margin-right: 0.18em; color: #bfefff; stroke-width: 2.4; flex: none; }
+.lb-item.xmas { background: linear-gradient(90deg, #8a1020, #3a0c14 70%) !important; border-color: #ff4a5a !important; }
+.lb-item.xmas > span { background: linear-gradient(135deg, #ffffff, #bfefff) !important; color: #c8182a !important; }
+.lb-item.xmas em.xm-new { background: #fff; color: #c8182a; }
+.lb-item.xmas em.lb-badge { right: 8px; top: auto; bottom: -6px; background: #2ee6ff; color: #04222e; }
+/* com o botão do evento o menu ganha 1 item: aperta um pouco pra caber */
+body.xmas-on:not(.mobile) .lb-menu { gap: 4px; }
+body.xmas-on:not(.mobile) .lb-item { padding-top: 2px; padding-bottom: 2px; }
+.sh-views button.xmas { display: inline-flex; align-items: center; gap: 4px; }
+.sh-views button.xmas.on { background: linear-gradient(135deg, #ff6a7a, #c8182a 55%, #7a0a16) !important; color: #fff !important; border-color: #fff !important; }
+.sh-views button.xmas .snow-i { color: currentColor; }
+.sh-coins.snow { border-color: rgba(191, 239, 255, 0.6); }
+.sh-coins .svgi.snow-i { width: 20px; height: 20px; margin: 0; }
+.sh-price.xmas { color: #ff6a7a; letter-spacing: 0.5px; }
+.sh-rewards span.snow { background: rgba(191, 239, 255, 0.12); border-color: rgba(191, 239, 255, 0.6); color: #e4f8ff; }
+.gr.xm .gr-star { background: radial-gradient(circle at 50% 40%, rgba(255, 58, 74, 0.55), rgba(30, 6, 10, 0.75) 70%); border-color: #ff3a4a; --rc: #ff3a4a; }
+.gr.xm .gr-star span { color: #ffb0b8; }
+.gr.xm .gr-star small { display: block; font: 600 11px var(--body); letter-spacing: 1.5px; color: #bfefff; }
+.gr-btn.xm-btn { background: linear-gradient(180deg, #ff6a7a, #c8182a); color: #fff; box-shadow: 0 5px 0 #6a0a14, 0 8px 18px rgba(0, 0, 0, 0.4); }
+.gr-btn.xm-btn.ten { background: linear-gradient(180deg, #ffffff, #bfefff); color: #7a0a16; box-shadow: 0 5px 0 #5a8aa0, 0 8px 18px rgba(0, 0, 0, 0.4); }
+.gr-btn.xm-btn .snow-i, .btn.xm-btn .snow-i { color: currentColor; }
+.btn.xm-btn { background: linear-gradient(180deg, #ff6a7a, #c8182a) !important; color: #fff !important; }
+.xm-done { text-align: center; font: 600 14px var(--body); color: #8cf060; padding: 10px; border: 2px solid var(--px-ink); background: rgba(0, 0, 0, 0.4); }
+.xm-missions { margin-top: 12px; padding: 10px; background: rgba(10, 12, 20, 0.6); border: 2px solid var(--px-ink); box-shadow: var(--px-raise); }
+.xm-missions h4 { margin: 0 0 8px; font: 400 18px var(--display); letter-spacing: 1px; color: #fff; display: flex; align-items: center; gap: 6px; }
+.xm-missions h4 .svgi { width: 18px; height: 18px; color: #bfefff; }
+.xm-m { display: flex; align-items: center; gap: 10px; padding: 7px 8px; margin-bottom: 5px; background: #1c2130; border: 2px solid var(--px-ink); }
+.xm-m.ok { background: #2a3a1e; border-color: #8cf060; }
+.xm-m.done { opacity: 0.55; }
+.xm-mt { flex: 1; min-width: 0; }
+.xm-mt b { display: block; font: 600 13px var(--body); color: #fff; }
+.xm-mt small { font: 600 10px var(--body); color: #9aa4b0; }
+.xm-bar { height: 8px; margin: 4px 0 2px; background: #0b0d13; border: 2px solid var(--px-ink); }
+.xm-bar i { display: block; height: 100%; background: repeating-linear-gradient(90deg, #ff4a5a 0 6px, #fff 6px 12px); }
+.xm-m.ok .xm-bar i, .xm-m.done .xm-bar i { background: #8cf060; }
+.xm-claim { flex: none; min-width: 74px; display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; font: 400 16px var(--display); color: #04222e; background: #bfefff; border: 2px solid var(--px-ink); box-shadow: var(--px-raise); cursor: pointer; }
+.xm-claim .snow-i { color: #c8182a; }
+.xm-claim:disabled { background: #3a4252; color: #9aa4b0; cursor: default; }
+.xm-claim:disabled .snow-i { color: #9aa4b0; }
+.xm-claim:not(:disabled) { animation: xmPulse 0.9s steps(2) infinite; }
+@keyframes xmPulse { 50% { background: #fff; } }
+.xm-got { flex: none; font: 600 11px var(--body); letter-spacing: 1px; color: #8cf060; }
+.xm-hint { margin: 6px 0 0; font: 500 11px var(--body); color: #9aa4b0; }
+.xm-hint .snow-i { color: #bfefff; }
+#kill-pop .kp-snow { font: 400 16px var(--display); color: #e4f8ff; padding: 1px 8px; background: rgba(140, 16, 32, 0.85); border: 2px solid #0b0d13; display: inline-flex; align-items: center; }
+#kill-pop.show .kp-snow { animation: kpPop 0.42s 0.25s steps(6) both; }
+body.mobile .xm-mt b { font-size: 11px; }
+body.mobile .xm-claim { min-width: 60px; font-size: 13px; padding: 4px 6px; }
+body.mobile.xmas-on .sh-views button { font-size: 15px !important; padding: 6px 10px !important; white-space: nowrap; }
+
+/* ===== TELA DE CARREGAMENTO DA PARTIDA: arte em tela cheia (Blender) + faixa embaixo, estilo splash ===== */
+#loading { background: #0b0d16 !important; padding: 0 !important; overflow: hidden; display: block; }
+#loading:not(.active) { display: none; }
+#loading .ld-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.1); transition: opacity 0.6s ease, transform 14s cubic-bezier(.2, .6, .3, 1); }
+#loading .ld-art.in { opacity: 1; transform: scale(1); }
+#loading .ld-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6, 6, 16, 0.6) 0%, rgba(6, 6, 16, 0) 24%, rgba(6, 6, 16, 0) 56%, rgba(6, 6, 16, 0.94) 100%); pointer-events: none; }
+#loading .ld-top { position: absolute; top: 4%; left: calc(3.2% + var(--sl, 0px)); display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+#loading .ld-logo { font: 400 clamp(24px, 3.6vw, 42px) var(--display); letter-spacing: 3px; color: #fff; text-shadow: 0 3px 0 #4a5068, 0 6px 0 #0b0d13; }
+#loading .ld-logo span { margin-left: 0.3em; color: #ffc531; text-shadow: 0 3px 0 #b85c00, 0 6px 0 #0b0d13; }
+#loading .ld-mode { font: 400 15px var(--display); letter-spacing: 2px; padding: 4px 10px; color: #0b0d13; background: #ffc531; border: 3px solid #0b0d13; box-shadow: 0 4px 0 #0b0d13; }
+#loading.xmas .ld-mode { background: #c8182a; color: #fff; }
+#loading .ld-tag { position: absolute; top: 4.5%; right: calc(3.2% + var(--sr, 0px)); font: 400 13px var(--display); letter-spacing: 2px; color: #fff; padding: 4px 10px; background: rgba(11, 13, 19, 0.65); border: 2px solid rgba(255, 255, 255, 0.25); }
+#loading .loading-box { position: absolute; left: calc(3.2% + var(--sl, 0px)); right: calc(3.2% + var(--sr, 0px)); bottom: 4.5%; width: auto !important; max-width: none !important; margin: 0 !important; padding: 0 !important; text-align: left;
+  background: none !important; border: none !important; box-shadow: none !important; display: grid; grid-template-columns: 1fr; gap: 7px; }
+#loading .loading-box h2 { margin: 0 !important; font-size: 18px !important; letter-spacing: 1.5px; color: #ffe0b0 !important; -webkit-text-fill-color: #ffe0b0 !important; background: none !important; text-shadow: 0 2px 0 #0b0d13 !important; text-align: left; }
+#loading .loading-bar { height: 20px !important; padding: 3px !important; border-radius: 0 !important; background: rgba(10, 12, 20, 0.85) !important; border: 4px solid #0b0d13 !important; box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 255, 255, 0.12) !important; overflow: hidden; }
+#loading #loading-fill { height: 100%; border-radius: 0 !important; background: repeating-linear-gradient(90deg, #ffc531 0 12px, #ffad1f 12px 16px) !important; box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.45), inset 0 -3px 0 rgba(140, 60, 0, 0.5) !important; transition: width 0.25s steps(6); }
+#loading #loading-fill::after { display: none; }
+#loading.xmas #loading-fill { background: repeating-linear-gradient(90deg, #e8283a 0 12px, #fff 12px 18px) !important; box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.4), inset 0 -3px 0 rgba(90, 0, 10, 0.45) !important; }
+#loading #loading-tip { margin: 2px 0 0 !important; font: 500 13px var(--body); color: rgba(255, 255, 255, 0.78) !important; text-shadow: 0 1px 2px #000; }
+body.mobile #loading .ld-mode { font-size: 12px; } body.mobile #loading .ld-tag { display: none; }
+body.mobile #loading .loading-box h2 { font-size: 14px !important; } body.mobile #loading .loading-bar { height: 16px !important; border-width: 3px !important; }
