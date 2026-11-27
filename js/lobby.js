@@ -14,10 +14,10 @@ LS.Lobby = {
     this.model = new LS.CharacterModel({ look: LS.playerProfile.look });
     this.model.setGun(LS.playerProfile.weapon || null);
     sc.add(this.model.root);
-    // dois sobreviventes conversando no fundo
+    // vagas da party do lado do jogador (P2 e P3): só aparecem com amigos na party
     this.extras = [];
     [[-2.2, -1.9, 0.35], [2.2, -1.9, -0.35]].forEach(([x, z, ry]) => {
-      const m = new LS.CharacterModel({}); m.root.position.set(x, 0, z); m.root.rotation.y = ry; m.setGun(ry > 0 ? 'm4a1' : 'ak47'); m.setGear(2, 1, 1);
+      const m = new LS.CharacterModel({}); m.root.position.set(x, 0, z); m.root.rotation.y = ry; m.setGun(ry > 0 ? 'm4a1' : 'ak47'); m.setGear(2, 1, 1); m.root.visible = false;
       sc.add(m.root); this.extras.push(m);
     });
     // 4ª vaga (atrás, no meio): só aparece com party de 4
@@ -76,7 +76,6 @@ LS.Lobby = {
     this.build();
     this.cancelSearch();
     this.model.applyLook(LS.playerProfile.look);
-    this.extras.forEach(m => m.applyLook(LS.Skin.randomLook()));
     this.partyKey = null; if (LS.Party) LS.Party.render(); // amigos da party ficam nas vagas
     this.syncUI(); LS.Wardrobe.open();
     LS.HUD.show(false);
@@ -122,7 +121,7 @@ LS.Lobby = {
     const t = document.querySelector('#lobby-mm h3'); if (t) t.textContent = 'PROCURANDO PARTIDA';
   },
   updateCount() { document.getElementById('mm-count').textContent = this.mmCount + ' / ' + LS.Modes.maxPlayers() + ' jogadores'; },
-  // party no lobby: os amigos ficam nas vagas P2, P3 e P4 (com o nome em cima); sem party, os 2 figurantes de sempre
+  // party no lobby: os amigos ficam nas vagas P2, P3 e P4 (com o nome em cima); sozinho, só você no lobby
   setParty(list, lead) {
     if (!this.built) return;
     const key = list ? list.map(m => m.acc + (m.acc === lead ? '*' : '') + JSON.stringify(m.look || {}) + m.name).join('|') : '';
@@ -132,7 +131,7 @@ LS.Lobby = {
     slots.forEach((m, i) => {
       if (m._ptag) { m.root.remove(m._ptag); m._ptag.material.map.dispose(); m._ptag.material.dispose(); m._ptag = null; }
       const f = list && list[i];
-      if (!list) { m.root.visible = i < 2; if (m._party) { m.applyLook(LS.Skin.randomLook()); m._party = false; } return; }
+      if (!list) { m.root.visible = false; m._party = false; return; }
       m.root.visible = !!f; if (!f) return;
       m._party = true; m.applyLook(Object.assign({}, LS.defaultProfile.look, f.look || {}));
       const c = document.createElement('canvas'); c.width = 256; c.height = 72; const g = c.getContext('2d');
@@ -153,7 +152,7 @@ LS.Lobby = {
     const armed = !!this.model.gunId;
     this.model.animate({ dt, speed: 0, aimPitch: 0, armed, running: armed, armedAim: false, idle: true });
     if (this.p4.root.visible) { this.p4.animate({ dt, speed: 0, aimPitch: 0, armed: true, running: true, armedAim: false, idle: true }); this.p4.headG.rotation.y = Math.sin(t * 0.5 + 4.1) * 0.3; }
-    this.extras.forEach((m, i) => { // colegas de squad nas laterais, parados e olhando em volta
+    this.extras.forEach((m, i) => { if (!m.root.visible) return; // amigos da party nas laterais, parados e olhando em volta
       m.animate({ dt, speed: 0, aimPitch: 0, armed: !!m.gunId, running: !!m.gunId, armedAim: false, idle: true });
       m.headG.rotation.y = Math.sin(t * 0.5 + i * 2.3) * 0.3;
     });
