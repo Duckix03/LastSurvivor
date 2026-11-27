@@ -49,6 +49,42 @@ LS.HUD = {
     this.el['center-msg'].innerHTML = title + (sub ? '<small>' + sub + '</small>' : '');
     this.el['center-msg'].classList.add('show'); this.centerT = secs || 2.5;
   },
+  // ---------- ÍCONE DE ABATE (estilo Minecraft): caveira vermelha em pixel; headshot = racha ao meio com o tiro ----------
+  SKULL: [
+    '....oooooooo....',
+    '..ooHHHHHHHHoo..',
+    '.oHHhhhhhhhhRRo.',
+    '.oHhhhhhhhhhhRo.',
+    'oHhhhhhhhhhhhhRo',
+    'oHhhhhhhhhhhhhRo',
+    'oheeeehhhheeeeRo',
+    'oheeeehhhheeeeRo',
+    'ohegeehhhhegeeRo',
+    'oheeeehhhheeeeRo',
+    '.ohhhhhnnhhhhRo.',
+    '..ohhhhnnhhhRo..',
+    '..oRhhhhhhhhRo..',
+    '..otTtTtTtTtto..',
+    '...oRRRRRRRRo...',
+    '....oooooooo....'],
+  skullImg() {
+    if (this._skull) return this._skull;
+    const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d');
+    const col = { o: '#1a0408', H: '#ff8a96', h: '#e8324a', R: '#9c1328', e: '#2a0208', g: '#ff3b3b', n: '#5c0a16', t: '#f4e6d8', T: '#c9b7a6' };
+    this.SKULL.forEach((row, y) => [...row].forEach((ch, x) => { if (col[ch]) { g.fillStyle = col[ch]; g.fillRect(x, y, 1, 1); } }));
+    return (this._skull = c.toDataURL());
+  },
+  // abate do jogador: caveira no meio da tela (headshot: ela racha) + nome de quem caiu, pequeno
+  killPop(name, head, n) {
+    let el = this.el.killpop;
+    if (!el) { el = this.el.killpop = document.createElement('div'); el.id = 'kill-pop'; this.el.hud.appendChild(el); }
+    const img = '<img src="' + this.skullImg() + '" alt="">';
+    el.innerHTML = '<div class="kp-skull' + (head ? ' head' : '') + '">' + (head ? '<i class="kp-l">' + img + '</i><i class="kp-r">' + img + '</i><b class="kp-shot"></b>' +
+      '<u class="kp-bits">' + '<s></s>'.repeat(6) + '</u>' : img) + (n > 1 ? '<em>x' + n + '</em>' : '') + '</div>' +
+      '<span>' + String(name || '').replace(/[<>&"]/g, '') + '</span>';
+    el.className = ''; void el.offsetWidth; el.className = 'show' + (head ? ' head' : '');
+    clearTimeout(this._kpT); this._kpT = setTimeout(() => { el.className = ''; }, 1900);
+  },
   hit(head) {
     const h = this.el.hitmarker; h.classList.remove('show', 'head'); void h.offsetWidth;
     h.classList.add('show'); if (head) h.classList.add('head');
@@ -185,7 +221,7 @@ LS.HUD = {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const tw of LS.World.towns) {
       ctx.save(); ctx.translate(tw.x, tw.z); ctx.rotate(-rot); ctx.scale(1 / sc, 1 / sc);
-      ctx.font = '800 ' + Math.round(size / 26) + 'px Rubik, sans-serif'; ctx.lineWidth = size / 110; ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.fillStyle = '#fff';
+      ctx.font = '400 ' + Math.round(size / 24) + 'px Tiny5, "Pixelify Sans", sans-serif'; ctx.lineWidth = size / 110; ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.fillStyle = '#fff';
       ctx.strokeText(tw.name.toUpperCase(), 0, 0); ctx.fillText(tw.name.toUpperCase(), 0, 0); ctx.restore();
     }
     // fora da zona: gás roxo com listras que andam
@@ -289,7 +325,7 @@ LS.HUD = {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     [['N', 0, '#ff8a1f'], ['L', 1, '#fff'], ['S', 2, '#fff'], ['O', 3, '#fff']].forEach(([l, i, col]) => {
       const a = rot - Math.PI / 2 + i * Math.PI / 2, x = R + Math.cos(a) * (R - 15 * k), y = R + Math.sin(a) * (R - 15 * k);
-      ctx.font = (i ? '700 ' + Math.round(17 * k) : '900 ' + Math.round(21 * k)) + 'px "Lilita One", Rubik, sans-serif';
+      ctx.font = '400 ' + Math.round((i ? 17 : 21) * k) + 'px Tiny5, "Pixelify Sans", sans-serif';
       ctx.fillStyle = col; ctx.fillText(l, x, y + 1 * k);
     });
     // marcador de "pra frente" no topo do anel
@@ -299,7 +335,7 @@ LS.HUD = {
     const ctx = this.bm, S = ctx.canvas.width, t = performance.now() / 1000, P = G.player, sc = S / LS.MAP_SIZE;
     this.drawWorld(ctx, S, G, 0, 0, LS.MAP_SIZE, 0, t);
     if (P.state !== 'plane') this.drawPlayer(ctx, S / 2 + P.pos.x * sc, S / 2 + P.pos.z * sc, S / 600 * 1.1, Math.PI - P.camYaw, t);
-    ctx.fillStyle = '#ff8a1f'; ctx.font = '900 22px "Lilita One", sans-serif'; ctx.textAlign = 'center'; ctx.fillText('N', S / 2, 22);
+    ctx.fillStyle = '#ff8a1f'; ctx.font = '400 22px Tiny5, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('N', S / 2, 22);
   },
   toggleBigMap() { this.el.bigmap.classList.toggle('hidden'); },
 

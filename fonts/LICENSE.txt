@@ -1,4 +1,6 @@
 Fontes usadas no jogo (SIL Open Font License 1.1):
 - Lilita One — Juan Montoreano
 - Rubik — Hubert & Fischer
+- Tiny5 — The Tiny5 Project Authors (Gissio)
+- Pixelify Sans — Stefie Justprince
 Arquivos obtidos via Fontsource (https://fontsource.org).
