@@ -4,25 +4,34 @@
 'use strict';
 LS.Xmas = {
   TICKET_HEAD: 5, TICKET_BODY: 3,
-  // [texto, chave do progresso, meta, tickets]. A ordem não pode mudar (o "já resgatou" é um bit por missão)
+  // MISSÕES DIÁRIAS: zeram todo dia à meia-noite (horário de Brasília); os tickets que você ganhou continuam.
+  // [texto, chave do progresso, meta, tickets]. A ordem não pode mudar no meio do dia (o "já resgatou" é um bit por missão)
   MISSIONS: [
     ['Jogue 3 partidas', 'xg', 3, 50],
     ['Faça 3 kills em partidas', 'xk', 3, 50],
     ['Faça 2 headshots', 'xh', 2, 75],
-    ['Jogue 10 partidas', 'xg', 10, 100],
     ['Faça 10 kills em partidas', 'xk', 10, 150],
     ['Faça 3 kills em uma partida', 'xmk', 3, 150],
     ['Cause 3.000 de dano', 'xd', 3000, 150],
-    ['Faça 25 headshots', 'xh', 25, 200],
     ['Vença 1 partida', 'xw', 1, 200],
-    ['Faça 5 headshots em uma partida', 'xmh', 5, 300],
-    ['Faça 50 kills em partidas', 'xk', 50, 300]
+    ['Faça 5 headshots em uma partida', 'xmh', 5, 300]
   ],
   KEYS: ['xg', 'xk', 'xh', 'xw', 'xd', 'xmk', 'xmh', 'xc'],
+  BRT: 3 * 3600e3, // Brasília = UTC-3 (sem horário de verão)
+  today() { return Math.floor((Date.now() - this.BRT) / 864e5); },
+  // quanto falta pra virar o dia (pro "reseta em 5h 12min")
+  resetIn() { const ms = (this.today() + 1) * 864e5 + this.BRT - Date.now(), h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 60e3); return h ? h + 'h ' + m + 'min' : m + 'min'; },
+  // virou o dia: zera as missões (não mexe nos tickets)
+  daily() {
+    const S = LS.stats, d = this.today();
+    if (S.xday === d) return false;
+    S.xday = d; this.KEYS.forEach(k => { S[k] = 0; }); LS.saveStats();
+    return true;
+  },
   server: (() => { try { return localStorage.getItem('ls_xmas') || 'auto'; } catch (e) { return 'auto'; } })(),
   m: { k: 0, h: 0 }, // abates desta partida
 
-  init() { this.season(); this.ui(); },
+  init() { this.season(); this.daily(); this.ui(); setInterval(() => { if (this.active() && this.daily()) { this.ui(); if (LS.Shop.view === 'xmas' && LS.UI.current === 'panel-shop') LS.Shop.render(); } }, 60e3); },
   // ligado: forçado pelo admin, ou dezembro no automático
   active() { return this.server === 'on' || (this.server === 'auto' && new Date().getMonth() === 11); },
   setServer(v) {
@@ -35,11 +44,11 @@ LS.Xmas = {
     if (!this.active()) return;
     const d = new Date(), y = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1, S = LS.stats;
     if (S.xy === y) return;
-    S.xy = y; this.KEYS.forEach(k => { S[k] = 0; }); LS.saveStats();
+    S.xy = y; this.KEYS.forEach(k => { S[k] = 0; }); S.xday = this.today(); LS.saveStats();
   },
   // mostra/esconde o botão do lobby e a aba da loja
   ui() {
-    const on = this.active();
+    const on = this.active(); if (on) this.daily();
     document.querySelectorAll('[data-action="xmas"]').forEach(b => b.classList.toggle('hidden', !on));
     const n = document.getElementById('lb-xmas-n'); if (n) { const k = this.claimable(); n.textContent = k; n.classList.toggle('hidden', !on || !k); }
     document.body.classList.toggle('xmas-on', on);
@@ -50,7 +59,7 @@ LS.Xmas = {
   // abate seu: devolve quantos tickets ganhou (0 = evento desligado / não conta)
   onKill(head) {
     if (!this.active() || !this.counts()) return 0;
-    this.season();
+    this.season(); this.daily();
     const S = LS.stats, got = head ? this.TICKET_HEAD : this.TICKET_BODY;
     S.snow = (S.snow || 0) + got; S.xk = (S.xk || 0) + 1; this.m.k++;
     if (head) { S.xh = (S.xh || 0) + 1; this.m.h++; }
@@ -60,7 +69,7 @@ LS.Xmas = {
   },
   endMatch(win, P) {
     if (!this.active() || !this.counts()) return;
-    this.season();
+    this.season(); this.daily();
     const S = LS.stats;
     S.xg = (S.xg || 0) + 1; if (win) S.xw = (S.xw || 0) + 1;
     S.xd = (S.xd || 0) + Math.round(P.damageDealt || 0);
@@ -72,14 +81,15 @@ LS.Xmas = {
   ready(i) { return !this.claimed(i) && this.prog(i) >= this.MISSIONS[i][2]; },
   claimable() { return this.MISSIONS.reduce((n, _, i) => n + (this.ready(i) ? 1 : 0), 0); },
   claim(i) {
-    if (!this.active() || !this.ready(i)) return 0;
+    if (!this.active() || this.daily() || !this.ready(i)) return 0; // virou o dia enquanto a tela estava aberta: zerou
     const S = LS.stats, r = this.MISSIONS[i][3];
     S.xc = (S.xc || 0) | (1 << i); S.snow = (S.snow || 0) + r; LS.saveStats(); this.ui();
     return r;
   },
   // lista de missões (fica embaixo do Spin de Natal, na loja)
   missionsHtml() {
-    return '<div class="xm-missions"><h4>' + LS.icon('snow') + ' MISSÕES DE NATAL</h4>' + this.MISSIONS.map((M, i) => {
+    this.daily();
+    return '<div class="xm-missions"><h4>' + LS.icon('snow') + ' MISSÕES DIÁRIAS DE NATAL<small>reseta em ' + this.resetIn() + '</small></h4>' + this.MISSIONS.map((M, i) => {
       const p = this.prog(i), done = this.claimed(i), ok = this.ready(i);
       return '<div class="xm-m' + (done ? ' done' : ok ? ' ok' : '') + '"><div class="xm-mt"><b>' + M[0] + '</b><div class="xm-bar"><i style="width:' + Math.round(p / M[2] * 100) + '%"></i></div><small>' + p.toLocaleString('pt-BR') + ' / ' + M[2].toLocaleString('pt-BR') + '</small></div>' +
         (done ? '<span class="xm-got">RESGATADO</span>' : '<button class="xm-claim" data-sh="xclaim" data-v="' + i + '"' + (ok ? '' : ' disabled') + '>' + LS.icon('snow', 'snow-i') + M[3] + '</button>') + '</div>';
