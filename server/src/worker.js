@@ -7,6 +7,8 @@
 //                        recusa teleporte/velocidade impossível, decide quem pegou cada item, mortes e vencedor.
 //                        Os bots que completam as 31 vagas rodam no navegador do "host" (um dos jogadores).
 //                        Anti-wallhack: cada jogador só recebe a posição de quem ele poderia ver (vis.js).
+//  /ws/party           → PartyHub (um só no mundo): party de amigos (até 4 no BR, 2 no duelo), convites e o "vamos!" do líder.
+//  /ws/pduel/<id>      → PartyDuel (um por duelo): dupla da party contra 2 bots no galpão (igual à sala, com bots do host).
 //  /api/...            → Accounts (um só no mundo): contas com nome único, senha, curtidas e selos (accounts.js).
 'use strict';
 import { viewPoints, bodyPoints, canSee } from './vis.js';
@@ -15,9 +17,10 @@ export { Accounts };
 
 // versão mínima do jogo pro online (LS.NET_PROTO em js/config.js). Navegador e app (APK) jogam juntos (crossplay),
 // mas só se estiverem na mesma versão das regras. Subiu o LS.NET_PROTO? Suba aqui também e rode "npx wrangler deploy".
-const MIN_PROTO = 1;
+const MIN_PROTO = 2;   // 2: esquadrões de 4 (times) e party
 const SEARCH_MS = 30000;   // tempo procurando jogadores
-const MAX_PLAYERS = 31;    // vagas da partida (jogadores + bots)
+const MAX_PLAYERS = 32;    // vagas da partida (jogadores + bots): 8 esquadrões de 4
+const SQUAD = 4, MAX_TEAMS = MAX_PLAYERS / SQUAD;
 const JOIN_MS = 12000;     // tempo pra todos entrarem na sala depois do matchmaking
 const READY_MS = 20000;    // depois do 'start', tempo máximo esperando todo mundo terminar de carregar o mapa (aí manda o 'go' de qualquer jeito)
 const DEFER_MS = 500, DEFER_MAX = 6; // fila: se alguém ainda está entrando (conferindo a conta) na hora de fechar a partida, espera até 3 s
@@ -83,6 +86,9 @@ export default {
     if (url.pathname === '/room/new' || url.pathname === '/room/list') return roomRoutes(req, env, url); // salas personalizadas
     const rm = url.pathname.match(/^\/ws\/room\/(\d{7})$/);
     if (rm) return env.ROOM.get(env.ROOM.idFromName(rm[1])).fetch(req);
+    if (url.pathname === '/ws/party') return env.PARTY.get(env.PARTY.idFromName('global')).fetch(req);
+    const pd = url.pathname.match(/^\/ws\/pduel\/([a-z0-9]{12})$/);
+    if (pd) return env.PDUEL.get(env.PDUEL.idFromName(pd[1])).fetch(req);
     const m = url.pathname.match(/^\/ws\/match\/([a-z0-9]{8,32})$/);
     if (m) return env.MATCH.get(env.MATCH.idFromName(m[1])).fetch(req);
     return new Response('not found', { status: 404, headers: cors });
@@ -104,6 +110,9 @@ export class Matchmaker {
         p.ready = true;
         if (num(m.proto) < MIN_PROTO) { send(server, { t: 'outdated', min: MIN_PROTO }); try { server.close(1000, 'outdated'); } catch (e) { } return; }
         p.app = !!m.app; p.look = m.look && typeof m.look === 'object' ? m.look : null; p.rdy = !!m.rdy; // rdy: cliente novo, que avisa quando terminou de carregar
+        // party: quem tem o mesmo "group" (código secreto que o PartyHub deu) cai no mesmo esquadrão
+        p.group = typeof m.group === 'string' && /^[a-z0-9]{16}$/.test(m.group) ? m.group : null;
+        p.gsize = Math.max(1, Math.min(SQUAD, num(m.gsize, 1) | 0)); p.t = Date.now();
         this.pending++; // ainda conferindo a conta: o fechamento da fila espera esse jogador (senão 2 pessoas que entraram juntas caíam em filas separadas)
         this.joinQueue(p, m).catch(() => { }).then(() => { this.pending = Math.max(0, this.pending - 1); });
       } else if (m.t === 'ping') { // ping na fila: responde e guarda o ping do jogador (vai escolher o host da partida)
@@ -127,7 +136,7 @@ export class Matchmaker {
     this.queue.push(p);
     if (!this.deadline) this.armTimer();
     this.broadcastQueue();
-    if (this.queue.length >= MAX_PLAYERS) this.flush();
+    if (this.units(false).length >= MAX_TEAMS) this.flush();
   }
   armTimer() {
     this.deadline = Date.now() + SEARCH_MS;
@@ -135,6 +144,17 @@ export class Matchmaker {
     this.ticker = setInterval(() => this.broadcastQueue(), 1000);
   }
   reset() { clearTimeout(this.timer); clearInterval(this.ticker); this.timer = this.ticker = null; this.deadline = 0; }
+  // esquadrões na fila: cada party é um (no máximo 4), cada jogador sozinho é outro.
+  // ready: party incompleta que chegou faz menos de 6 s espera o resto (os amigos conectam quase juntos)
+  units(ready) {
+    const map = new Map(), out = [], now = Date.now();
+    for (const p of this.queue) {
+      const k = p.group ? 'g' + p.group : 't' + p.token;
+      let u = map.get(k); if (!u) { u = []; u.t = p.t; u.size = p.group ? p.gsize : 1; map.set(k, u); out.push(u); }
+      if (u.length < SQUAD) u.push(p);
+    }
+    return ready ? out.filter(u => u.length >= u.size || now - u.t > 6000) : out;
+  }
   broadcastQueue() {
     const left = Math.max(0, Math.ceil((this.deadline - Date.now()) / 1000));
     for (const q of this.queue) send(q.ws, { t: 'queue', n: this.queue.length, left, max: MAX_PLAYERS });
@@ -144,12 +164,17 @@ export class Matchmaker {
       this.defers++; clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), DEFER_MS); return;
     }
     this.defers = 0;
-    const group = this.queue.splice(0, MAX_PLAYERS);
+    const units = this.units(true).slice(0, MAX_TEAMS), group = [];
+    units.forEach((u, ti) => u.forEach(p => { p.team = ti; group.push(p); }));
+    // quem passou de 4 numa party (não devia acontecer) também sai da fila
+    const taken = new Set(group), extra = this.queue.filter(p => p.group && !taken.has(p) && units.some(u => u[0].group === p.group));
+    this.queue = this.queue.filter(p => !taken.has(p) && !extra.includes(p));
+    for (const p of extra) { send(p.ws, { t: 'nomatch' }); try { p.ws.close(1000, 'nomatch'); } catch (e) { } }
     this.reset();
     if (this.queue.length) { this.armTimer(); this.broadcastQueue(); }
     if (group.length < 2) { for (const p of group) { send(p.ws, { t: 'nomatch' }); try { p.ws.close(1000, 'nomatch'); } catch (e) { } } return; }
     const id = rid(12), seed = Math.floor(Math.random() * 2 ** 31);
-    const roster = group.map((p, i) => ({ token: p.token, pid: 'p' + (i + 1), name: p.name, look: p.look, rtt: p.rtt || 0, rdy: !!p.rdy }));
+    const roster = group.map((p, i) => ({ token: p.token, pid: 'p' + (i + 1), name: p.name, look: p.look, rtt: p.rtt || 0, rdy: !!p.rdy, team: p.team }));
     await this.env.MATCH.get(this.env.MATCH.idFromName(id), hint(this.env)).fetch('https://match/init', { method: 'POST', body: JSON.stringify({ id, seed, roster }) });
     for (const p of group) { send(p.ws, { t: 'match', id, token: p.token }); try { p.ws.close(1000, 'match'); } catch (e) { } }
   }
@@ -225,12 +250,21 @@ export class Match {
     let hostR = humans[0], hostRtt = Infinity;
     for (const r of humans) { const e = this.ents.get(r.pid), rt = e && e.rtt > 0 ? e.rtt : 999; if (rt < hostRtt) { hostRtt = rt; hostR = r; } }
     this.host = hostR.pid;
+    // esquadrões de 4: os times de quem conectou (renumerados 0, 1, 2...), completados com bots; o resto dos bots em times de 4
+    const tmap = new Map(), count = [];
+    for (const r of humans) { const k = r.team != null ? 't' + r.team : r.pid; if (!tmap.has(k)) { tmap.set(k, count.length); count.push(0); } r.t = tmap.get(k); count[r.t]++; this.ents.get(r.pid).team = r.t; }
     const nBots = Math.max(0, MAX_PLAYERS - humans.length), bots = [];
     // nomes dos bots embaralhados pela semente (iguais pra todos)
     let s = this.seed || 1; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
     const names = BOT_NAMES.slice().sort(() => rnd() - 0.5);
-    for (let i = 0; i < nBots; i++) { const id = 'b' + i; this.ents.set(id, this.newEnt(id, this.host, names[i % names.length])); bots.push({ id, name: names[i % names.length] }); }
-    const players = humans.map(r => ({ pid: r.pid, name: r.name, look: r.look }));
+    let ti = 0;
+    for (let i = 0; i < nBots; i++) {
+      while (ti < count.length && count[ti] >= SQUAD) ti++;
+      if (ti >= count.length) count.push(0);
+      count[ti]++;
+      const id = 'b' + i, e = this.newEnt(id, this.host, names[i % names.length]); e.team = ti; this.ents.set(id, e); bots.push({ id, name: names[i % names.length], team: ti });
+    }
+    const players = humans.map(r => ({ pid: r.pid, name: r.name, look: r.look, team: r.t }));
     // BARREIRA DE CARREGAMENTO: cada navegador monta o mapa DEPOIS do 'start' (o 1º jogo da sessão leva alguns segundos).
     // Antes, quem carregava mais rápido já jogava e, se o host dos bots demorava, os outros caíam numa cidade fantasma sem bots.
     // Agora os clientes novos (rdy) avisam 'ready' quando terminam e todos começam juntos no 'go'. Cliente antigo não espera ninguém.
@@ -345,6 +379,8 @@ export class Match {
   bcast(obj, exceptPid) { const msg = JSON.stringify(obj); for (const [pid, ws] of this.socks) if (pid !== exceptPid) { try { ws.send(msg); } catch (e) { } } }
   owns(pid, ent) { return ent && ent.owner === pid; }
   aliveCount() { let n = 0; for (const e of this.ents.values()) if (e.alive) n++; return n; }
+  // times com alguém vivo (quem não tem time conta sozinho)
+  aliveTeams() { const t = new Set(); for (const e of this.ents.values()) if (e.alive) t.add(e.team != null ? 't' + e.team : e.id); return t; }
 
   onMsg(pid, m) {
     if (!this.started || this.ended) return;
@@ -406,6 +442,7 @@ export class Match {
       case 'hit': { // acerto informado por quem atirou: o servidor confere (ritmo, alcance, posição do alvo NO MOMENTO do tiro, parede) e calcula o dano
         const a = this.ents.get(String(m.a)), v = this.ents.get(String(m.v));
         if (!this.owns(pid, a) || !a.alive || !v || !v.alive || v.grace || a === v || !a.pos || !v.pos) return;
+        if (a.team != null && a.team === v.team) return; // sem fogo amigo
         const now = Date.now(), shot = [...a.shots].reverse().find(s => s.left > 0 && now - s.t < 600 && s.w === m.w);
         if (!shot) return;
         const w = WEAPONS[shot.w], ok = this.validHit(a, v, shot, w, m, now);
@@ -558,13 +595,14 @@ export class Match {
     if (!v.alive) return;
     v.alive = false; v.hp = 0; this.killSeq++;
     if (v.st) v.st[10] = 0;
-    const left = this.aliveCount();
-    const km = { t: 'kill', v: v.id, a: a ? a.id : null, w: weapon, h: head ? 1 : 0, k: this.killSeq, pl: left + 1, p: v.pos };
+    const left = this.aliveCount(), teams = this.aliveTeams();
+    const wiped = v.team != null && !teams.has('t' + v.team); // o esquadrão inteiro caiu: colocação do time
+    const km = { t: 'kill', v: v.id, a: a ? a.id : null, w: weapon, h: head ? 1 : 0, k: this.killSeq, pl: wiped ? teams.size + 1 : left + 1, p: v.pos };
     this.killLog.push(km); this.bcast(km);
-    if (left <= 1 && !this.ended) {
+    if (teams.size <= 1 && !this.ended) {
       this.ended = true;
-      let winner = null; for (const e of this.ents.values()) if (e.alive) winner = e.id;
-      this.bcast({ t: 'end', winner });
+      let winner = null, team = null; for (const e of this.ents.values()) if (e.alive) { winner = e.id; team = e.team != null ? e.team : null; }
+      this.bcast({ t: 'end', winner, team });
       setTimeout(() => this.close(), 15000);
     }
   }
@@ -802,9 +840,9 @@ export class Room extends Match {
     if (this.ph === 'lobby' || this.ph === 'over') return;
     // mensagens da partida: só quem joga, sem fogo amigo, dano só durante a luta
     const me = this.ents.get(pid); if (!me) return;
-    if (d.t === 'hit') { const v = this.ents.get(String(d.v)); if (this.ph !== 'fight' || !v || v.team === me.team) return; }
+    if (d.t === 'hit') { const v = this.ents.get(String(d.v)), a = this.ents.get(String(d.a)) || me; if (this.ph !== 'fight' || !v || v.team === a.team) return; } // quem atira pode ser um bot do host
     if (d.t === 'env' && this.ph !== 'fight') return;
-    if (d.t === 'st' && this.ph !== 'fight') me.pos = null; // fora da luta (loja/contagem) cada um vai pro lugar de nascer: sem trava de teleporte
+    if (d.t === 'st' && this.ph !== 'fight') for (const e of this.ents.values()) if (e.owner === pid) e.pos = null; // fora da luta (loja/contagem) cada um vai pro lugar de nascer: sem trava de teleporte (os bots do host também)
     if (d.t === 'gel' && this.ph !== 'fight') return;
     if (d.t === 'st' || d.t === 'fire' || d.t === 'hit' || d.t === 'env' || d.t === 'heal' || d.t === 'gel' || d.t === 'gh' || d.t === 'dropw') super.onMsg(pid, d);
   }
@@ -881,4 +919,273 @@ export class Room extends Match {
   snapFor(pid, now, full, dedupe, hideOut) { return super.snapFor(pid, now, full || !this.ents.has(pid), dedupe, hideOut); }
   onLeave() { /* a sala cuida (leave) */ }
   close() { /* a partida não fecha a sala */ }
+}
+
+// ===================== Party (até 4 amigos no BR, 2 no duelo) =====================
+// /ws/party → PartyHub (um só no mundo). Cada jogador com conta fica conectado aqui enquanto o jogo está aberto.
+//  - convite só pra amigo online · o líder escolhe o modo e aperta JOGAR (os outros esperam)
+//  - BR: todos recebem o mesmo "group" e o Matchmaker põe a party inteira no mesmo esquadrão (completa com bots)
+//  - Duelo: só 2. Trocou pro duelo com 3 ou 4? O líder escolhe quem fica, os outros saem da party
+// Usa a hibernação do Cloudflare (a conexão fica aberta sem gastar a cota do plano grátis): o estado das parties
+// fica guardado no storage e cada conexão guarda quem ela é (serializeAttachment).
+const PARTY_CAP = { br: SQUAD, duel: 2 }, PARTY_GRACE = 30000, INVITE_MS = 60000;
+// visual do boneco: só as chaves conhecidas, textos curtos (cada conexão hibernada guarda no máximo 2 KB)
+const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top', 'legs', 'costume'];
+const cleanLook = l => { if (!l || typeof l !== 'object') return null; const o = {}; for (const k of LOOK_KEYS) if (typeof l[k] === 'string' && l[k].length <= 28) o[k] = l[k]; return o; };
+export class PartyHub {
+  constructor(state, env) {
+    this.state = state; this.env = env; this.parties = {}; this.socks = null;
+    state.blockConcurrencyWhile(async () => { this.parties = (await state.storage.get('parties')) || {}; });
+    try { state.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong')); } catch (e) { /* sem auto-resposta: o ping acorda o objeto, sem problema */ }
+  }
+  async fetch(req) {
+    if (req.headers.get('Upgrade') !== 'websocket') return new Response('websocket esperado', { status: 426, headers: cors });
+    const [client, server] = Object.values(new WebSocketPair());
+    this.state.acceptWebSocket(server);
+    server.serializeAttachment({ acc: null });
+    return new Response(null, { status: 101, webSocket: client });
+  }
+  // quem está conectado (refeito quando o objeto acorda da hibernação)
+  sockMap() {
+    if (!this.socks) { this.socks = new Map(); for (const ws of this.state.getWebSockets()) { const a = this.att(ws); if (a.acc) this.socks.set(a.acc, ws); } }
+    return this.socks;
+  }
+  att(ws) { try { return ws.deserializeAttachment() || {}; } catch (e) { return {}; } }
+  setAtt(ws, a) { try { ws.serializeAttachment(a); } catch (e) { } }
+  save() { return this.state.storage.put('parties', this.parties); }
+  partyOf(acc) { for (const p of Object.values(this.parties)) if (p.members.includes(acc)) return p; return null; }
+  note(ws, msg) { send(ws, { t: 'note', msg }); }
+  // estado da party pra todos os membros
+  view(p) {
+    const S = this.sockMap(), now = Date.now();
+    return { id: p.id, leader: p.leader, mode: p.mode, members: p.members.map(acc => { const i = p.info[acc] || {}, ws = S.get(acc), a = ws ? this.att(ws) : {};
+      return { acc, name: i.name || '?', look: i.look || null, badges: i.badges || [], on: !!ws, st: a.st || 'lobby' }; }),
+      inv: Object.keys(p.inv).filter(acc => p.inv[acc] > now) };
+  }
+  push(p) { const v = this.view(p), S = this.sockMap(); for (const acc of p.members) { const ws = S.get(acc); if (ws) send(ws, { t: 'party', party: v }); } }
+  // tira alguém da party (saiu, foi expulso ou ficou offline). Party sem ninguém some; o líder saiu: o próximo assume
+  drop(p, acc, why) {
+    const i = p.members.indexOf(acc); if (i < 0) return;
+    p.members.splice(i, 1); delete p.info[acc]; delete p.off[acc];
+    const ws = this.sockMap().get(acc);
+    if (ws) send(ws, why ? { t: 'kicked', why, party: null } : { t: 'party', party: null });
+    if (!p.members.length) { delete this.parties[p.id]; return; }
+    if (p.leader === acc) p.leader = p.members[0];
+    this.push(p);
+  }
+  async webSocketMessage(ws, raw) {
+    if (raw === 'ping') { try { ws.send('pong'); } catch (e) { } return; }
+    let d; try { d = JSON.parse(raw); } catch (e) { return; }
+    const a = this.att(ws);
+    if (d.t === 'hello') return this.hello(ws, a, d);
+    if (!a.acc) return;
+    const me = a.acc, S = this.sockMap();
+    let p = this.partyOf(me);
+    const lead = p && p.leader === me;
+    switch (d.t) {
+      case 'st': a.st = d.s === 'game' ? 'game' : 'lobby'; this.setAtt(ws, a); if (p) this.push(p); return;
+      case 'look': a.look = cleanLook(d.look); this.setAtt(ws, a); if (p) { p.info[me].look = a.look; this.push(p); await this.save(); } return;
+      case 'invite': {
+        const to = String(d.to || ''), mode = d.mode === 'duel' ? 'duel' : 'br';
+        if (to === me) return;
+        let fr = []; // amigos conferidos na hora (a lista não fica na conexão: pode passar de 2 KB)
+        try { const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('global')).fetch('https://accounts/internal/friends', { method: 'POST', body: JSON.stringify({ id: me }) }); fr = (await r.json()).friends || []; } catch (e) { }
+        if (!fr.includes(to)) return this.note(ws, 'Só dá pra chamar amigos pra party.');
+        p = this.partyOf(me); // pode ter mudado enquanto conferia
+        if (p && p.leader !== me) return this.note(ws, 'Só o líder da party pode convidar.');
+        const tws = S.get(to); if (!tws) return this.note(ws, 'Esse amigo não está online agora.');
+        if (p && p.members.includes(to)) return this.note(ws, 'Ele já está na sua party.');
+        const m = p ? p.mode : mode;
+        if (p && p.members.length >= PARTY_CAP[m]) return this.note(ws, m === 'duel' ? 'No duelo a party é de 2. Troque pro Battle Royale pra chamar mais gente.' : 'A party já está cheia (4 jogadores).');
+        if (!p) { const id = rid(10); p = this.parties[id] = { id, leader: me, mode, members: [me], info: {}, inv: {}, off: {} }; p.info[me] = { name: a.name, look: a.look, badges: a.badges }; }
+        p.inv[to] = Date.now() + INVITE_MS;
+        send(tws, { t: 'invite', party: p.id, from: me, name: a.name, look: a.look, mode: p.mode, n: p.members.length });
+        this.note(ws, 'Convite enviado!');
+        this.push(p); await this.save(); return;
+      }
+      case 'accept': {
+        const q = this.parties[String(d.party || '')];
+        if (!q || !(q.inv[me] > Date.now())) return this.note(ws, 'Esse convite expirou.');
+        if (q.members.length >= PARTY_CAP[q.mode]) { delete q.inv[me]; await this.save(); return this.note(ws, 'Essa party já está cheia.'); }
+        if (p && p !== q) this.drop(p, me);
+        delete q.inv[me];
+        if (!q.members.includes(me)) { q.members.push(me); q.info[me] = { name: a.name, look: a.look, badges: a.badges }; }
+        this.push(q); await this.save(); return;
+      }
+      case 'decline': {
+        const q = this.parties[String(d.party || '')]; if (!q || !q.inv[me]) return;
+        delete q.inv[me];
+        const lw = S.get(q.leader); if (lw) this.note(lw, a.name + ' recusou o convite.');
+        this.push(q); await this.save(); return;
+      }
+      case 'leave': if (p) { this.drop(p, me); await this.save(); } return;
+      case 'kick': {
+        if (!lead) return;
+        const who = String(d.acc || ''); if (who === me || !p.members.includes(who)) return;
+        this.drop(p, who, 'Você foi removido da party pelo líder.'); await this.save(); return;
+      }
+      case 'uninvite': { if (lead) { delete p.inv[String(d.acc || '')]; this.push(p); await this.save(); } return; }
+      case 'mode': {
+        if (!lead) return;
+        const mode = d.mode === 'duel' ? 'duel' : 'br';
+        if (mode === 'duel' && p.members.length > 2) { // duelo é em dupla: o líder escolhe quem fica, o resto sai
+          const keep = Array.isArray(d.keep) ? d.keep.map(String).filter(x => x !== me && p.members.includes(x)) : [];
+          if (keep.length !== 1) return this.note(ws, 'Escolha quem fica com você no duelo.');
+          for (const acc of p.members.slice()) if (acc !== me && acc !== keep[0]) this.drop(p, acc, 'O líder trocou pro Duelo (só 2 jogadores) e você saiu da party.');
+        }
+        p.mode = mode; this.push(p); await this.save(); return;
+      }
+      case 'cancel': { // alguém cancelou a busca: cancela pra party toda
+        if (!p) return;
+        for (const acc of p.members) { const w = S.get(acc); if (w && acc !== me) send(w, { t: 'cancel', by: a.name }); }
+        return;
+      }
+      case 'go': {
+        if (!lead) return this.note(ws, 'Só o líder pode iniciar a partida.');
+        if (p.members.length < 2) return;
+        const away = p.members.filter(acc => { const w = S.get(acc); return !w || this.att(w).st === 'game'; });
+        if (away.length) return this.note(ws, 'Esperando ' + away.map(acc => (p.info[acc] || {}).name || '?').join(', ') + ' voltar pro lobby.');
+        if (p.mode === 'duel') {
+          if (p.members.length !== 2) return this.note(ws, 'O duelo em party é de 2 jogadores.');
+          const id = rid(12), players = p.members.map(acc => ({ acc, name: p.info[acc].name, look: p.info[acc].look, ticket: rid(16) }));
+          try { await this.env.PDUEL.get(this.env.PDUEL.idFromName(id)).fetch('https://pduel/init', { method: 'POST', body: JSON.stringify({ id, players }) }); }
+          catch (e) { return this.note(ws, 'Não deu pra criar o duelo. Tente de novo.'); }
+          for (const pl of players) { const w = S.get(pl.acc); if (w) send(w, { t: 'go', mode: 'duel', id, ticket: pl.ticket }); }
+        } else {
+          const group = rid(16);
+          for (const acc of p.members) { const w = S.get(acc); if (w) send(w, { t: 'go', mode: 'br', group, gsize: p.members.length }); }
+        }
+        return;
+      }
+    }
+  }
+  async hello(ws, a, d) {
+    if (a.acc || a.busy) return;
+    a.busy = true; this.setAtt(ws, a);
+    if (num(d.proto) < MIN_PROTO) { send(ws, { t: 'outdated' }); try { ws.close(4002, 'outdated'); } catch (e) { } return; }
+    const acc = await resolveAcc(this.env, d.auth);
+    if (!acc.id) { send(ws, { t: 'noauth' }); try { ws.close(4003, 'noauth'); } catch (e) { } return; }
+    const S = this.sockMap(), old = S.get(acc.id);
+    if (old && old !== ws) { this.setAtt(old, { acc: null }); send(old, { t: 'dup' }); try { old.close(4001, 'outra aba'); } catch (e) { } } // a mesma conta abriu em outro lugar
+    const n = { acc: acc.id, name: cleanName(acc.name), badges: (acc.badges || []).slice(0, 6), look: cleanLook(d.look), st: d.st === 'game' ? 'game' : 'lobby' };
+    this.setAtt(ws, n); S.set(acc.id, ws);
+    send(ws, { t: 'hi', you: acc.id });
+    const p = this.partyOf(acc.id);
+    if (p) { delete p.off[acc.id]; p.info[acc.id] = { name: n.name, look: n.look || (p.info[acc.id] || {}).look, badges: n.badges }; this.push(p); await this.save(); }
+    else send(ws, { t: 'party', party: null });
+  }
+  async webSocketClose(ws) { await this.gone(ws); }
+  async webSocketError(ws) { await this.gone(ws); }
+  async gone(ws) {
+    const a = this.att(ws); if (!a.acc) return;
+    const S = this.sockMap(); if (S.get(a.acc) === ws) S.delete(a.acc); else return; // já reconectou por outra conexão
+    const p = this.partyOf(a.acc);
+    if (p) { p.off[a.acc] = Date.now(); this.push(p); await this.save(); await this.armAlarm(Date.now() + PARTY_GRACE + 1000); }
+  }
+  async armAlarm(t) { const cur = await this.state.storage.getAlarm(); if (!cur || cur > t) await this.state.storage.setAlarm(t); } // não adia um alarme que já vinha antes
+  // quem caiu e não voltou em 30 s sai da party; convites vencidos somem
+  async alarm() {
+    const now = Date.now(); let more = false;
+    for (const p of Object.values(this.parties)) {
+      for (const acc of Object.keys(p.off)) { if (this.sockMap().has(acc)) { delete p.off[acc]; continue; } if (now - p.off[acc] >= PARTY_GRACE) this.drop(p, acc); else more = true; }
+      for (const acc of Object.keys(p.inv)) if (p.inv[acc] < now) delete p.inv[acc];
+      if (this.parties[p.id] && p.members.length === 1 && !Object.keys(p.inv).length && !this.sockMap().has(p.members[0])) delete this.parties[p.id];
+    }
+    await this.save();
+    if (more) await this.armAlarm(now + 5000);
+  }
+}
+
+// ===================== Duelo em party: a dupla contra 2 bots no galpão =====================
+// Igual a uma sala (vida/tiros/dano no servidor, loja de cada jogador a cada 2 rounds, primeiro a 5), mas:
+// só entra quem tem o ingresso que o PartyHub deu, começa sozinho e os 2 bots (time b) rodam no navegador do host.
+export class PartyDuel extends Room {
+  async fetch(req) {
+    const url = new URL(req.url);
+    if (url.pathname === '/init' && req.method === 'POST') {
+      const d = await req.json();
+      this.cfg = { name: 'Duelo em dupla', pass: '', size: 2, rounds: 9, gelInf: false };
+      this.reset();
+      this.id = d.id; this.pd = (d.players || []).slice(0, 2); this.alive = true;
+      // quem não entrar em 20 s fica de fora (o outro joga sozinho contra os 2 bots)
+      clearTimeout(this.idle); this.idle = setTimeout(() => { if (this.ph !== 'lobby') return; if (this.members.size) this.startGame(); else this.closeRoom(); }, 20000);
+      return new Response('ok');
+    }
+    return super.fetch(req);
+  }
+  async hello(m, d) {
+    if (!this.alive || !this.pd) return this.deny(m, 'Esse duelo não existe mais.');
+    if (num(d.proto) < MIN_PROTO) return this.deny(m, 'Atualize o jogo pra entrar.');
+    const i = this.pd.findIndex(x => x.ticket === String(d.ticket || ''));
+    if (i < 0) return this.deny(m, 'Ingresso inválido.');
+    if (this.ph !== 'lobby') return this.deny(m, 'O duelo já começou.');
+    const p = this.pd[i];
+    for (const o of this.members.values()) if (o.accId === p.acc) { try { o.ws.close(1000, 'outra aba'); } catch (e) { } this.leave(o.pid); }
+    m.pid = 'u' + (i + 1); m.ok = true; m.accId = p.acc; m.name = cleanName(p.name); m.look = d.look && typeof d.look === 'object' ? d.look : p.look || null;
+    m.badges = []; m.slot = { t: 'a', i }; m.joinT = Date.now(); m.picks = null;
+    this.members.set(m.pid, m); this.socks.set(m.pid, m.ws);
+    if (!this.owner || !this.members.has(this.owner)) this.owner = m.pid;
+    send(m.ws, { t: 'welcome', you: m.pid });
+    if (this.members.size >= this.pd.length) { clearTimeout(this.idle); this.startGame(); }
+  }
+  publish() { }
+  sendRoom() { }
+  closeRoom() {
+    this.alive = false; clearTimeout(this.idle); clearInterval(this.tick); clearTimeout(this.phT);
+    for (const o of this.members.values()) { try { o.ws.close(1000, 'fim'); } catch (e) { } }
+    this.reset();
+  }
+  startGame() {
+    if (this.ph !== 'lobby' || !this.members.size) return;
+    clearInterval(this.tick);
+    this.ents = new Map(); this.vis = new Map(); this.taken = new Set(); this.killSeq = 0;
+    this.seed = Math.floor(Math.random() * 2 ** 31); this.round = 0; this.score = [0, 0];
+    const humans = [...this.members.values()].sort((x, y) => x.slot.i - y.slot.i);
+    for (const o of humans) { const e = this.newEnt(o.pid, o.pid, o.name); e.team = 'a'; e.idx = o.slot.i; e.picks = null; e.load = ['ak47', 'm1887']; this.ents.set(o.pid, e); }
+    this.host = humans[0].pid;
+    let s = this.seed || 1; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    const names = BOT_NAMES.slice().sort(() => rnd() - 0.5);
+    for (let i = 0; i < 2; i++) { const e = this.newEnt('b' + i, this.host, names[i]); e.team = 'b'; e.idx = i; e.bot = true; e.load = this.botLoad(); this.ents.set(e.id, e); }
+    this.started = true; this.ended = false; this.t0 = Date.now();
+    this.ph = 'starting';
+    this.bcast(this.gameMsg());
+    this.tick = setInterval(() => this.broadcastSnap(), TICK_MS);
+    this.loaded = new Set(); clearTimeout(this.phT); this.phT = setTimeout(() => this.nextRound(), 40000);
+  }
+  // bot: uma de longe (rifle/sniper) + uma de perto (escopeta/SMG), como no duelo offline
+  botLoad() {
+    const cat = c => RM_WEAPONS.filter(w => c.includes(WEAPONS[w].cat)), pick = l => l[Math.floor(Math.random() * l.length)];
+    return [pick(cat(['Rifle', 'Sniper'])), pick(cat(['Escopeta', 'SMG']))];
+  }
+  gameMsg() {
+    const list = [...this.ents.values()];
+    return { t: 'game', arena: 'duel', seed: this.seed, rounds: this.cfg.rounds, size: 2, name: this.cfg.name, gelInf: false, host: this.host,
+      players: list.filter(e => !e.bot).map(e => { const o = this.members.get(e.id); return { pid: e.id, name: e.name, look: o ? o.look : null, team: e.team, i: e.idx }; }),
+      bots: list.filter(e => e.bot).map(e => ({ id: e.id, name: e.name, team: e.team, i: e.idx })) };
+  }
+  nextRound() {
+    super.nextRound();
+    if (this.ph === 'shop') for (const e of this.ents.values()) if (e.bot) { e.load = this.botLoad(); e.picks = e.load.slice(); e.ready = true; }
+  }
+  phaseDone() {
+    if (this.ph === 'over') { this.bcast({ t: 'done' }); setTimeout(() => this.closeRoom(), 1500); this.ph = 'done'; this.ended = true; return; }
+    super.phaseDone();
+  }
+  onRoomMsg(m, d) {
+    if (m.ok && ['slot', 'set', 'kick', 'start'].includes(d.t)) return; // sem lobby: nada de trocar vaga/configurar
+    if (m.ok && d.t === 'diff' && m.pid === this.host && this.ph !== 'lobby') { this.botDmg = Math.max(0.3, Math.min(1.2, num(d.dmg, 0.75))); return; }
+    super.onRoomMsg(m, d);
+  }
+  leave(pid) {
+    const was = this.host;
+    super.leave(pid);
+    if (!this.alive) return;
+    if (!this.members.size) { this.closeRoom(); return; }
+    if (pid === was && this.ph !== 'lobby') { // o host saiu: o outro assume os bots
+      this.host = this.members.keys().next().value;
+      for (const e of this.ents.values()) if (e.bot) e.owner = this.host;
+      this.bcast({ t: 'host', host: this.host });
+    }
+  }
+  backToLobby(silent) { if (silent) return; super.backToLobby(silent); }
 }

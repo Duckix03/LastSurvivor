@@ -4,6 +4,8 @@
 //  - Sala: vagas dos times em cima (AZUL x VERMELHO), espectadores embaixo. Toque numa vaga pra trocar.
 //  - Partida: loja de armas a cada 2 rounds, cada jogador escolhe as SUAS 2 armas (dá pra trocar até o tempo acabar);
 //    as armas não "acabam" como no duelo. Muros que descem e zona que fecha. Sem kill, moedas ou XP: é só diversão.
+// DUELO EM PARTY (arena 'duel'): a mesma partida de sala, mas no galpão do duelo, a dupla da party contra 2 bots
+// (os bots rodam no navegador do host). Entra pelo LS.Party (joinDuel), sem painel de sala.
 'use strict';
 LS.Custom = {
   ws: null, you: null, room: null, game: null, view: 'list', err: '', inGame: false, fighting: false, kills: 0,
@@ -83,11 +85,29 @@ LS.Custom = {
   },
   leave(silent) {
     const ws = this.ws; this.ws = null; this.room = null; this.busy = false;
+    if (this.pduel) { this.pduel = false; silent = true; document.getElementById('lobby-mm').classList.add('hidden'); }
     if (this.inGame) this.exitMatch();
     if (ws) { try { ws.close(); } catch (e) { } }
     if (!silent) { this.view = 'list'; this.err = ''; this.render(); this.list(); }
   },
   send(o) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); },
+  // duelo da party: entra com o ingresso que o PartyHub deu (sem painel de sala)
+  joinDuel(id, ticket) {
+    this.leave(true);
+    let ws; try { ws = new WebSocket(LS.Net.wsUrl('/ws/pduel/' + id)); } catch (e) { LS.Party.toast('Não deu pra entrar no duelo.'); return; }
+    this.ws = ws; this.room = null; this.pduel = true; this.err = ''; this.doneOk = false;
+    const mm = document.getElementById('lobby-mm'), title = document.querySelector('#lobby-mm h3');
+    mm.classList.remove('hidden'); title.textContent = 'DUELO EM PARTY'; document.getElementById('mm-count').textContent = 'esperando o seu amigo entrar…';
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', proto: LS.NET_PROTO, ticket, look: LS.playerProfile.look }));
+    ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } if (ws === this.ws) this.onMsg(m); };
+    ws.onclose = () => {
+      if (ws !== this.ws) return;
+      this.ws = null; this.pduel = false; mm.classList.add('hidden'); title.textContent = 'PROCURANDO PARTIDA';
+      const was = this.inGame;
+      if (was) { this.exitMatch(); LS.Game.quitToMenu(); }
+      if (!this.doneOk) LS.Party.toast(this.err || (was ? 'O duelo caiu.' : 'Não deu pra entrar no duelo.'));
+    };
+  },
   toast(t) { if (LS.HUD && LS.HUD.toast) LS.HUD.toast(t); const n = document.getElementById('cu-msg'); if (n) { n.textContent = t; n.className = 'cu-msg ok'; } },
 
   // ---------- mensagens do servidor ----------
@@ -101,6 +121,7 @@ LS.Custom = {
       case 'phase': this.onPhase(m); return;
       case 'picks': this.picks = m.list; this.renderShop(); return;
       case 'lobby': this.exitMatch(); LS.UI.showScreen('panel-custom'); this.view = 'room'; this.render(); return;
+      case 'done': this.doneOk = true; this.leave(true); LS.Game.quitToMenu(); return; // fim do duelo da party: volta pro lobby
     }
     if (this.inGame) LS.Net.onMsg(m);
   },
@@ -213,6 +234,7 @@ LS.Custom = {
   myTeam() { const p = this.game && this.game.players.find(x => x.pid === this.you); return p ? p.team : null; },
   teamIdx(t) { return t === 'a' ? 0 : 1; },
   begin(d) {
+    this.arena = d.arena === 'duel' ? 'duel' : 'island'; document.getElementById('lobby-mm').classList.add('hidden');
     this.game = d; this.inGame = true; this.setupDone = false; this.pending = null; this.fighting = false; this.kills = 0; this.score = [0, 0]; this.round = 0; this.picks = {};
     LS.Game.startCustom(d);
   },
@@ -220,9 +242,9 @@ LS.Custom = {
   setup(d) {
     const G = LS.Game, N = LS.Net, P = G.player, me = d.players.find(p => p.pid === this.you);
     this.isPlayer = !!me; this.team = me ? me.team : null;
-    N.leave(); N.begin({ you: this.you, host: null }); N.ws = this.ws; N.online = true;
-    for (const b of G.botPool) { b.reset(); b.netId = null; if (b.model.root.parent) b.model.root.parent.remove(b.model.root); }
-    G.bots = [];
+    N.leave(); N.begin({ you: this.you, host: d.host || null }); N.ws = this.ws; N.online = true;
+    for (const b of G.botPool) { b.reset(); b.netId = null; b.team = null; if (b.model.root.parent) b.model.root.parent.remove(b.model.root); }
+    G.bots = []; this.dmg = 0;
     P.reset(); P.name = LS.playerProfile.name; P.model.applyLook(LS.playerProfile.look); P.team = this.team;
     const fighters = [];
     if (me) { N.register(P, this.you); fighters.push(P); }
@@ -232,18 +254,39 @@ LS.Custom = {
       G.scene.add(r.model.root); N.register(r, p.pid); fighters.push(r); this.remote[p.pid] = r;
       if (this.team && p.team === this.team) this.allyTag(r);
     }
+    // duelo da party: os 2 bots (time b) rodam no host; nos outros aparecem como jogadores remotos
+    const host = d.host && d.host === this.you, df = LS.BOT_LEVEL;
+    const looks = LS.util.withSeed(d.seed + 99, () => (d.bots || []).map(() => LS.Skin.randomLook()));
+    (d.bots || []).forEach((bd, i) => {
+      let b;
+      if (host) { b = G.botPool[i]; b.reset(); b.skill = LS.util.rand(df.skill[0], df.skill[1]); G.bots.push(b); }
+      else { b = new LS.RemoteFighter(bd.name, looks[i]); b.reset(); this.remote[bd.id] = b; }
+      b.name = bd.name; b.team = bd.team; b.model.applyLook(looks[i]); G.scene.add(b.model.root); N.register(b, bd.id); fighters.push(b);
+    });
+    if (host) { G.botDamageMul = df.dmg; this.send({ t: 'diff', dmg: df.dmg }); }
     G.fighters = fighters;
-    LS.CustomMap.build(G.scene); LS.CustomMap.show(true); LS.CustomMap.setWalls(0);
-    if (!this.zone) this.zone = new LS.CustomZone(G.scene);
+    if (!this.czone) this.czone = new LS.CustomZone(G.scene);
+    if (this.arena === 'duel') { // galpão do duelo (ordem dos mapas pela semente: igual pros dois)
+      const D = LS.Duel;
+      if (!D.built) D.buildShell(G.scene);
+      D.rings.forEach(r => { r.visible = r.userData.size === 2; }); D.group.visible = true; D.mapGroup.visible = true; D.hemi.intensity = 0.18;
+      if (!D.zone) D.zone = new LS.DuelZone(G.scene);
+      const R = LS.util.seeded(d.seed + 5), o = [0, 1, 2, 3, 4]; for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); const t = o[i]; o[i] = o[j]; o[j] = t; } // embaralha igual pros dois
+      this.order = o; this.mapIdx = -1;
+      this.zone = D.zone; this.czone.wall.visible = false; this.czone.nextRing.visible = false;
+    } else {
+      LS.CustomMap.build(G.scene); LS.CustomMap.show(true); LS.CustomMap.setWalls(0);
+      this.zone = this.czone; if (LS.Duel.zone) { LS.Duel.zone.wall.visible = false; LS.Duel.zone.nextRing.visible = false; }
+    }
     this.brZone = this.brZone || G.zone; if (this.brZone !== this.zone) { this.brZone.wall.visible = false; this.brZone.nextRing.visible = false; }
-    this.zone.wall.visible = true; G.zone = this.zone; this.zone.reset(); this.zone.update(0, []);
+    this.zone.rng = null; this.zone.wall.visible = true; G.zone = this.zone; this.zone.reset(); this.zone.update(0, []);
     G.plane.active = false; G.plane.mesh.visible = false;
     LS.Loot.clear(); LS.Effects.clear();
     const hud = document.getElementById('hud'); hud.classList.add('duel', 'custom');
     document.getElementById('duel-score').classList.remove('hidden');
     const mine = this.team || 'a', foe = mine === 'a' ? 'b' : 'a';
-    document.getElementById('ds-me').textContent = this.TEAM[mine].name; // o lado esquerdo é sempre o seu time
-    document.getElementById('ds-foe').textContent = this.TEAM[foe].name;
+    document.getElementById('ds-me').textContent = this.pduel ? 'SUA DUPLA' : this.TEAM[mine].name; // o lado esquerdo é sempre o seu time
+    document.getElementById('ds-foe').textContent = this.pduel ? 'BOTS' : this.TEAM[foe].name;
     if (!me) { P.alive = false; P.model.root.visible = false; LS.Spectate.watchAll(); }
     this.setupDone = true;
     this.round = 1; if (me) this.placeAll(); // já em pé no lugar de nascer (parado) enquanto os outros carregam
@@ -261,24 +304,49 @@ LS.Custom = {
   },
   // posição de cada um no começo do round (os lados trocam a cada round)
   sideOf(team) { const s = this.round % 2 ? -1 : 1; return team === 'a' ? s : -s; },
+  info(id) { return this.game.players.find(p => p.pid === id) || (this.game.bots || []).find(b => b.id === id); },
+  // lugar de nascer: ilha plana (fileiras dos times) ou galpão (cada dupla de um lado, como no duelo offline)
+  spawnAt(team, i) {
+    const side = this.sideOf(team);
+    if (this.arena === 'duel') { const D = LS.Duel, A = D.ARENA; return { x: A.x + side * D.SPAWN_X, y: A.fy, z: A.z + (i ? D.TEAM_Z : -D.TEAM_Z), yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2 }; }
+    const s = LS.CustomMap.spawn(side, i); return { x: s.x, y: LS.CustomMap.C.fy, z: s.z, yaw: s.yaw };
+  },
+  mapName() { return this.arena === 'duel' ? (LS.Duel.MAPS[this.mapIdx] || LS.Duel.MAPS[0]).name.toUpperCase() : 'ILHA PLANA'; },
   placeAll() {
-    const G = LS.Game, P = G.player, CM = LS.CustomMap, load = this.load || {};
+    const G = LS.Game, P = G.player, load = this.load || {};
+    if (this.arena === 'duel') { const idx = this.order[((this.round || 1) - 1) % this.order.length]; if (idx !== this.mapIdx) { this.mapIdx = idx; LS.Duel.buildMap(idx); } } // o mapa muda a cada round
     for (const f of G.fighters) {
-      const info = this.game.players.find(p => p.pid === f.netId); if (!info) continue;
-      const sp = CM.spawn(this.sideOf(info.team), info.i);
+      const info = this.info(f.netId); if (!info) continue;
+      const sp = this.spawnAt(info.team, info.i);
+      if (G.bots.includes(f)) { // bot do host: nasce armado, já de olho no inimigo da frente
+        f.reset(); f.team = info.team; f.alive = true; f.hp = 100;
+        f.state = 'ground'; f.onGround = true; f.safeLand = true;
+        f.pos.set(sp.x, sp.y, sp.z); f.vel.set(0, 0, 0); f.yaw = sp.yaw; f.pitch = 0;
+        LS.Duel.equip(f, load[f.netId] || ['ak47', 'm1887']);
+        f.vest = { level: 2, dur: LS.GEAR.vest.levels[2].dur }; f.helmet = { level: 2, dur: LS.GEAR.helmet.levels[2].dur }; f.bag = 1; f.model.setGear(2, 2, 1);
+        f.meds = { medkit: 1, bandage: 3 }; f.gel = 2;
+        f.model.root.visible = true; f.model.root.position.copy(f.pos); f.model.root.rotation.y = f.yaw;
+        continue;
+      }
       if (f === P) {
         if (LS.Spectate.active) LS.Spectate.stop();
+        this.dmg += P.damageDealt || 0;
         P.reset(); P.team = this.team; P.netId = this.you;
         P.state = 'ground'; P.onGround = true; P.safeLand = true;
-        P.pos.set(sp.x, CM.C.fy, sp.z); P.vel.set(0, 0, 0); P.yaw = sp.yaw; P.camYaw = sp.yaw; P.camPitch = -0.05; P.recoilX = P.recoilY = 0; P.recoilPend = { x: 0, y: 0 };
+        P.pos.set(sp.x, sp.y, sp.z); P.vel.set(0, 0, 0); P.yaw = sp.yaw; P.camYaw = sp.yaw; P.camPitch = -0.05; P.recoilX = P.recoilY = 0; P.recoilPend = { x: 0, y: 0 };
         LS.Duel.equip(P, load[this.you] || ['ak47', 'm1887']);
         P.vest = { level: 2, dur: LS.GEAR.vest.levels[2].dur }; P.helmet = { level: 2, dur: LS.GEAR.helmet.levels[2].dur }; P.bag = 1; P.model.setGear(2, 2, 1);
         P.meds = { medkit: 1, bandage: 3 };
         P.gelInf = this.game.gelInf !== false; P.gel = P.gelInf ? 0 : 2; // bolas de gelo: infinitas ou 2 por round
         P.model.root.visible = true; P.model.root.position.copy(P.pos); P.model.root.rotation.y = P.yaw;
       } else {
-        f.alive = true; f.hp = 100; f.pos.set(sp.x, CM.C.fy, sp.z); f.yaw = sp.yaw; f.tgt = null; f.netHidden = true; f.state = 'ground';
+        f.alive = true; f.hp = 100; f.pos.set(sp.x, sp.y, sp.z); f.yaw = sp.yaw; f.tgt = null; f.netHidden = true; f.state = 'ground';
       }
+    }
+    for (const b of G.bots) { // cada bot mira no inimigo à frente dele
+      const foes = G.fighters.filter(f => f.alive && !LS.sameTeam(f, b)); if (!foes.length) continue;
+      const e = foes.reduce((a, f) => (f.pos.distanceToSquared(b.pos) < a.pos.distanceToSquared(b.pos) ? f : a));
+      b.target = e; b.alertPos = e.pos.clone(); b.alertT = 3; b.ai = 'investigate'; b.lockT = 0;
     }
   },
   onPhase(m) {
@@ -297,11 +365,11 @@ LS.Custom = {
       this.placeAll();
       LS.Loot.clear(); LS.Effects.clear(); LS.GelWall.clear();
       this.zone.rng = LS.util.seeded(m.zs); this.zone.reset(); this.zone.update(0, []);
-      this.fightT = 0; LS.CustomMap.setWalls(0); this.wallMsg = false;
+      this.fightT = 0; if (this.arena !== 'duel') LS.CustomMap.setWalls(0); this.wallMsg = false;
       if (this.isPlayer) { LS.Input.enabled = true; LS.Input.lock(); }
       this.countT = m.left; this.lastShown = null;
       const L = (this.load && this.load[this.you]) || [];
-      LS.HUD.centerMsg('ROUND ' + m.round + ' DE ' + m.rounds, (L.length ? L.map(id => LS.WEAPONS[id].name).join(' + ') + ' · ' : '') + 'Ilha plana', 2.4);
+      LS.HUD.centerMsg('ROUND ' + m.round + ' DE ' + m.rounds, (L.length ? L.map(id => LS.WEAPONS[id].name).join(' + ') + ' · ' : '') + (this.arena === 'duel' ? 'Mapa: ' + LS.Duel.MAPS[this.mapIdx].name : 'Ilha plana'), 2.4);
       if (!this.isPlayer) LS.Spectate.retarget();
     } else if (m.ph === 'fight') {
       G.frozen = false; this.fighting = true; this.fightT = 0;
@@ -323,7 +391,7 @@ LS.Custom = {
       this.countT -= dt; const n = Math.ceil(this.countT);
       if (n !== this.lastShown && n > 0 && n <= 3) { this.lastShown = n; LS.Duel.showCount(String(n)); LS.Audio.click(); }
     }
-    if (this.fighting) {
+    if (this.fighting && this.arena !== 'duel') {
       this.fightT += dt;
       const k = LS.CustomMap.wallsAt(this.fightT);
       if (k > 0 && !this.wallMsg) { this.wallMsg = true; LS.HUD.centerMsg('OS MUROS ESTÃO DESCENDO!', 'Sem campar: a ilha vai ficar aberta', 3); LS.Audio.alert(); }
@@ -342,7 +410,7 @@ LS.Custom = {
     document.getElementById('ds-sme').textContent = me; document.getElementById('ds-sfoe').textContent = foe;
     document.getElementById('ds-pips-me').innerHTML = pips(me); document.getElementById('ds-pips-foe').innerHTML = pips(foe);
     document.getElementById('ds-round').textContent = (this.round || 1) + '/' + (this.rounds || this.game.rounds);
-    document.getElementById('ds-map').textContent = 'ILHA PLANA';
+    document.getElementById('ds-map').textContent = this.mapName();
     this.renderAlive();
   },
   renderAlive() {
@@ -403,9 +471,18 @@ LS.Custom = {
     const s = this.score || [0, 0], my = this.team, w = m.winner;
     const title = my ? (w === my ? 'VITÓRIA!' : w ? 'DERROTA' : 'EMPATE') : (w ? 'TIME ' + this.TEAM[w].name + ' VENCEU' : 'EMPATE');
     const cls = my ? (w === my ? 'win' : w ? 'lose' : 'draw') : 'draw';
-    el.innerHTML = '<div class="cso-box ' + cls + '"><small>SALA PERSONALIZADA · ' + this.esc(this.game.name) + '</small><h1>' + title + '</h1>' +
-      '<div class="cso-score"><span style="color:' + this.TEAM.a.col + '">AZUL</span><b>' + s[0] + ' x ' + s[1] + '</b><span style="color:' + this.TEAM.b.col + '">VERMELHO</span></div>' +
-      (my ? '<p>Seus abates: <b>' + this.kills + '</b> · sem recompensas (é só diversão)</p>' : '') + '<p class="cso-back">Voltando pra sala…</p></div>';
+    let rw = '';
+    if (this.pduel && my) { // duelo da party conta como duelo: XP e moedas por round vencido
+      const S = LS.stats, rounds = s[this.teamIdx(my)], win = w === my, before = LS.Menu.levelOf(S.xp || 0);
+      const xp = rounds * 90 + (win ? 350 : 0) + Math.round(((this.dmg || 0) + (LS.Game.player.damageDealt || 0)) * 0.3), coins = rounds * 30 + (win ? 150 : 0);
+      S.xp = (S.xp || 0) + xp; S.coins = (S.coins || 0) + coins; S.games = (S.games || 0) + 1; S.kills = (S.kills || 0) + this.kills; if (win) S.wins = (S.wins || 0) + 1;
+      LS.saveStats(); const lv = LS.Menu.levelOf(S.xp);
+      rw = '<p>Abates: <b>' + this.kills + '</b> · <b>+' + xp + ' XP · +' + coins + ' moedas</b>' + (lv > before ? ' · SUBIU PRO NÍVEL ' + lv + '!' : '') + '</p>';
+    }
+    el.innerHTML = '<div class="cso-box ' + cls + '"><small>' + (this.pduel ? 'DUELO EM PARTY · GALPÃO' : 'SALA PERSONALIZADA · ' + this.esc(this.game.name)) + '</small><h1>' + title + '</h1>' +
+      (this.pduel ? '<div class="cso-score"><span style="color:' + this.TEAM.a.col + '">SUA DUPLA</span><b>' + s[0] + ' x ' + s[1] + '</b><span style="color:' + this.TEAM.b.col + '">BOTS</span></div>'
+        : '<div class="cso-score"><span style="color:' + this.TEAM.a.col + '">AZUL</span><b>' + s[0] + ' x ' + s[1] + '</b><span style="color:' + this.TEAM.b.col + '">VERMELHO</span></div>') +
+      (this.pduel ? rw : my ? '<p>Seus abates: <b>' + this.kills + '</b> · sem recompensas (é só diversão)</p>' : '') + '<p class="cso-back">' + (this.pduel ? 'Voltando pro lobby…' : 'Voltando pra sala…') + '</p></div>';
     el.className = 'show';
     LS.Spectate.stop(); LS.Input.enabled = false; LS.Input.unlock();
     if (my) { if (w === my) LS.Audio.victory(); else LS.Audio.defeat(); }
@@ -420,8 +497,12 @@ LS.Custom = {
     LS.Spectate.stop();
     for (const r of Object.values(this.remote || {})) if (r.model.root.parent) r.model.root.parent.remove(r.model.root);
     this.remote = {};
+    for (const b of G.bots) { if (b.model.root.parent) b.model.root.parent.remove(b.model.root); b.netId = null; b.team = null; } // bots do duelo da party (host)
+    G.bots = [];
     if (this.brZone) { G.zone = this.brZone; this.brZone.wall.visible = true; }
     if (this.zone) { this.zone.wall.visible = false; this.zone.nextRing.visible = false; }
+    if (this.arena === 'duel') { const D = LS.Duel; if (D.group) { D.group.visible = false; D.mapGroup.visible = false; D.hemi.intensity = 0; } }
+    this.arena = null;
     LS.CustomMap.show(false);
     document.getElementById('hud').classList.remove('duel', 'custom');
     document.getElementById('duel-score').classList.add('hidden');
@@ -431,5 +512,8 @@ LS.Custom = {
     LS.HUD.show(false); LS.HUD.clearShots(); LS.Audio.stopAll();
     G.player.reset(); G.player.model.root.visible = false;
   },
-  quit() { this.leave(true); LS.UI.showScreen('panel-custom'); this.view = 'list'; this.err = ''; this.render(); this.list(); }
+  quit() {
+    if (this.pduel) { this.doneOk = true; this.leave(true); LS.Game.quitToMenu(); return; } // saiu do duelo da party: volta pro lobby
+    this.leave(true); LS.UI.showScreen('panel-custom'); this.view = 'list'; this.err = ''; this.render(); this.list();
+  }
 };

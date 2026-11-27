@@ -51,7 +51,12 @@ LS.Spectate = {
     const k = this.t / 1.1; return 0.28 + 0.72 * k * k;
   },
   focus() { return this.active && this.phase !== 'death' && this.target ? this.target : null; },
-  others() { const P = LS.Game.player; return LS.Game.fighters.filter(f => f !== P && f.alive && f.state !== 'plane' && (this.watchOnly || !this.duel || LS.sameTeam(P, f))); }, // duelo/sala: só o seu time · espectador da sala: todo mundo
+  others() {
+    const P = LS.Game.player, alive = LS.Game.fighters.filter(f => f !== P && f.alive && f.state !== 'plane');
+    if (this.watchOnly) return alive; // espectador da sala: todo mundo
+    if (this.duel) return alive.filter(f => LS.sameTeam(P, f)); // duelo/sala: só o seu time
+    const mates = alive.filter(f => LS.sameTeam(P, f)); return mates.length ? mates : alive; // esquadrão: aliados primeiro, depois quem sobrou
+  }, // duelo/sala: só o seu time · espectador da sala: todo mundo
   // espectador da sala personalizada (não joga): assiste qualquer um, a partida inteira
   watchAll() {
     this.build();
@@ -112,11 +117,14 @@ LS.Spectate = {
   },
   checkOver() {
     if (this.phase === 'over' || this.duel) return; // no duelo quem cuida do fim é o round
+    const G = LS.Game, P = G.player, ts = LS.teamsAlive(G.fighters);
+    if (ts.size > 1) return;
+    if (P.team != null && ts.has(P.team)) return; // sobrou o seu esquadrão: o jogo mostra a vitória
     const list = this.others();
-    if (list.length > 1) return;
     this.phase = 'over'; this.overT = 5;
     const w = list[0];
-    if (w) { if (w !== this.target) this.setTarget(w); this.el.over.innerHTML = '<small>FIM DE JOGO</small><b>' + w.name + '</b><span>É O LAST SURVIVOR!</span>'; }
+    if (w) { if (w !== this.target) this.setTarget(w); const n = list.length;
+      this.el.over.innerHTML = '<small>FIM DE JOGO</small><b>' + (n > 1 ? 'ESQUADRÃO DE ' + w.name : w.name) + '</b><span>' + (n > 1 ? 'SÃO OS LAST SURVIVORS!' : 'É O LAST SURVIVOR!') + '</span>'; }
     else this.el.over.innerHTML = '<small>FIM DE JOGO</small><b>NINGUÉM</b><span>SOBREVIVEU</span>';
     this.el.over.classList.add('show'); this.el.spec.classList.remove('hidden'); this.el.death.classList.add('hidden');
     document.body.classList.add('ls-spec'); this.el.fx.className = 'sp-fx';

@@ -27,6 +27,15 @@ class_name = "Room"
 name = "ROOMDIR"
 class_name = "RoomDir"
 
+# party de amigos (convites, líder) + duelo da party (dupla contra 2 bots)
+[[durable_objects.bindings]]
+name = "PARTY"
+class_name = "PartyHub"
+
+[[durable_objects.bindings]]
+name = "PDUEL"
+class_name = "PartyDuel"
+
 # o plano grátis só aceita Durable Objects com SQLite
 [[migrations]]
 tag = "v1"
@@ -39,6 +48,10 @@ new_sqlite_classes = ["Accounts"]
 [[migrations]]
 tag = "v3"
 new_sqlite_classes = ["Room", "RoomDir"]
+
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["PartyHub", "PartyDuel"]
 
 # login com Google: o mesmo ID de cliente OAuth que está em LS.GOOGLE_CLIENT_ID (js/config.js). Vazio = desligado.
 [vars]

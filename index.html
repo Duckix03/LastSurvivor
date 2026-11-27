@@ -10,8 +10,8 @@
 <title>LAST SURVIVOR</title>
 <link rel="preconnect" href="https://lastsurvivor.lastsurvivorbr.workers.dev" crossorigin>
 <link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=96">
-<link rel="stylesheet" href="css/ui.css?v=96">
+<link rel="stylesheet" href="css/style.css?v=97">
+<link rel="stylesheet" href="css/ui.css?v=97">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
 <style>
@@ -157,6 +157,8 @@
   <div class="panel">
     <h2>NOVIDADES</h2>
     <div class="news-list">
+      <div><b>Party com amigos</b><span>Chame até 3 amigos (Battle Royale) ou 1 amigo (Duelo) pelo + em cima do JOGAR. Eles aparecem do seu lado no lobby e o líder inicia a partida.</span></div>
+      <div><b>Esquadrões de 4</b><span>O Battle Royale agora é em esquadrões: a sua party joga junto e os bots completam o time. Sem fogo amigo, e se um aliado sobreviver, o esquadrão vence!</span></div>
       <div><b>Loja e Gold Royale</b><span>Gaste moedas em chapéus, máscaras, roupas, estampas, calças e fantasias completas. Ou tente a sorte no Gold Royale!</span></div>
       <div><b>Guarda-roupa novo</b><span>Grade com a foto 3D de cada item; dá pra provar antes de comprar.</span></div>
       <div><b>Amigos</b><span>Adicione pelo ID ou nome e veja quem está online.</span></div>
@@ -380,6 +382,7 @@
     <div class="pill"><i data-icon="skull"></i><span id="kills">0</span> ABATES</div>
     <div class="pill"><i data-icon="clock"></i><span id="timer">00:00</span></div>
   </div>
+  <div id="squad" class="hidden"></div>
   <div id="fps" class="hidden">0 FPS</div>
   <div id="zone-info"><div id="zone-text">Zona segura</div><div id="zone-dist"></div></div>
   <div id="minimap-wrap"><canvas id="minimap" width="440" height="440"></canvas></div>
@@ -502,62 +505,63 @@
 </div>
 
 <script src="js/vendor/three.min.js"></script>
-<script src="js/config.js?v=96"></script>
-<script src="js/icons.js?v=96"></script>
-<script src="js/post.js?v=96"></script>
-<script src="js/console.js?v=96"></script>
-<script src="js/audio.js?v=96"></script>
-<script src="js/gunsound.js?v=96"></script>
-<script src="js/music.js?v=96"></script>
-<script src="js/input.js?v=96"></script>
-<script src="js/pixicons.js?v=96"></script>
-<script src="js/touch.js?v=96"></script>
-<script src="js/world.js?v=96"></script>
-<script src="js/sky.js?v=96"></script>
-<script src="js/worldbuild.js?v=96"></script>
-<script src="js/housekit.js?v=96"></script>
-<script src="js/houses.js?v=96"></script>
-<script src="js/skin.js?v=96"></script>
-<script src="js/character.js?v=96"></script>
-<script src="js/animlib.js?v=96"></script>
-<script src="js/itemmodels.js?v=96"></script>
-<script src="js/itemicons.js?v=96"></script>
-<script src="js/textures.js?v=96"></script>
-<script src="js/flora.js?v=96"></script>
-<script src="js/effects.js?v=96"></script>
-<script src="js/gelwall.js?v=96"></script>
-<script src="js/loot.js?v=96"></script>
-<script src="js/combat.js?v=96"></script>
-<script src="js/player.js?v=96"></script>
-<script src="js/bot.js?v=96"></script>
-<script src="js/zone.js?v=96"></script>
-<script src="js/plane.js?v=96"></script>
-<script src="js/net.js?v=96"></script>
-<script src="js/duel.js?v=96"></script>
-<script src="js/custommap.js?v=96"></script>
-<script src="js/hud.js?v=96"></script>
-<script src="js/victory.js?v=96"></script>
-<script src="js/esp.js?v=96"></script>
-<script src="js/lobbyscene.js?v=96"></script>
-<script src="js/lobbythemes.js?v=96"></script>
-<script src="js/lobby.js?v=96"></script>
-<script src="js/banners.js?v=96"></script>
-<script src="js/account.js?v=96"></script>
-<script src="js/mail.js?v=96"></script>
-<script src="js/cosmetics.js?v=96"></script>
-<script src="js/thumbs.js?v=96"></script>
-<script src="js/wardrobe.js?v=96"></script>
-<script src="js/shop.js?v=96"></script>
-<script src="js/friends.js?v=96"></script>
-<script src="js/profile.js?v=96"></script>
-<script src="js/conta.js?v=96"></script>
-<script src="js/modes.js?v=96"></script>
-<script src="js/menu.js?v=96"></script>
-<script src="js/spectate.js?v=96"></script>
-<script src="js/custom.js?v=96"></script>
-<script src="js/game.js?v=96"></script>
-<script src="js/app.js?v=96"></script>
-<script src="js/uikit.js?v=96"></script>
-<script src="js/main.js?v=96"></script>
+<script src="js/config.js?v=97"></script>
+<script src="js/icons.js?v=97"></script>
+<script src="js/post.js?v=97"></script>
+<script src="js/console.js?v=97"></script>
+<script src="js/audio.js?v=97"></script>
+<script src="js/gunsound.js?v=97"></script>
+<script src="js/music.js?v=97"></script>
+<script src="js/input.js?v=97"></script>
+<script src="js/pixicons.js?v=97"></script>
+<script src="js/touch.js?v=97"></script>
+<script src="js/world.js?v=97"></script>
+<script src="js/sky.js?v=97"></script>
+<script src="js/worldbuild.js?v=97"></script>
+<script src="js/housekit.js?v=97"></script>
+<script src="js/houses.js?v=97"></script>
+<script src="js/skin.js?v=97"></script>
+<script src="js/character.js?v=97"></script>
+<script src="js/animlib.js?v=97"></script>
+<script src="js/itemmodels.js?v=97"></script>
+<script src="js/itemicons.js?v=97"></script>
+<script src="js/textures.js?v=97"></script>
+<script src="js/flora.js?v=97"></script>
+<script src="js/effects.js?v=97"></script>
+<script src="js/gelwall.js?v=97"></script>
+<script src="js/loot.js?v=97"></script>
+<script src="js/combat.js?v=97"></script>
+<script src="js/player.js?v=97"></script>
+<script src="js/bot.js?v=97"></script>
+<script src="js/zone.js?v=97"></script>
+<script src="js/plane.js?v=97"></script>
+<script src="js/net.js?v=97"></script>
+<script src="js/duel.js?v=97"></script>
+<script src="js/custommap.js?v=97"></script>
+<script src="js/hud.js?v=97"></script>
+<script src="js/victory.js?v=97"></script>
+<script src="js/esp.js?v=97"></script>
+<script src="js/lobbyscene.js?v=97"></script>
+<script src="js/lobbythemes.js?v=97"></script>
+<script src="js/lobby.js?v=97"></script>
+<script src="js/banners.js?v=97"></script>
+<script src="js/account.js?v=97"></script>
+<script src="js/mail.js?v=97"></script>
+<script src="js/cosmetics.js?v=97"></script>
+<script src="js/thumbs.js?v=97"></script>
+<script src="js/wardrobe.js?v=97"></script>
+<script src="js/shop.js?v=97"></script>
+<script src="js/friends.js?v=97"></script>
+<script src="js/profile.js?v=97"></script>
+<script src="js/conta.js?v=97"></script>
+<script src="js/modes.js?v=97"></script>
+<script src="js/menu.js?v=97"></script>
+<script src="js/spectate.js?v=97"></script>
+<script src="js/custom.js?v=97"></script>
+<script src="js/party.js?v=97"></script>
+<script src="js/game.js?v=97"></script>
+<script src="js/app.js?v=97"></script>
+<script src="js/uikit.js?v=97"></script>
+<script src="js/main.js?v=97"></script>
 </body>
 </html>

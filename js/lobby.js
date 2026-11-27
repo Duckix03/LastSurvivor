@@ -20,6 +20,9 @@ LS.Lobby = {
       const m = new LS.CharacterModel({}); m.root.position.set(x, 0, z); m.root.rotation.y = ry; m.setGun(ry > 0 ? 'm4a1' : 'ak47'); m.setGear(2, 1, 1);
       sc.add(m.root); this.extras.push(m);
     });
+    // 4ª vaga (atrás, no meio): só aparece com party de 4
+    this.p4 = new LS.CharacterModel({}); this.p4.root.position.set(-1.1, 0, -4.2); this.p4.root.rotation.y = 0.12; this.p4.setGun('ump'); this.p4.setGear(1, 1, 1); this.p4.root.visible = false;
+    sc.add(this.p4.root);
     // rotação com o mouse
     // pointer (mouse e dedo): no celular o arrastar pra girar não funcionava (só tinha mouse)
     document.getElementById('lobby').addEventListener('pointerdown', e => {
@@ -34,6 +37,7 @@ LS.Lobby = {
     document.body.appendChild(document.getElementById('lobby-mm'));
     this.buildUI();
     this.syncUI();
+    if (LS.Party) LS.Party.render();
   },
 
   // troca o tema do cenário (Natal, Halloween...): refaz o terraço e mantém os personagens
@@ -41,7 +45,7 @@ LS.Lobby = {
     const id = LS.LobbyThemes.active();
     if (!this.built || id === this.themeId) return;
     this.themeId = id;
-    const keep = new Set([this.model.root, ...this.extras.map(m => m.root)]), sc = this.scene;
+    const keep = new Set([this.model.root, ...this.extras.map(m => m.root), this.p4.root]), sc = this.scene;
     for (const o of [...sc.children]) {
       if (keep.has(o)) continue;
       sc.remove(o);
@@ -73,6 +77,7 @@ LS.Lobby = {
     this.cancelSearch();
     this.model.applyLook(LS.playerProfile.look);
     this.extras.forEach(m => m.applyLook(LS.Skin.randomLook()));
+    this.partyKey = null; if (LS.Party) LS.Party.render(); // amigos da party ficam nas vagas
     this.syncUI(); LS.Wardrobe.open();
     LS.HUD.show(false);
     LS.UI.showScreen('lobby');
@@ -80,18 +85,20 @@ LS.Lobby = {
   },
   random() { const n = LS.playerProfile.name; LS.playerProfile.look = Object.assign(LS.Skin.randomLook(), { legs: 'lisa' }); LS.playerProfile.name = n; LS.Wardrobe.sel = null; LS.Wardrobe.preview = null; this.changed(); LS.Wardrobe.render(); },
   reset() { LS.playerProfile.look = Object.assign({ legs: 'lisa' }, LS.defaultProfile.look); LS.Wardrobe.sel = null; LS.Wardrobe.preview = null; this.changed(); LS.Wardrobe.render(); },
-  startSearch() {
+  // party: { group, gsize } quando o líder da party aperta JOGAR (todo mundo da party busca junto)
+  startSearch(party) {
     if (this.searching) return;
+    if (!party && LS.Party && LS.Party.play()) return; // em party: o líder chama todos (quem não é líder espera)
     if (LS.Wardrobe.preview) LS.Wardrobe.leave(); // não entra em partida com item só provado
-    this.searching = true; this.mmCount = 1; this.mmT = 0;
+    this.searching = true; this.mmCount = 1; this.mmT = 0; this.partySearch = !!party;
     document.getElementById('lobby-mm').classList.remove('hidden');
     this.updateCount();
-    if (LS.Modes.id === 'duel') { document.querySelector('#lobby-mm h3').textContent = 'PROCURANDO OPONENTE'; this.mmT = LS.util.rand(1, 1.8); return; } // duelo: 1v1 contra bot (offline por enquanto)
+    if (LS.Modes.id === 'duel' && !party) { document.querySelector('#lobby-mm h3').textContent = 'PROCURANDO OPONENTE'; this.mmT = LS.util.rand(1, 1.8); return; } // duelo: 1v1 contra bot (offline por enquanto)
     if (!LS.Net.configured()) return; // sem servidor: busca "de mentira" e partida contra bots (como antes)
     // online: procura jogadores de verdade por até 30 s; se não achar ninguém, joga contra bots
     this.online = true;
     const title = document.querySelector('#lobby-mm h3'), cnt = document.getElementById('mm-count');
-    title.textContent = 'PROCURANDO JOGADORES'; cnt.textContent = 'conectando ao servidor…';
+    title.textContent = party ? 'PROCURANDO PARTIDA · PARTY DE ' + party.gsize : 'PROCURANDO JOGADORES'; cnt.textContent = 'conectando ao servidor…';
     LS.Net.find({
       onQueue: (n, left) => { cnt.textContent = n + (n === 1 ? ' jogador' : ' jogadores') + ' · ' + left + ' s'; },
       onStart: d => { this.searching = false; this.online = false; document.getElementById('lobby-mm').classList.add('hidden'); LS.Game.startOnline(d); },
@@ -107,14 +114,35 @@ LS.Lobby = {
         }
         setTimeout(() => { if (!this.searching) return; this.searching = false; document.getElementById('lobby-mm').classList.add('hidden'); title.textContent = 'PROCURANDO PARTIDA'; LS.Game.startMatch(); }, 1400);
       },
-    });
+    }, party);
   },
   cancelSearch() {
-    this.searching = false; this.online = false; LS.Net.cancel();
+    this.searching = false; this.online = false; this.partySearch = false; LS.Net.cancel();
     document.getElementById('lobby-mm').classList.add('hidden');
     const t = document.querySelector('#lobby-mm h3'); if (t) t.textContent = 'PROCURANDO PARTIDA';
   },
   updateCount() { document.getElementById('mm-count').textContent = this.mmCount + ' / ' + LS.Modes.maxPlayers() + ' jogadores'; },
+  // party no lobby: os amigos ficam nas vagas P2, P3 e P4 (com o nome em cima); sem party, os 2 figurantes de sempre
+  setParty(list, lead) {
+    if (!this.built) return;
+    const key = list ? list.map(m => m.acc + (m.acc === lead ? '*' : '') + JSON.stringify(m.look || {}) + m.name).join('|') : '';
+    if (key === this.partyKey) return;
+    this.partyKey = key;
+    const slots = [this.extras[0], this.extras[1], this.p4];
+    slots.forEach((m, i) => {
+      if (m._ptag) { m.root.remove(m._ptag); m._ptag.material.map.dispose(); m._ptag.material.dispose(); m._ptag = null; }
+      const f = list && list[i];
+      if (!list) { m.root.visible = i < 2; if (m._party) { m.applyLook(LS.Skin.randomLook()); m._party = false; } return; }
+      m.root.visible = !!f; if (!f) return;
+      m._party = true; m.applyLook(Object.assign({}, LS.defaultProfile.look, f.look || {}));
+      const c = document.createElement('canvas'); c.width = 256; c.height = 72; const g = c.getContext('2d');
+      g.font = 'bold 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,0.8)'; g.strokeText(f.name, 128, 40); g.fillStyle = f.acc === lead ? '#ffc531' : '#2fd6ff'; g.fillText(f.name, 128, 40);
+      if (f.acc === lead) { g.font = 'bold 18px sans-serif'; g.strokeText('LÍDER', 128, 12); g.fillText('LÍDER', 128, 12); }
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+      s.scale.set(1.5, 0.42, 1); s.renderOrder = 20; s.position.set(0, 2.25, 0); m.root.add(s); m._ptag = s;
+    });
+  },
   launch() { if (LS.Modes.id === 'duel') LS.Game.startDuel(); else LS.Game.startMatch(); },
 
   update(dt) {
@@ -124,6 +152,7 @@ LS.Lobby = {
     this.model.root.rotation.y = this.rotY; this.model.root.position.y = 0;
     const armed = !!this.model.gunId;
     this.model.animate({ dt, speed: 0, aimPitch: 0, armed, running: armed, armedAim: false, idle: true });
+    if (this.p4.root.visible) { this.p4.animate({ dt, speed: 0, aimPitch: 0, armed: true, running: true, armedAim: false, idle: true }); this.p4.headG.rotation.y = Math.sin(t * 0.5 + 4.1) * 0.3; }
     this.extras.forEach((m, i) => { // colegas de squad nas laterais, parados e olhando em volta
       m.animate({ dt, speed: 0, aimPitch: 0, armed: !!m.gunId, running: !!m.gunId, armedAim: false, idle: true });
       m.headG.rotation.y = Math.sin(t * 0.5 + i * 2.3) * 0.3;
