@@ -200,8 +200,18 @@ LS.Shop = {
     };
     tick();
   },
+  luck(it) {
+    const panel = document.querySelector('#panel-shop > .panel') || document.getElementById('panel-shop'); if (!panel) return;
+    const el = document.createElement('div'); el.className = 'xm-luck';
+    el.innerHTML = '<i class="xl-rays"></i><b>SORTE!</b><small>' + it.name.toUpperCase() + '</small>' + Array.from({ length: 14 }, (_, i) => '<s style="--a:' + (i * 360 / 14) + 'deg;--d:' + (0.15 + (i % 4) * 0.08) + 's"></s>').join('');
+    panel.appendChild(el); LS.Audio.victory();
+    setTimeout(() => el.remove(), 2300);
+  },
   showResult(res) {
     if (this._gemP) { const p = this._gemP; this._gemP = null; p.then(() => this.showResult(res)); return; } // espera o servidor dar os diamantes
+    // ganhou um PERSONAGEM (novo) no Spin de Natal: primeiro aparece "SORTE!" dourado, depois os resultados
+    const hero = !res._luck && res.find(r => !r.dup && r.item.slot === 'costume' && r.item.ev);
+    if (hero) { res._luck = true; this.luck(hero.item); setTimeout(() => this.showResult(res), 2300); return; }
     const C = LS.Cosmetics, cur = this.view === 'xmas' ? LS.icon('snow', 'snow-i') : LS.icon('coin', 'coin-i');
     LS.Audio.victory();
     let html;
