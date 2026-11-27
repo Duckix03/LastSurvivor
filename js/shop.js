@@ -37,9 +37,11 @@ LS.Shop = {
   // preço do item: moedas, diamantes (fantasias) ou "só codiguin"
   priceTag(it) { return it.ev && !it.piece ? 'SPIN DE NATAL' : it.code ? 'SÓ CODIGUIN' : it.piece ? 'NA FANTASIA' : it.royale ? 'GOLD ROYALE' : it.dprice ? LS.icon('gem', 'gem-i') + it.dprice.toLocaleString('pt-BR') : LS.icon('coin', 'coin-i') + it.price.toLocaleString('pt-BR'); },
   dailyReady() { const me = LS.Account.logged() && LS.Account.me; return !!me && Date.now() - (me.dailyAt || 0) >= 20 * 3600e3; },
-  card(it, extra) {
+  // chance do giro em texto curto (1,8% · 13% · 0,4%)
+  pct(p) { p *= 100; return (p >= 10 ? Math.round(p) : p >= 1 ? Math.round(p * 10) / 10 : Math.round(p * 100) / 100).toLocaleString('pt-BR') + '%'; },
+  card(it, extra, chance) {
     const C = LS.Cosmetics, R = C.RARITY[it.rarity], own = C.owns(it.id);
-    return '<button class="sh-card' + (own ? ' own' : '') + (extra || '') + '" data-sh="item" data-v="' + it.id + '" style="--rc:' + R.color + '">' +
+    return '<button class="sh-card' + (own ? ' own' : '') + (extra || '') + '" data-sh="item" data-v="' + it.id + '" style="--rc:' + R.color + '">' + (chance != null ? '<i class="sh-pct">' + this.pct(chance) + '</i>' : '') +
       (it.prize ? this.prizeImg(it) : '<div class="sh-img"><img alt="" data-tid="' + it.id + '"></div>') + '<span class="sh-rar">' + R.name + '</span>' +
       '<b>' + it.name + '</b><span class="sh-price' + (it.ev && !own ? ' xmas' : it.code && !own ? ' code' : it.royale && !own ? ' royale' : '') + '">' + (own ? 'ADQUIRIDO ✓' : this.priceTag(it)) + '</span></button>';
   },
@@ -66,8 +68,7 @@ LS.Shop = {
     } else if (xm) {
       // Spin de Natal: os prêmios + as missões embaixo; o Frost Reaper fica em destaque (prêmio máximo)
       const pool = C.xmasPool(), W = C.XMAS_W, tot = pool.reduce((t, i) => t + W[i.id], 0), stars = ['costume:frost', 'costume:gengibre'].map(id => C.byId[id]), done = C.xmasDone();
-      h += '<div class="gr xm"><div class="gr-pool"><div class="gr-grid">' + pool.map(i => this.card(i, ' gr-cell')).join('') + '</div>' +
-        '<p class="gr-odds">Chances por giro: ' + pool.map(i => '<span style="color:' + C.RARITY[i.rarity].color + '">' + i.name + ' ' + Math.round(W[i.id] / tot * 100) + '%</span>').join(' · ') + ' · Repetido devolve tickets. A Jaqueta Natalina e o Corpo de Biscoito só vêm com o personagem.</p>' +
+      h += '<div class="gr xm"><div class="gr-pool"><div class="gr-grid">' + pool.map(i => this.card(i, ' gr-cell', W[i.id] / tot)).join('') + '</div>' +
         LS.Xmas.missionsHtml() + '</div>' +
         '<div class="gr-side"><div class="gr-star xm-star"><span>PRÊMIOS MÁXIMOS</span><div class="xm-stars">' + stars.map(st => '<div><div class="sh-img big"><img alt="" data-tid="' + st.id + '"></div><b>' + st.name + '</b></div>').join('') + '</div><small>PERSONAGENS DE EVENTO</small></div>' +
         (done ? '<p class="xm-done">Você já tem tudo do Spin de Natal!</p>' :
@@ -76,8 +77,8 @@ LS.Shop = {
     } else {
       const pool = C.royalePool().sort((a, b) => b.rarity - a.rarity || b.price - a.price), W = C.ROYALE_WEIGHT, tot = W.reduce((s, x) => s + x, 0);
       const star = pool[0];
-      h += '<div class="gr"><div class="gr-pool"><div class="gr-grid">' + pool.map(i => this.card(i, ' gr-cell')).join('') + '</div>' +
-        '<p class="gr-odds">Chances por giro: ' + C.RARITY.slice(0, 4).map((r, k) => '<span style="color:' + r.color + '">' + r.name + ' ' + Math.round(W[k] / tot * 100) + '%</span>').join(' · ') + ' · Repetido devolve 25% do preço em moedas.</p></div>' +
+      const all = pool.reduce((s, i) => s + W[i.rarity], 0); // chance de cada item = peso da raridade / soma de todos
+      h += '<div class="gr"><div class="gr-pool"><div class="gr-grid">' + pool.map(i => this.card(i, ' gr-cell', W[i.rarity] / all)).join('') + '</div></div>' +
         '<div class="gr-side"><div class="gr-star"><span>PRÊMIO MÁXIMO</span><div class="sh-img big"><img alt="" data-tid="' + star.id + '"></div><b>' + star.name + '</b></div>' +
         '<button class="gr-btn" data-sh="spin1"><b>1 GIRO</b><span>' + LS.icon('coin', 'coin-i') + ' ' + C.ROYALE_COST.toLocaleString('pt-BR') + '</span></button>' +
         '<button class="gr-btn ten" data-sh="spin10"><b>10 + 1 GIROS</b><span>' + LS.icon('coin', 'coin-i') + ' ' + C.ROYALE_10.toLocaleString('pt-BR') + '</span></button></div></div>';

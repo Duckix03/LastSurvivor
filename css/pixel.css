@@ -500,3 +500,8 @@ body.mobile .xm-missions h4 small { font-size: 9px; }
 @keyframes xlSub { 0%, 22% { opacity: 0; transform: translateY(10px); } 35% { opacity: 1; transform: none; } 82% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes xlSpark { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(1); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-300px) scale(0.4); } }
 body.mobile .xm-luck small { font-size: 16px; }
+/* chance do giro no canto do cartão (em cima à direita, fora do personagem) */
+.sh-card { position: relative; }
+.sh-pct { position: absolute; top: 4px; right: 4px; z-index: 2; font: 400 11px var(--display); font-style: normal; letter-spacing: 0.5px; color: #fff; padding: 1px 5px; background: rgba(11, 13, 19, 0.82); border: 2px solid #0b0d13; text-shadow: 0 1px 0 #000; pointer-events: none; }
+body.mobile .sh-pct { font-size: 9px; padding: 0 3px; border-width: 1px; }
+.gr-grid .sh-rar { font-size: 8px !important; padding: 1px 4px !important; left: 4px !important; top: 4px !important; letter-spacing: 0.5px !important; } .gr-grid .sh-pct { font-size: 10px; padding: 0 4px; }
