@@ -5,7 +5,8 @@
 LS.Emotes = {
   // id (1..15, vai na rede) · clip (em anims/emotes.json) · loops: quantas vezes toca (1 = uma vez só)
   LIST: [
-    { id: 1, key: 'risada', name: 'Risada', clip: 'emote_risada', loops: 1, free: true }
+    { id: 1, key: 'risada', name: 'Risada', clip: 'emote_risada', loops: 1, free: true },
+    { id: 2, key: 'reputacao', name: 'Reputação', clip: 'emote_reputacao', loops: 1, free: true }
   ],
   SLOTS: 8, // a roda tem 8 espaços; os vazios aparecem como "em breve"
   open: false, sel: -1, mode: 'game', acc: { x: 0, y: 0 },
@@ -60,7 +61,9 @@ LS.Emotes = {
     h += '<div class="ew-mid"><b>EMOTES</b><small>' + (mode === 'hold' ? 'mexa o mouse e solte o B' : LS.Touch && LS.Touch.active ? 'toque num emote' : 'clique num emote') + '</small></div></div>';
     this.el.innerHTML = h; this.el.classList.remove('hidden');
   },
-  icon(e) { // carinha rindo em pixel (um ícone por emote; os próximos podem ter o seu)
+  icon(e) { // um ícone em pixel por emote
+    if (e.key === 'reputacao') return '<svg class="ew-ico" viewBox="0 0 16 16" shape-rendering="crispEdges"><path fill="#0b0d13" d="M7 0h2v3h2v2h4v2h-2v2h1v5h-3v-1H5v1H2V9h1V7H1V5h4V3h2z"/>' + // estrela dourada com brilho
+      '<path fill="#ffc531" d="M7 1h2v3h2v2h3v1h-2v2h1v4h-1v-1h-1v-1H5v1H4v1H3V9h1V7H2V6h3V4h2z"/><path fill="#fff4b0" d="M7 2h1v3H6v1H4v1h2V6h1z"/><path fill="#c87a00" d="M10 9h1v2H9v1H7v-1h2v-1h1z"/></svg>';
     return '<svg class="ew-ico" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="2" width="12" height="12" fill="#ffd23a"/><rect x="1" y="4" width="1" height="8" fill="#ffd23a"/><rect x="14" y="4" width="1" height="8" fill="#ffd23a"/><rect x="4" y="1" width="8" height="1" fill="#ffd23a"/><rect x="4" y="14" width="8" height="1" fill="#ffd23a"/>' +
       '<rect x="4" y="5" width="3" height="1" fill="#3a2000"/><rect x="9" y="5" width="3" height="1" fill="#3a2000"/><rect x="4" y="8" width="8" height="4" fill="#3a2000"/><rect x="5" y="10" width="6" height="2" fill="#ff5a6a"/><rect x="2" y="7" width="1" height="2" fill="#7ad8ff"/><rect x="13" y="7" width="1" height="2" fill="#7ad8ff"/></svg>';
   },
