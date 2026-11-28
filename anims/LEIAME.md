@@ -35,6 +35,14 @@ Os nomes são os mesmos do Mixamo, mas o jogo também reconhece outros padrões
 com arma, as pernas e parte do tronco vêm da `dash_run_f` e os braços seguram a arma atravessada no peito
 (ajuste em `LS.Anim.CARRY`, no `js/animlib.js`). Mirar, recarregar ou curar correndo volta os braços pro normal.
 
+## Emotes
+
+`emotes.json`: emotes da roda de emotes (segure **B** no PC, botão de carinha no celular, ícone no lobby).
+- `emote_risada`: risada (Mixamo "LOL").
+
+Pra adicionar um emote: carregue o .fbx no jogo (arraste na janela), use `anim save emote_nome` e junte o clipe no `emotes.json`;
+depois coloque na lista `LIST` do `js/emotes.js` (id de 1 a 15, nome, clip e quantas vezes repete).
+
 ## Salvar só o movimento (.json)
 
 Se o seu .fbx/.glb vem com o modelo 3D de algum personagem (de outro jogo, por exemplo), **não suba o arquivo original**.

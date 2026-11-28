@@ -52,7 +52,7 @@ LS.Touch = {
       this.btn('jump', '', 'jump', 'jump') + this.btn('crouch', '', 'crouch', 'crouch') + this.btn('reload', '', 'reload', 'reload') +
       this.btn('med', '', 'med', 'med') + this.btn('band', '', 'band', 'band') + this.btn('gel', '', 'gel', 'gel') + this.btn('use', 'PEGAR', 'use', 'use hidden') + this.btn('zoom', '8x', '', 'zoom hidden') +
       this.btn('run', '', 'run', 'run') +
-      this.btn('bag', '', 'bag', 'bag') + this.btn('map', '', 'map', 'map') + this.btn('pause', '', 'pause', 'pause');
+      this.btn('bag', '', 'bag', 'bag') + this.btn('map', '', 'map', 'map') + this.btn('pause', '', 'pause', 'pause') + this.btn('emote', '', 'emote', 'emote');
     const hud = document.getElementById('hud');
     hud.insertBefore(area, hud.firstChild); hud.appendChild(ui); // dentro da HUD: some junto quando a HUD some (menus)
     const rot = document.createElement('div'); rot.id = 'rotate-msg';
@@ -104,6 +104,7 @@ LS.Touch = {
       case 'use': I.pressed.KeyE = true; I.keys.KeyE = true; hold.key = 'KeyE'; break;
       case 'bag': if (G.state === 'playing' && G.player.alive) G.setInventory(!G.inventoryOpen); break;
       case 'map': LS.HUD.toggleBigMap(); break;
+      case 'emote': if (LS.Emotes.canOpen()) LS.Emotes.show('click'); return this.release(b);
       case 'zoom': { // luneta no celular (sem roda do mouse): 8x → 6x → 4x → 2x → volta pro máximo
         const P = G.player, wd = P.wdef(); if (!wd || !wd.scope) break;
         const steps = [wd.zoom, 6, 4, 2].filter((z, i, l) => z <= wd.zoom && l.indexOf(z) === i), i = steps.indexOf(P.scopeZoom);

@@ -459,6 +459,7 @@ LS.Game = {
     if (this.fpsAcc >= 0.5) LS.HUD.setPing(LS.Net.online && LS.Net.rtt && (this.state === 'playing' || this.state === 'paused') ? LS.Net.rtt : null);
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS' + (LS.Net.online && LS.Net.rtt ? ' · ' + Math.round(LS.Net.rtt) + ' ms' + (LS.Net.exT > 60 ? ' · ex ' + Math.round(100 * LS.Net.exN / LS.Net.exT) + '%' + ' · d ' + Math.round(LS.Net.interpMs) : '') : ''); this.fpsAcc = 0; this.fpsFrames = 0; LS.Net.exN = 0; LS.Net.exT = 0; }
     // atrás de um painel (loja, perfil, configurações...) ou da pausa/fim, a cena 3D fica parada: não redesenha à toa (pesava muito no celular)
+    LS.Emotes.tick(dt); // roda de emotes / emote tocando
     const U = LS.UI, covered = (U.subPanelOpen() || ['pause', 'endscreen', 'loading'].includes(U.current)) && !(this.state === 'paused' && LS.Net.online);
     if (covered && this._coveredDrawn) { LS.Input.endFrame(); return; }
     this._coveredDrawn = covered;
