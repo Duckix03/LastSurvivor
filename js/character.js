@@ -56,7 +56,7 @@ LS.CharacterModel = class {
     this.vestMesh = new THREE.Mesh(LS.boxGeo(8.8 * S, 8 * S, 4.8 * S, 4 * S), M(0x4a5a3a)); this.vestMesh.position.y = 3.6 * S; this.vestMesh.visible = false; this.torsoC.add(this.vestMesh);
     this.bagMesh = new THREE.Mesh(LS.boxGeo(6 * S, 8 * S, 3 * S, 4 * S), M(0x5a4a2a)); this.bagMesh.position.set(0, 3 * S, -3.5 * S); this.bagMesh.visible = false; this.torsoC.add(this.bagMesh);
     this.helmetMesh = new THREE.Mesh(LS.boxGeo(9 * S, 4 * S, 9 * S, 2 * S), M(0x3a4a2a)); this.helmetMesh.position.y = 5.5 * S; this.helmetMesh.visible = false; this.headG.add(this.helmetMesh);
-    this.brim = new THREE.Mesh(LS.boxGeo(8 * S, 0.8 * S, 3 * S), M(0x333333)); this.brim.position.set(0, 6.4 * S, 5.4 * S); this.headG.add(this.brim);
+    this.brim = new THREE.Mesh(LS.boxGeo(8 * S, 0.8 * S, 3 * S), M(0x333333)); this.brim.position.set(0, 6.4 * S, 5.55 * S); this.headG.add(this.brim);
     this.accG = new THREE.Group(); this.headG.add(this.accG);
     this.extraG = new THREE.Group(); this.hips.add(this.extraG); // acessórios do corpo (rabo do dino)
     this.shirtFx = []; this.fx = []; this.fxT = 0;              // camisas animadas e efeitos dos acessórios
@@ -182,16 +182,16 @@ LS.CharacterModel = class {
       const tp = new THREE.Group(); tp.position.set(0, 11.8 * S, -1.2 * S); g.add(tp);
       const part = (w, h, d, x, y, z, mat) => { const m = new THREE.Mesh(LS.boxGeo(w * S, h * S, d * S), mat); m.position.set(x * S, y * S, z * S); m.castShadow = true; tp.add(m); return m; };
       part(4.6, 2, 4.6, 0, 0.9, -0.6, G); part(3, 2, 3, 0.3, 1.8, -2.4, Gd); part(1.8, 1.6, 1.8, 0.5, 1.4, -4.0, G);
-      part(1.6, 1.6, 1.6, 0.6, 0.3, -5.1, M(0xffc531)); part(0.6, 0.5, 0.6, 0.6, -0.6, -5.1, M(0xa07a10)); // sininho
+      part(1.6, 1.6, 1.6, 0.65, 0.3, -5.15, M(0xffc531)); part(0.6, 0.5, 0.6, 0.6, -0.6, -5.1, M(0xa07a10)); // sininho
       this.fx.push(t => { tp.rotation.x = Math.sin(t * 2.4) * 0.1; tp.rotation.z = Math.sin(t * 1.8 + 0.5) * 0.07; });
       [-1, 1].forEach(s => { const e = add(1.2, 2.6, 1.6, s * 4.55, 4.6, 0.4, sk); e.rotation.z = -s * 0.6; const t2 = add(0.8, 1.4, 1.0, s * 5.3, 5.9, 0.4, sk); t2.rotation.z = -s * 0.75; }); // orelhas pontudas
     }
     // ---- itens da loja ----
     const gold = 0xffc531, hairC = new THREE.Color(look.hair).getHex(), glow = c => new THREE.MeshBasicMaterial({ color: c });
     if (look.hat === 'coroa') {
-      add(9, 1.4, 9, 0, 6.7, 0, M(gold));
-      [[-3.9, -3.9], [3.9, -3.9], [-3.9, 3.9], [3.9, 3.9], [0, 3.9], [0, -3.9], [3.9, 0], [-3.9, 0]].forEach(([x, z]) => add(1.2, 2, 1.2, x, 8.3, z, M(gold)));
-      add(1.4, 1.2, 0.5, 0, 6.8, 4.6, glow(0xff2a4a)); add(0.5, 1.2, 1.4, 4.6, 6.8, 0, glow(0x2a8aff)); add(0.5, 1.2, 1.4, -4.6, 6.8, 0, glow(0x2aff8a));
+      add(9.2, 1.4, 9.2, 0, 6.7, 0, M(gold));
+      [[-3.8, -3.8], [3.8, -3.8], [-3.8, 3.8], [3.8, 3.8], [0, 3.8], [0, -3.8], [3.8, 0], [-3.8, 0]].forEach(([x, z]) => add(1.2, 2, 1.2, x, 8.3, z, M(gold)));
+      add(1.4, 1.0, 0.5, 0, 6.7, 4.6, glow(0xff2a4a)); add(0.5, 1.0, 1.4, 4.6, 6.7, 0, glow(0x2a8aff)); add(0.5, 1.0, 1.4, -4.6, 6.7, 0, glow(0x2aff8a));
     }
     else if (look.hat === 'cartola') { add(11.4, 0.6, 11.4, 0, 6.6, 0, M(0x151515)); add(7.4, 6, 7.4, 0, 9.9, 0, M(0x151515)); add(7.6, 1, 7.6, 0, 7.5, 0, M(0xb02020)); }
     else if (look.hat === 'orelhas de gato') { add(8.6, 0.8, 1.2, 0, 7.9, 0, M(acc)); [-1, 1].forEach(s => { add(2.4, 2.6, 1.4, s * 2.6, 9.2, 0, M(acc)); add(1.2, 1.4, 0.4, s * 2.6, 9.0, 0.6, M(0xff9ab8)); }); }
@@ -238,7 +238,7 @@ LS.CharacterModel = class {
     }
     else if (look.hat === 'pirata') {
       const K = M(0x17141a), Gd = M(gold);
-      add(11.4, 0.7, 9, 0, 6.7, 0, K); add(8, 3, 6.6, 0, 8.4, -0.2, K);
+      add(11.4, 0.7, 9, 0, 6.7, 0, K); add(8.4, 3, 6.6, 0, 8.4, -0.2, K);
       const f = add(11.4, 2.6, 0.8, 0, 7.9, 4.4, K); f.rotation.x = -0.25;
       add(11.6, 0.4, 0.9, 0, 6.95, 4.55, Gd);
       add(2, 1.8, 0.3, 0, 8.3, 4.95, M(0xf2efe6)); add(0.5, 0.5, 0.2, -0.45, 8.5, 5.1, M(0x111111)); add(0.5, 0.5, 0.2, 0.45, 8.5, 5.1, M(0x111111));
@@ -289,12 +289,12 @@ LS.CharacterModel = class {
     if (look.glasses === 'cyber') add(8.8, 1.3, 0.9, 0, 3.6, 4.35, glow(0x20f0ff));
     else if (look.glasses === 'aviador') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x3a2a10));
     if (look.mask === 'nariz rena') { // Nariz de Rena: narizinho vermelho que brilha e pisca devagar
-      const nm = new THREE.MeshBasicMaterial({ color: 0xff2a2a }), n = add(1.7, 1.5, 1.1, 0, 1.95, 4.5, nm); add(0.5, 0.4, 0.2, -0.35, 2.4, 5.1, glow(0xffd0d0));
+      const nm = new THREE.MeshBasicMaterial({ color: 0xff2a2a }), n = add(1.7, 1.5, 1.1, 0, 2.08, 4.55, nm); add(0.5, 0.4, 0.2, -0.35, 2.55, 5.15, glow(0xffd0d0));
       this.fx.push(t => { const k = 0.75 + 0.25 * Math.sin(t * 3.2); nm.color.setRGB(1, 0.16 * k, 0.16 * k).multiplyScalar(0.7 + 0.3 * k); n.scale.setScalar(0.95 + 0.06 * k); });
     }
     if (look.glasses === 'neve') { // Óculos de Neve: alça preta em volta da cabeça, armação e lente laranja espelhada
       add(8.7, 1.4, 8.7, 0, 3.6, 0, M(0x1a1a1e)); add(7.6, 2.2, 0.6, 0, 3.85, 4.42, M(0x26262c));
-      add(6.8, 1.7, 0.4, 0, 3.9, 4.78, M(0xff8a1f)); add(6.8, 0.55, 0.42, 0, 4.5, 4.8, M(0xffc04a)); add(1.4, 0.35, 0.2, -2.2, 4.45, 5.02, glow(0xfff2c8));
+      add(6.8, 1.7, 0.4, 0, 3.9, 4.78, M(0xff8a1f)); add(6.6, 0.55, 0.42, 0, 4.5, 4.86, M(0xffc04a)); add(1.4, 0.35, 0.2, -2.2, 4.45, 5.02, glow(0xfff2c8));
     }
     if (look.mask === 'gás') { add(4.2, 3, 2, 0, 1.6, 4.9, M(0x2a2d32)); [-1, 1].forEach(s => add(1.8, 1.8, 1.8, s * 2.6, 1.2, 5.3, M(0x50555c))); }
     if (look.glasses === 'escuros') this.buildRoundShades(add);
@@ -321,12 +321,13 @@ LS.CharacterModel = class {
   // ---------- cabelos com volume (camadas e mechas em vez de um bloco só) ----------
   // Só aparecem sem chapéu (ou com halo/viseira, que não cobrem o cabelo); a textura da cabeça continua por baixo.
   buildHair(look, add, M, hairC) {
+    if (LS.Skin.FULL_HEAD.includes(look.mask)) return; // caveira, ninja, biscoito: cobrem a cabeça toda (cabelo não aparece)
     const st = look.hairStyle || 'curto', hat = look.hat || 'nenhum', open = ['nenhum', 'viseira', 'auréola', 'halo glitch'].includes(hat);
     const H = M(hairC), Hd = M(new THREE.Color(hairC).multiplyScalar(0.8).getHex());
     const cap = () => { // topo com tufos e franja irregular
       add(8.4, 0.6, 8.4, 0, 8.3, -0.1, H); add(3.2, 0.5, 3.4, -1.7, 8.8, -1.2, H); add(2.6, 0.4, 2.8, 1.9, 8.75, 0.8, Hd); add(2.2, 0.35, 2.2, 0.4, 8.75, -3, H);
-      add(3, 1.3, 0.5, -2.6, 7.55, 4.2, H); add(2.4, 0.9, 0.5, 0.1, 7.75, 4.2, Hd); add(2.6, 1.6, 0.5, 2.7, 7.4, 4.2, H);
-      [-1, 1].forEach(sd => add(0.45, 2.2, 6.6, sd * 4.2, 6.9, -0.7, H)); add(8.4, 3.2, 0.45, 0, 6.4, -4.2, H);
+      add(3, 1.3, 0.5, -2.45, 7.55, 4.25, H); add(2.4, 0.9, 0.45, 0.1, 7.68, 4.2, Hd); add(2.6, 1.6, 0.5, 2.6, 7.4, 4.25, H);
+      [-1, 1].forEach(sd => add(0.45, 2.2, 6.6, sd * 4.23, 6.9, -0.75, H)); add(8.4, 3.2, 0.45, 0, 6.4, -4.23, H);
     };
     if (st === 'curto' && open) cap();
     else if (st === 'longo' || st === 'rabo') {
@@ -334,22 +335,22 @@ LS.CharacterModel = class {
       if (st === 'longo') {
         const top = open ? 8.1 : 6.0, bot = 1.2; add(8.6, top - bot, 0.6, 0, (top + bot) / 2, -4.3, H);
         add(2.8, 1.3, 0.6, -2.9, 0.55, -4.3, H); add(2.6, 0.8, 0.6, 0, 0.8, -4.3, Hd); add(2.8, 1.7, 0.6, 2.9, 0.35, -4.3, H); // pontas em degrau
-        [-1, 1].forEach(sd => { add(0.5, (open ? 7.8 : 5.6) - 2, 2.8, sd * 4.25, ((open ? 7.8 : 5.6) + 2) / 2, 2.4, H); add(0.5, 1.4, 1.8, sd * 4.25, 1.4, 2.9, Hd); add(0.5, 4, 3.6, sd * 4.25, 4.6, -1.4, H); });
+        [-1, 1].forEach(sd => { add(0.5, (open ? 7.8 : 5.6) - 2, 2.8, sd * 4.25, ((open ? 7.8 : 5.6) + 2) / 2, 2.4, H); add(0.5, 1.4, 1.8, sd * 4.28, 1.4, 2.9, Hd); add(0.5, 4, 3.6, sd * 4.25, 4.6, -1.4, H); });
       } else { // rabo de cavalo afinando, com prendedor
-        add(2.6, 1.6, 1, 0, 5.9, -4.6, M(new THREE.Color(look.accent || '#c0302a').getHex()));
+        add(2.9, 1.6, 1, 0, 5.9, -4.6, M(new THREE.Color(look.accent || '#c0302a').getHex()));
         add(2.6, 2.4, 2, 0, 4.6, -5.5, H); add(2.1, 2.6, 1.8, 0, 2.6, -6.0, Hd); add(1.5, 2, 1.4, 0, 0.7, -6.0, H); add(0.8, 1, 0.8, 0, -0.7, -5.7, Hd);
       }
     }
     else if (st === 'moicano' && open) [[3.2, 1.4], [1.4, 2.3], [-0.6, 2.8], [-2.6, 2.3], [-4, 1.3]].forEach(([z, h], i) => add(1.6 - (i % 2) * 0.3, h, 1.8, 0, 8 + h / 2, z, i % 2 ? Hd : H));
     else if (st === 'black power' && open) { // "bola" em degraus em vez de um cubo
       add(11.6, 1.8, 11.2, 0, 8.7, -0.6, H); add(10.8, 1.4, 10.4, 0, 10.3, -0.6, Hd); add(9, 0.9, 8.8, 0, 11.4, -0.6, H); add(6, 0.5, 6, 0, 12.1, -0.6, Hd);
-      [-1, 1].forEach(sd => { add(1.6, 3.4, 9.4, sd * 5.3, 6.4, -0.9, H); add(1.2, 1.6, 7, sd * 5.5, 4.2, -1.4, Hd); });
+      [-1, 1].forEach(sd => { add(1.6, 3.4, 9.4, sd * 5.3, 6.4, -0.9, H); add(1.2, 1.6, 7, sd * 5.45, 4.2, -1.4, Hd); });
       add(11.2, 5, 1.8, 0, 5.8, -5.2, H); add(9.6, 2.4, 1.4, 0, 2.4, -5.0, Hd); add(9.6, 0.9, 1, 0, 7.6, 4.45, H);
     }
   }
   // ---------- barbas em camadas (afinam no queixo, com bigode e costeletas) ----------
   buildBeard(look, add, M, glow) {
-    const b = look.beard; if (!b || b === 'nenhuma') return;
+    const b = look.beard; if (!b || b === 'nenhuma' || LS.Skin.FULL_HEAD.includes(look.mask)) return;
     const C = b === 'mago' || b === 'noel' ? M(0xf4f4f0) : b === 'gelo' ? M(0xa8e8ff) : M(new THREE.Color(look.hair).getHex());
     const side = (h, d) => [-1, 1].forEach(sd => add(0.6, h, d, sd * 4.25, 2.0, 2.6, C));
     const stache = () => { add(4.8, 0.7, 0.6, 0, 2.35, 4.3, C); [-1, 1].forEach(sd => add(1, 1.1, 0.6, sd * 2.6, 1.85, 4.3, C)); };
@@ -357,7 +358,7 @@ LS.CharacterModel = class {
     else if (b === 'bigode') { add(3.8, 0.8, 0.5, 0, 2.35, 4.25, C); [-1, 1].forEach(sd => { add(1.2, 0.8, 0.5, sd * 2.4, 2.15, 4.25, C); add(0.6, 0.9, 0.5, sd * 3.1, 2.7, 4.25, C); }); }
     else if (b === 'cheia' || b === 'gelo') {
       add(8.4, 1.6, 1, 0, 0.4, 4.35, C); add(6.4, 1.3, 1, 0.2, -0.9, 4.3, C); add(3.6, 1, 0.9, -0.1, -1.9, 4.25, C); side(3.6, 3.2); stache();
-      if (b === 'gelo') [-2.6, -0.9, 0.9, 2.6].forEach((x, i) => add(0.6, 1.2 + (i % 2) * 0.8, 0.6, x, -1.4 - (i % 2) * 0.9, 4.5, glow(0xe6faff))); // pingentes de gelo
+      if (b === 'gelo') [-2.6, -0.9, 0.9, 2.6].forEach((x, i) => add(0.6, 1.2 + (i % 2) * 0.8, 0.6, x, -1.4 - (i % 2) * 0.9, 4.65, glow(0xe6faff))); // pingentes de gelo
     }
     else if (b === 'noel') { // Barba de Noel: bem cheia e fofa, arredondada embaixo, com bigodão
       const C2 = M(0xe4e4ea);
@@ -416,9 +417,9 @@ LS.CharacterModel = class {
     }
     if (look.pattern === 'estrela') { // pingente de estrela dourada com volume (a corrente fica na textura)
       const gd = M(0xffc531), T = this.torso;
-      put(T, 0.8, 2.3, 0.5, 0, 2.55, 2.3, gd); put(T, 2.3, 0.8, 0.5, 0, 2.75, 2.3, gd);
-      put(T, 0.7, 0.7, 0.5, 0, 2.6, 2.3, gd, [0, 0, Math.PI / 4]).scale.set(1.9, 1.9, 1.02);
-      put(T, 0.5, 0.5, 0.3, -0.25, 3.15, 2.62, F.glow(0xfff4b0));            // brilho
+      put(T, 0.8, 2.3, 0.5, 0, 2.55, 2.45, gd); put(T, 1.9, 0.8, 0.52, 0, 2.75, 2.45, gd);
+      put(T, 0.7, 0.7, 0.48, 0, 2.6, 2.45, gd, [0, 0, Math.PI / 4]).scale.set(1.9, 1.9, 1.02);
+      put(T, 0.5, 0.5, 0.3, -0.25, 3.15, 2.8, F.glow(0xfff4b0));            // brilho
     }
     if (look.top === 'gengibre') { // biscoito: três balas de goma no peito
       const T = this.torso, Hp = this.hips;
@@ -1145,6 +1146,7 @@ LS.AccFX = {
     couro: (f, x, y) => f === 'F' && (x === 3 || x === 4) && y < 9,
     colete: (f, x, y) => f === 'L' || f === 'R' || (f === 'F' && (x === 3 || x === 4)) || y === 0 || y >= 10,
     terno: (f, x, y) => f === 'F' && (x === 3 || x === 4) && y >= 1 && y < 6,
+    natal: (f, x, y) => f === 'F' && (x === 3 || x === 4) && y < 10,
     calca: () => true,
   },
   canvasTex(w, h) {

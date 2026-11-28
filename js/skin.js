@@ -15,6 +15,9 @@ LS.Skin = {
   MASKS: ['nenhuma', 'bandana', 'máscara'],
   HATS: ['nenhum', 'gorro', 'chapéu', 'faixa'],
   NECKS: ['nenhum'],
+  FULL_HEAD: ['caveira', 'ninja', 'gengibre'], // máscaras que cobrem a cabeça inteira (sem cabelo e sem barba)
+  // estampas com cor própria: a manga curta acompanha (antes ficava na cor da camisa e não combinava)
+  PSLEEVE: { 'galáxia': '#120f2a', glitch: '#15141e', circuito: '#0d1a12', diamante: '#123a5a', escamas: '#3f9a3a' },
   COOKIE: '#b8692e', // cor do biscoito de gengibre (fixa: não depende do tom de pele, senão a roupa parecia pele = pelado) // colares (pisca-pisca de Natal...)
   TOPS: ['camiseta', 'jaqueta', 'moletom', 'regata', 'colete'],
   // trajes prontos (originais do LAST SURVIVOR)
@@ -132,8 +135,9 @@ LS.Skin = {
     else if (look.beard === 'mago' || look.beard === 'gelo' || look.beard === 'noel') { const c2 = look.beard === 'gelo' ? '#a8e8ff' : '#f4f4f0'; for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) { if (y === 6 && x >= 2 && x <= 5) continue; px(fx + x, fy + y, c2, 0.06); } [H[0], H[1]].forEach(r => rect(r, c2, 0.06, [5, 8])); }
     if (look.mask === 'bandana') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, (x + y) % 3 === 0 ? '#f0f0f0' : acc, 0.08); [H[0], H[1]].forEach(r => rect(r, acc, 0.08, [5, 7])); }
     else if (look.mask === 'caveira') {
-      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#ece6d6', 0.05);
-      [H[0], H[1]].forEach(r => rect(r, '#ddd6c4', 0.06, [2, 8]));
+      H.forEach((r, i) => rect(r, i === 4 ? '#ece6d6' : i === 5 ? '#d6cfbc' : '#ddd6c4', 0.06)); // osso na cabeça toda (nuca, topo e lados)
+      [[2, 2], [5, 3], [3, 5]].forEach(([x, y]) => px(H[5][0] + x, H[5][1] + y, '#bdb5a0', 0)); // rachadinhas na nuca
+      [H[0], H[1]].forEach(r => { px(r[0] + 5, r[1] + 4, '#2a2a2a', 0); px(r[0] + 5, r[1] + 5, '#2a2a2a', 0); }); // buraco do ouvido
       [[1, 3], [2, 3], [1, 4], [2, 4], [5, 3], [6, 3], [5, 4], [6, 4]].forEach(([x, y]) => px(fx + x, fy + y, '#141414', 0));
       px(fx + 3, fy + 5, '#2a2a2a', 0); px(fx + 4, fy + 5, '#2a2a2a', 0);
       for (let x = 1; x < 7; x++) { px(fx + x, fy + 6, '#2a2a2a', 0); px(fx + x, fy + 7, x % 2 ? '#f4f0e4' : '#2a2a2a', 0); }
@@ -260,9 +264,9 @@ LS.Skin = {
     else if (top !== 'gengibre') [B[0], B[1], B[4], B[5]].forEach(r => rect(r, '#3a2412', 0.1, [11, 12])); // cinto
     // ---- braços ----
     const A = this.faceRects('arm');
-    const SLV = { jaqueta: acc, moletom: acc, terno: '#23262d', kimono: look.shirt, armadura: '#8a9099', couro: '#1c1c1f', natal: '#c8182a', gengibre: this.COOKIE }; // roupas de manga comprida
-    const sweater = look.pattern === 'suéter' && !SLV[top] && top !== 'regata'; // suéter: manga comprida de tricô vermelho
-    const longS = !!SLV[top] || sweater, sleeve = sweater ? '#b81c2a' : longS ? SLV[top] : look.shirt, sl = top === 'regata' ? 0 : longS ? 10 : 4;
+    const SLV = { jaqueta: acc, moletom: acc, terno: '#23262d', kimono: this.PSLEEVE[look.pattern] || look.shirt, armadura: '#8a9099', couro: '#1c1c1f', natal: '#c8182a', gengibre: this.COOKIE }; // roupas de manga comprida
+    const sweater = look.pattern === 'suéter' && !SLV[top] && top !== 'regata', psl = this.PSLEEVE[look.pattern]; // suéter: manga comprida de tricô vermelho
+    const longS = !!SLV[top] || sweater, sleeve = sweater ? '#b81c2a' : longS ? SLV[top] : (psl || look.shirt), sl = top === 'regata' ? 0 : longS ? 10 : 4;
     A.forEach((r, i) => { if (i === 2) rect(r, sl ? sleeve : look.skin, 0.06); else if (i === 3) rect(r, look.skin, 0.05); else { rect(r, sleeve, 0.06, [0, sl]); rect(r, look.skin, 0.05, [sl, 12]); } });
     if (sweater) A.forEach((r, i) => { if (i !== 2 && i !== 3) { rect(r, '#1f7a3a', 0.04, [8, 10]); px(r[0] + 1, r[1] + 3, '#f4f4f0', 0); px(r[0] + 2, r[1] + 6, '#f4f4f0', 0); } });
     if (top === 'natal') A.forEach((r, i) => { // manga com sombra por dentro, punho de pelinho (3D), luva preta com friso vermelho
