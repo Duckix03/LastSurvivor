@@ -7,7 +7,8 @@ LS.Emotes = {
   LIST: [
     { id: 1, key: 'risada', name: 'Risada', clip: 'emote_risada', loops: 1, free: true },
     { id: 2, key: 'reputacao', name: 'Reputação', clip: 'emote_reputacao', loops: 1, free: true },
-    { id: 3, key: 'hype', name: 'Hype', clip: 'emote_hype', loops: 1, free: true }
+    { id: 3, key: 'hype', name: 'Hype', clip: 'emote_hype', loops: 1, free: true,
+      fix: { hips: 0.35, spine: 0.5, ground: true } } // corrige a pose (coluna torta + pé no chão), sem refazer a dança: veja fixClip()
   ],
   SLOTS: 8, // a roda tem 8 espaços; os vazios aparecem como "em breve"
   open: false, sel: -1, mode: 'game', acc: { x: 0, y: 0 },
@@ -49,6 +50,52 @@ LS.Emotes = {
     if (this.inLobby()) return true;
     return G.state === 'playing' && !G.inventoryOpen && G.player && G.player.alive && G.player.state === 'ground' && !LS.Spectate.active;
   },
+  // clipe do emote já com a correção de pose (se o emote tiver `fix`); a correção roda uma vez só por clipe carregado
+  async clip(e) { return this.fixClip(await LS.Anim.ensure(e.clip), e.fix); },
+  // ---------- correção de pose (sem refazer a animação) ----------
+  // O clipe do Hype veio de um Biped do 3ds Max e, depois de convertido, o boneco ficava com a coluna torta (inclinada pro lado e
+  // "corcunda", com o quadril jogado pra trás) e os pés afundando no chão. Em vez de refazer a dança, a pose é ajustada por cima:
+  //   fix.hips / fix.spine (0..1): quanto do balanço de inclinação do quadril / do tronco a dança mantém (0 = bem reto, 1 = como veio).
+  //       A inclinação fixa, aquele "torto" que não muda nunca, sai sempre inteira; só o balanço da dança fica, diminuído.
+  //       As pernas mantêm exatamente a pose delas no mundo (só o bloco do quadril endireita); braços e cabeça acompanham o tronco.
+  //   fix.ground (true/false): sobe o quadril, quadro a quadro, só o necessário pra sola do pé mais baixo ficar em cima do chão.
+  fixClip(c, fix) {
+    if (!c || !fix || c._fixed) return c;
+    c._fixed = true;
+    const Q = THREE.Quaternion, V = THREE.Vector3, S = LS.Skin.PX, n = c.frames, Y = new V(0, 1, 0);
+    const get = (b, f) => new Q().fromArray(c.q[b], f * 4), put = (b, f, x) => x.normalize().toArray(c.q[b], f * 4);
+    const LEGS = [['RightUpLeg', 'RightLeg', 'RightFoot', -1], ['LeftUpLeg', 'LeftLeg', 'LeftFoot', 1]];
+    // rotação que leva a direção "pra cima" de cada quadro pra uma direção arrumada: sem a inclinação média, balanço × keep
+    const straighten = (ups, keep) => {
+      const m = new V(); ups.forEach(u => m.add(u)); m.divideScalar(ups.length);
+      return ups.map(u => new Q().setFromUnitVectors(u, new V((u.x - m.x) * keep, 1, (u.z - m.z) * keep).normalize()));
+    };
+    const kh = fix.hips !== undefined ? fix.hips : 0.35, ks = fix.spine !== undefined ? fix.spine : 0.5;
+    const Qh = [], Ws = [];
+    for (let f = 0; f < n; f++) { Qh.push(get('Hips', f)); Ws.push(Qh[f].clone().multiply(get('Spine', f))); } // Ws: tronco no mundo
+    const Rh = straighten(Qh.map(h => Y.clone().applyQuaternion(h)), kh);
+    const Rs = straighten(Ws.map(w => Y.clone().applyQuaternion(w)), ks);
+    for (let f = 0; f < n; f++) {
+      const h2 = Rh[f].clone().multiply(Qh[f]), hi = h2.clone().invert();   // quadril novo
+      const keepLeg = hi.clone().multiply(Qh[f]);                            // faz a perna continuar igual no mundo
+      for (const [up] of LEGS) put(up, f, keepLeg.clone().multiply(get(up, f)));
+      put('Spine', f, hi.clone().multiply(Rs[f]).multiply(Ws[f]));          // tronco novo (local ao quadril novo)
+      put('Hips', f, h2);
+    }
+    if (fix.ground === false) return c;
+    // pés no chão: altura da sola mais baixa (quinas do pé: 4 px de largura/fundo, 1 px abaixo do tornozelo) em cada quadro
+    const GROUND = 0.003, hipsY = 12 * S, a = new V(), k = new V();
+    for (let f = 0; f < n; f++) {
+      const Wh = get('Hips', f); let low = Infinity;
+      for (const [u, l, ft, side] of LEGS) {
+        const Wu = Wh.clone().multiply(get(u, f)), Wl = Wu.clone().multiply(get(l, f)), Wf = Wl.clone().multiply(get(ft, f));
+        a.set(side * 2 * S, 0, 0).add(k.set(0, -6 * S, 0).applyQuaternion(Wu)).add(k.set(0, -5 * S, 0).applyQuaternion(Wl)); // tornozelo
+        for (const dx of [-1.7, 1.7]) for (const dz of [-1.7, 1.7]) low = Math.min(low, a.y + k.set(dx * S, -S, dz * S).applyQuaternion(Wf).y);
+      }
+      c.p[f * 3 + 1] += Math.max(0, GROUND - (hipsY + c.p[f * 3 + 1] + low)); // só sobe, nunca afunda
+    }
+    return c;
+  },
   // ---------- roda ----------
   show(mode) {
     this.mode = mode; this.open = true; this.sel = -1; this.acc = { x: 0, y: 0 };
@@ -88,7 +135,7 @@ LS.Emotes = {
   async start(e) {
     const G = LS.Game, lobby = this.inLobby();
     if (!lobby && !this.canOpen()) return;
-    let clip; try { clip = await LS.Anim.ensure(e.clip); } catch (err) { LS.HUD.toast('Emote indisponível: ' + err.message); return; }
+    let clip; try { clip = await this.clip(e); } catch (err) { LS.HUD.toast('Emote indisponível: ' + err.message); return; }
     const m = lobby ? LS.Lobby.model : G.player.model;
     this.stop();
     LS.Anim.player(m).play(clip, { loop: (e.loops || 1) > 1, fade: 0.2 });
@@ -123,6 +170,6 @@ LS.Emotes = {
     const m = f.model;
     if (!id) { if (m.anim) m.anim.stop(0.25); m.gunSocket.visible = true; return; }
     const e = this.byId(id); if (!e) return;
-    try { const c = await LS.Anim.ensure(e.clip); if (f._em !== id) return; LS.Anim.player(m).play(c, { loop: false, fade: 0.2 }); m.gunSocket.visible = false; } catch (err) { /* ignora */ }
+    try { const c = await this.clip(e); if (f._em !== id) return; LS.Anim.player(m).play(c, { loop: false, fade: 0.2 }); m.gunSocket.visible = false; } catch (err) { /* ignora */ }
   }
 };
