@@ -40,6 +40,7 @@ com arma, as pernas e parte do tronco vêm da `dash_run_f` e os braços seguram 
 `emotes.json`: emotes da roda de emotes (segure **B** no PC, botão de carinha no celular, ícone no lobby).
 - `emote_risada`: risada (Mixamo "LOL").
 - `emote_reputacao`: dancinha da reputação (~6 s).
+- `emote_hype`: dancinha hype (~3 s; arquivo de Biped do 3ds Max, com ossos `bip_...`).
 
 Pra adicionar um emote: carregue o .fbx no jogo (arraste na janela), use `anim save emote_nome` e junte o clipe no `emotes.json`;
 depois coloque na lista `LIST` do `js/emotes.js` (id de 1 a 15, nome, clip e quantas vezes repete).
