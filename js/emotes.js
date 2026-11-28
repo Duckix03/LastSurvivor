@@ -6,7 +6,8 @@ LS.Emotes = {
   // id (1..15, vai na rede) · clip (em anims/emotes.json) · loops: quantas vezes toca (1 = uma vez só)
   LIST: [
     { id: 1, key: 'risada', name: 'Risada', clip: 'emote_risada', loops: 1, free: true },
-    { id: 2, key: 'reputacao', name: 'Reputação', clip: 'emote_reputacao', loops: 1, free: true }
+    { id: 2, key: 'reputacao', name: 'Reputação', clip: 'emote_reputacao', loops: 1, free: true },
+    { id: 3, key: 'hype', name: 'Hype', clip: 'emote_hype', loops: 1, free: true }
   ],
   SLOTS: 8, // a roda tem 8 espaços; os vazios aparecem como "em breve"
   open: false, sel: -1, mode: 'game', acc: { x: 0, y: 0 },
@@ -62,6 +63,8 @@ LS.Emotes = {
     this.el.innerHTML = h; this.el.classList.remove('hidden');
   },
   icon(e) { // um ícone em pixel por emote
+    if (e.key === 'hype') return '<svg class="ew-ico" viewBox="0 0 16 16" shape-rendering="crispEdges"><path fill="#0b0d13" d="M7 0h2v2h1v2h1V2h2v4h1v6h-1v2h-2v1H5v-1H3v-2H2V6h1V4h2v1h1V2h1z"/>' + // foguinho
+      '<path fill="#ff5a1a" d="M7 1h1v2h1v2h2V3h1v4h1v4h-1v2h-2v1H6v-1H4v-2H3V7h1V5h1v1h2V3z"/><path fill="#ffc531" d="M7 7h1v1h1v1h1v3H9v1H7v-1H6V9h1z"/><path fill="#fff4b0" d="M7 10h2v2H7z"/></svg>';
     if (e.key === 'reputacao') return '<svg class="ew-ico" viewBox="0 0 16 16" shape-rendering="crispEdges"><path fill="#0b0d13" d="M7 0h2v3h2v2h4v2h-2v2h1v5h-3v-1H5v1H2V9h1V7H1V5h4V3h2z"/>' + // estrela dourada com brilho
       '<path fill="#ffc531" d="M7 1h2v3h2v2h3v1h-2v2h1v4h-1v-1h-1v-1H5v1H4v1H3V9h1V7H2V6h3V4h2z"/><path fill="#fff4b0" d="M7 2h1v3H6v1H4v1h2V6h1z"/><path fill="#c87a00" d="M10 9h1v2H9v1H7v-1h2v-1h1z"/></svg>';
     return '<svg class="ew-ico" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="2" y="2" width="12" height="12" fill="#ffd23a"/><rect x="1" y="4" width="1" height="8" fill="#ffd23a"/><rect x="14" y="4" width="1" height="8" fill="#ffd23a"/><rect x="4" y="1" width="8" height="1" fill="#ffd23a"/><rect x="4" y="14" width="8" height="1" fill="#ffd23a"/>' +

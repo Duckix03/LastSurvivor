@@ -35,7 +35,7 @@ LS.Anim = {
 
   // ---------- nomes de ossos ----------
   norm(n) {
-    return String(n || '').toLowerCase().replace(/^.*:/, '').replace(/mixamorig/g, '').replace(/^bip0*1/, '').replace(/[^a-z0-9]/g, '').replace(/^(bone|bn|def|jnt|joint)(?=[a-z])/, '');
+    return String(n || '').toLowerCase().replace(/^.*:/, '').replace(/mixamorig/g, '').replace(/^bip(0*1)?(?=[^a-z]|$)/, '').replace(/[^a-z0-9]/g, '').replace(/^(bone|bn|def|jnt|joint)(?=[a-z])/, '');
   },
   _sided(bases, side) {
     const s = side === 'R' ? ['right', 'r'] : ['left', 'l'], out = [];
@@ -159,17 +159,31 @@ LS.Anim = {
       if (!o.isSkinnedMesh || !o.skeleton) return;
       o.skeleton.bones.forEach((bn, i) => { if (!bind.has(bn)) bind.set(bn, o.bindMatrix.clone().multiply(new M().copy(o.skeleton.boneInverses[i]).invert())); });
     });
-    const rest = {};
-    for (const k in src) {
-      const m = bind.get(src[k]) || src[k].matrixWorld.clone(), p = new V(), q = new Q(), s = new V();
-      m.decompose(p, q, s); rest[k] = { p, q };
+    const node0 = new Map(); for (const k in src) node0.set(k, src[k].matrixWorld.clone()); // pose dos nós antes da animação
+    const makeRest = useBind => {
+      const rest = {};
+      for (const k in src) {
+        const m = (useBind && bind.get(src[k])) || node0.get(k), p = new V(), q = new Q(), s = new V();
+        m.decompose(p, q, s); rest[k] = { p, q };
+      }
+      // base do personagem de fora (esquerda, cima, frente) -> C leva para a nossa (+X, +Y, +Z)
+      const left = rest.LeftUpLeg.p.clone().sub(rest.RightUpLeg.p).add(rest.LeftArm.p.clone().sub(rest.RightArm.p)).normalize();
+      const up = rest.Spine.p.clone().sub(rest.Hips.p);
+      up.sub(left.clone().multiplyScalar(up.dot(left))).normalize();
+      const fwd = new V().crossVectors(left, up).normalize();
+      const C = new Q().setFromRotationMatrix(new M().makeBasis(left, up, fwd)).invert();
+      return { rest, C };
+    };
+    // alguns arquivos (ex.: Biped do 3ds Max, com "bip_Pelvis") têm o bind do modelo num eixo diferente do esqueleto animado:
+    // testa o 1º quadro com as duas poses de descanso e fica com a que deixa o quadril em pé
+    let pick = makeRest(true);
+    if (bind.size) {
+      const alt = makeRest(false), mx = new THREE.AnimationMixer(root); mx.clipAction(clip).play(); mx.setTime(0); root.updateMatrixWorld(true);
+      const hq = src.Hips.getWorldQuaternion(new Q()), upY = o => new V(0, 1, 0).applyQuaternion(o.C.clone().multiply(hq).multiply(o.rest.Hips.q.clone().invert()).multiply(o.C.clone().invert())).y;
+      if (upY(alt) > upY(pick) + 0.3) pick = alt;
+      mx.stopAllAction(); mx.uncacheRoot(root); root.updateMatrixWorld(true);
     }
-    // base do personagem de fora (esquerda, cima, frente) -> C leva para a nossa (+X, +Y, +Z)
-    const left = rest.LeftUpLeg.p.clone().sub(rest.RightUpLeg.p).add(rest.LeftArm.p.clone().sub(rest.RightArm.p)).normalize();
-    const up = rest.Spine.p.clone().sub(rest.Hips.p);
-    up.sub(left.clone().multiplyScalar(up.dot(left))).normalize();
-    const fwd = new V().crossVectors(left, up).normalize();
-    const C = new Q().setFromRotationMatrix(new M().makeBasis(left, up, fwd)).invert(), Ci = C.clone().invert();
+    const rest = pick.rest, C = pick.C, Ci = C.clone().invert();
 
     // pose de descanso equivalente nos nossos ossos (ex.: braços abertos se o arquivo está em T-pose)
     const DOWN = new V(0, -1, 0), UP = new V(0, 1, 0), FWD = new V(0, 0, 1);
