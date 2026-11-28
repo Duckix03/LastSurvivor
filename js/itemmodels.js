@@ -46,75 +46,283 @@ LS.Items = {
 
   // ---------------- armas (z = cano para frente, origem = mão no punho) ----------------
   GUNS: {
-    m1911: { muzzle: [0.045, 0.21], parts: (G) => [
-      [0, 0.045, 0.07, 0.05, 0.055, 0.25, 0x4a4a4e], [0, 0.045, -0.03, 0.054, 0.04, 0.04, 0x38383c], [0, 0.005, 0.08, 0.044, 0.03, 0.2, 0x2a2a2a],
-      [0, 0.045, 0.2, 0.03, 0.03, 0.014, 0x111111], [0, -0.06, -0.015, 0.046, 0.12, 0.065, 0x6b4a2a, 0.22], [0, -0.06, -0.015, 0.05, 0.1, 0.04, 0x5a3a1e, 0.22],
-      ...G.guard(0.05), [0, 0.065, -0.06, 0.014, 0.025, 0.018, 0x1a1a1a], [0, 0.077, 0.18, 0.008, 0.012, 0.012, 0x111111], [0, 0.077, -0.035, 0.03, 0.012, 0.01, 0x111111], T('mag', [0, -0.12, -0.029, 0.04, 0.02, 0.055, 0x1a1a1a, 0.22])] },
-    // Desert Eagle: ferrolho prata grande com trilho reto em cima, serrilhado atrás, guarda-mato quadrado e punho preto
-    deagle: { muzzle: [0.05, 0.226], parts: () => {
-      const S1 = 0xc4c5c9, S2 = 0xa8a9ad, p = [
-        [0, 0.05, 0.085, 0.05, 0.06, 0.27, S1], [0, 0.084, 0.09, 0.03, 0.009, 0.24, 0xb2b3b7], [0, 0.008, 0.07, 0.046, 0.027, 0.2, S2],
-        [0, 0.0, -0.05, 0.046, 0.03, 0.04, S2], [0.026, 0.062, 0.04, 0.004, 0.02, 0.05, 0x6a6b6f], [0, 0.05, 0.221, 0.024, 0.024, 0.008, 0x0e0e0e],
-        [0, 0.092, 0.205, 0.008, 0.009, 0.01, 0x222222], [0, 0.093, -0.035, 0.028, 0.012, 0.012, 0x222222], [0, 0.072, -0.062, 0.014, 0.03, 0.02, 0x2a2a2a, -0.3],
-        [0.027, 0.026, 0.03, 0.004, 0.009, 0.045, 0x2a2a2a], [0, -0.065, -0.025, 0.05, 0.13, 0.07, 0x1e1e1e, 0.2],
-        [0.026, -0.065, -0.025, 0.004, 0.1, 0.05, 0x111111, 0.2], [-0.026, -0.065, -0.025, 0.004, 0.1, 0.05, 0x111111, 0.2], T('mag', [0, -0.133, -0.038, 0.052, 0.012, 0.072, 0x2a2a2a, 0.2]),
-        [0, -0.035, 0.045, 0.012, 0.01, 0.07, S2], [0, -0.015, 0.08, 0.012, 0.045, 0.01, S2], [0, -0.012, 0.035, 0.008, 0.028, 0.01, 0x222222]];
-      for (let i = 0; i < 5; i++) for (const sx of [1, -1]) p.push([sx * 0.026, 0.05, -0.045 + i * 0.008, 0.004, 0.045, 0.004, 0x8a8b8f]); // serrilhado
-      return p; } },
-    mp5: { muzzle: [0.035, 0.45], parts: (G) => [
-      [0, 0.03, 0.08, 0.06, 0.09, 0.32, 0x262626], [0, 0.065, 0.2, 0.03, 0.03, 0.2, 0x2e2e2e], [0, 0.09, -0.04, 0.036, 0.036, 0.036, 0x161616],
-      [0, 0.09, 0.25, 0.02, 0.035, 0.03, 0x161616], [0, 0.01, 0.31, 0.075, 0.075, 0.14, 0x1e1e1e], [0, 0.035, 0.41, 0.03, 0.03, 0.08, 0x111111],
-      T('mag', [0, -0.09, 0.15, 0.035, 0.12, 0.055, 0x1a1a1a, -0.25]), T('mag', [0, -0.19, 0.18, 0.035, 0.1, 0.055, 0x1a1a1a, -0.5]), ...G.grip(0x1e1e1e), ...G.guard(0.05),
-      [0.025, 0.03, -0.17, 0.012, 0.012, 0.18, 0x333333], [-0.025, 0.03, -0.17, 0.012, 0.012, 0.18, 0x333333], [0, 0.0, -0.265, 0.06, 0.1, 0.02, 0x222222]] },
-    // UMP: caixa de polímero preta, trilho longo com dentes, carregador reto comprido e coronha esqueletada aberta
-    ump: { scale: 1.2, muzzle: [0.074, 0.45], parts: () => {
-      const B = 0x26272a, D = 0x1c1c1e, K = 0x141414, p = [
-        [0, 0.035, 0.12, 0.062, 0.095, 0.34, B], [0, 0.09, 0.12, 0.05, 0.018, 0.34, 0x1d1e20], [0, 0.108, 0.12, 0.03, 0.016, 0.36, K],
-        [0, 0.132, -0.03, 0.032, 0.032, 0.03, K], [0, 0.132, 0.275, 0.02, 0.036, 0.022, K],
-        [0, 0.03, 0.335, 0.066, 0.05, 0.1, 0x222326], [0, 0.074, 0.335, 0.052, 0.046, 0.09, 0x1f2022], [0, 0.074, 0.41, 0.026, 0.026, 0.07, 0x0f0f0f], [0, 0.074, 0.44, 0.034, 0.034, 0.02, 0x0f0f0f],
-        [-0.032, 0.075, 0.22, 0.02, 0.016, 0.032, K], [0, -0.03, 0.17, 0.05, 0.04, 0.07, B],
-        T('mag', [0, -0.14, 0.18, 0.036, 0.2, 0.06, D, -0.08]), T('mag', [0, -0.245, 0.19, 0.042, 0.018, 0.068, K, -0.08]),
-        [0, -0.065, -0.02, 0.045, 0.12, 0.06, D, 0.28], [0, -0.045, 0.06, 0.012, 0.01, 0.09, D], [0, -0.02, 0.105, 0.012, 0.05, 0.01, D], [0, -0.02, 0.05, 0.008, 0.03, 0.01, 0x0f0f0f],
-        [0, 0.04, -0.06, 0.05, 0.07, 0.03, D], [0, 0.06, -0.17, 0.03, 0.022, 0.24, D], [0, -0.01, -0.185, 0.03, 0.02, 0.238, D, -0.25],
-        [0, 0.01, -0.305, 0.034, 0.13, 0.025, K], [0, 0.01, -0.322, 0.036, 0.13, 0.01, 0x0d0d0d]];
-      for (let i = 0; i < 11; i++) p.push([0, 0.119, -0.035 + i * 0.031, 0.034, 0.006, 0.012, 0x101010]); // dentes do trilho
-      for (const z of [0.02, 0.06, 0.1]) for (const sx of [1, -1]) p.push([sx * 0.032, 0.03, z, 0.004, 0.05, 0.012, 0x1a1b1d]); // nervuras
-      return p; } },
-    ak47: { muzzle: [0.035, 0.69], parts: (G) => [
-      [0, 0.03, 0.1, 0.065, 0.085, 0.36, 0x2e2e2e], [0, 0.078, 0.08, 0.05, 0.014, 0.3, 0x3a3a3a], [0, 0.0, 0.37, 0.07, 0.07, 0.18, 0x8a5228],
-      [0, 0.068, 0.36, 0.05, 0.04, 0.16, 0x7a4620], [0, 0.035, 0.55, 0.026, 0.026, 0.2, 0x111111], [0, 0.075, 0.6, 0.016, 0.045, 0.02, 0x1a1a1a],
-      [0, 0.035, 0.665, 0.036, 0.036, 0.04, 0x1a1a1a], T('mag', [0, -0.08, 0.2, 0.04, 0.12, 0.07, 0x6a3010, -0.3]), T('mag', [0, -0.18, 0.245, 0.04, 0.11, 0.07, 0x6a3010, -0.6]),
-      ...G.grip(0x7a4620, 0.3), ...G.guard(0.05), [0, -0.01, -0.2, 0.05, 0.09, 0.26, 0x8a5228, -0.12], [0, -0.035, -0.34, 0.054, 0.12, 0.02, 0x2a2a2a, -0.12],
-      [0.04, 0.05, 0.18, 0.02, 0.015, 0.02, 0x2a2a2a]] },
-    m4a1: { muzzle: [0.05, 0.635], parts: (G) => [
-      [0, 0.0, 0.1, 0.06, 0.07, 0.28, 0x2d2d2d], [0, 0.06, 0.12, 0.06, 0.06, 0.32, 0x262626], [0, 0.098, 0.18, 0.03, 0.016, 0.42, 0x1a1a1a],
-      [0, 0.04, 0.36, 0.074, 0.08, 0.18, 0x222222], [0, 0.04, 0.36, 0.078, 0.012, 0.16, 0x111111], [0, 0.05, 0.52, 0.026, 0.026, 0.16, 0x111111],
-      [0, 0.1, 0.47, 0.016, 0.06, 0.02, 0x1a1a1a], [0, 0.05, 0.615, 0.034, 0.034, 0.03, 0x151515], T('mag', [0, -0.1, 0.17, 0.035, 0.15, 0.065, 0x2a2a2a, -0.15]),
-      ...G.grip(0x222222), ...G.guard(0.05), [0, 0.04, -0.13, 0.032, 0.032, 0.18, 0x222222], [0, 0.01, -0.21, 0.05, 0.1, 0.12, 0x2a2a2a],
-      [0, 0.118, 0.0, 0.03, 0.025, 0.03, 0x1a1a1a]] },
-    awm: { muzzle: [0.06, 0.93], pivot: { bolt: [0.03, 0.06, 0.04] }, parts: (G) => [
-      [0, 0.0, 0.05, 0.07, 0.1, 0.55, 0x4a6a32], [0, 0.06, 0.15, 0.055, 0.05, 0.3, 0x2a2a2a], [0, 0.06, 0.58, 0.035, 0.035, 0.56, 0x1a1a1a],
-      [0, 0.06, 0.885, 0.05, 0.046, 0.07, 0x111111], ...G.scope(0.135, 0.15, 0.34), T('bolt', [0.05, 0.06, 0.04, 0.05, 0.015, 0.015, 0x222222]),
-      T('bolt', [0.077, 0.05, 0.04, 0.026, 0.026, 0.026, 0x111111]), [0, -0.01, -0.3, 0.07, 0.15, 0.2, 0x4a6a32], [0, 0.072, -0.28, 0.06, 0.03, 0.16, 0x3a5a28],
-      [0, -0.01, -0.41, 0.074, 0.16, 0.02, 0x111111], ...G.grip(0x4a6a32, 0.25), T('mag', [0, -0.07, 0.12, 0.04, 0.07, 0.09, 0x222222]), ...G.guard(0.05),
-      [0.02, -0.035, 0.4, 0.012, 0.012, 0.22, 0x222222], [-0.02, -0.035, 0.4, 0.012, 0.012, 0.22, 0x222222]] },
-    kar98: { muzzle: [0.035, 0.86], pivot: { bolt: [0.02, 0.045, 0.0] }, parts: (G) => [
-      [0, -0.01, 0.2, 0.06, 0.07, 0.7, 0x7a4a24], [0, -0.04, -0.28, 0.06, 0.14, 0.26, 0x7a4a24, -0.15], [0, -0.06, -0.04, 0.05, 0.1, 0.07, 0x6a3e1c, 0.4],
-      [0, -0.06, -0.42, 0.062, 0.15, 0.02, 0x2a2a2a, -0.15], [0, 0.04, 0.08, 0.045, 0.04, 0.2, 0x2a2a2a], [0, 0.035, 0.55, 0.026, 0.026, 0.62, 0x1a1a1a],
-      [0, 0.045, 0.4, 0.04, 0.026, 0.3, 0x6a3e1c], [0, 0.02, 0.33, 0.066, 0.08, 0.02, 0x2a2a2a], [0, 0.02, 0.54, 0.066, 0.08, 0.02, 0x2a2a2a],
-      T('bolt', [0.04, 0.05, 0.0, 0.05, 0.014, 0.014, 0x2a2a2a]), T('bolt', [0.066, 0.04, 0.0, 0.024, 0.024, 0.024, 0x1a1a1a]), ...G.scope(0.11, 0.1, 0.3), ...G.guard(0.04)] },
-    m1887: { muzzle: [0.05, 0.71], pivot: { lever: [0, -0.045, 0.1] }, parts: () => [
-      [0, 0.02, 0.06, 0.055, 0.08, 0.18, 0x2a2a2a], [0, 0.05, 0.42, 0.032, 0.032, 0.56, 0x1a1a1a], [0, 0.012, 0.36, 0.03, 0.03, 0.42, 0x222222],
-      [0, 0.015, 0.3, 0.052, 0.052, 0.18, 0x7a4a24], [0, -0.02, -0.06, 0.045, 0.06, 0.1, 0x7a4a24], [0, -0.03, -0.22, 0.05, 0.08, 0.26, 0x7a4a24, -0.2],
-      [0, -0.065, -0.36, 0.054, 0.13, 0.03, 0x5a3416, -0.2], T('lever', [0, -0.055, 0.03, 0.012, 0.012, 0.14, 0x2a2a2a]), T('lever', [0, -0.1, 0.01, 0.012, 0.012, 0.1, 0x2a2a2a]),
-      T('lever', [0, -0.078, -0.04, 0.012, 0.05, 0.012, 0x2a2a2a]), T('lever', [0, -0.078, 0.095, 0.012, 0.05, 0.012, 0x2a2a2a]), [0, 0.07, -0.03, 0.014, 0.025, 0.02, 0x1a1a1a]] },
-    spas12: { muzzle: [0.06, 0.71], parts: (G) => [
-      [0, 0.03, 0.08, 0.06, 0.09, 0.26, 0x1c1c1c], [0, 0.06, 0.45, 0.034, 0.034, 0.5, 0x151515], [0, 0.078, 0.4, 0.046, 0.03, 0.3, 0x2a2a2a],
-      [0, 0.094, 0.32, 0.03, 0.006, 0.04, 0x4a4a4a], [0, 0.094, 0.4, 0.03, 0.006, 0.04, 0x4a4a4a], [0, 0.094, 0.48, 0.03, 0.006, 0.04, 0x4a4a4a],
-      [0, 0.02, 0.4, 0.032, 0.032, 0.4, 0x222222], T('pump', [0, 0.02, 0.32, 0.062, 0.062, 0.16, 0x2e2e2e]), T('pump', [0, 0.02, 0.32, 0.066, 0.012, 0.12, 0x1a1a1a]),
-      ...G.grip(0x222222), ...G.guard(0.05), [0, 0.06, -0.2, 0.015, 0.015, 0.32, 0x333333], [0, -0.02, -0.18, 0.015, 0.015, 0.28, 0x333333],
-      [0, 0.02, -0.36, 0.04, 0.1, 0.02, 0x333333]] }
+    // M1911: ferrolho de aço com serrilhado e janela, cão, cabo de madeira quadriculado com parafusos dourados
+    m1911: { vox: {
+      vs: 0.0072, o: [6, 8], muzzle: [30, 11],
+      key: { Q: [2, 0x111111], a: [4, 0x5c5d62], A: [5, 0x4e4f54], s: [5.4, 0x2e2f33], E: [4.2, 0x1c1c1e], O: [2.6, 0x0a0a0a], F: [5, 0x3e3f43], h: [3, 0x1e1e20], W: [5.4, 0x7a5230], w: [5.8, 0x5a3a1e], Y: [6.2, 0xc8a050], U: [2, 0x34353a], r: [1.2, 0x111111], B: [5, 0x1e1e1e, 'mag'] },
+      rows: [
+        '..Q.......................QQ..',
+        '..aaaaaaaaaaaaaaaaaaaaaaaaaaa.',
+        '.hAsAsAAAAAAAAAAAEEEEEAAAAAAAO',
+        'hhAsAsAAAAAAAAAAAEEEEEAAAAAAAO',
+        'hhAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        '.hFFFFFFFFFFFFFFFFFFFFFFFFFF..',
+        '...WWWWWWFFr...UFF............',
+        '...WYwwwW..r...U..............',
+        '...WwwwwWUUUUUUU..............',
+        '..WwwwwwW.....................',
+        '..WwwYwwW.....................',
+        '..WWWWWWW.....................',
+        '.WWWWWWW......................',
+        '.BBBBBBB......................'] } },
+    // Desert Eagle (baseada no modelo do Duckix03): ferrolho prata com trilho em cima, serrilhado, janela de ejeção, cão e cabo preto texturizado
+    deagle: { vox: { vs: 0.0071, o: [8.5, 14], muzzle: [41, 17.5], key: {
+        Q: [2, 0x1a1a1a], a: [4, 0xd8d9dd], A: [6, 0xc4c5c9], s: [6.5, 0x8a8b8f], E: [4.6, 0x2a2a2c], O: [3, 0x0a0a0a], h: [4, 0x2a2a2a],
+        F: [5.4, 0x9c9da2], U: [2, 0xa8a9ad], r: [1, 0x1a1a1a], G: [6, 0x1e1e1e], g: [6.5, 0x141414], Y: [6.7, 0xb8b9bd], B: [6, 0x2c2c2e, 'mag'] },
+      rows: [
+        '......QQ..............................QQ.',
+        '.....aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        '....AAsAsAsAAAAAAAAAAAEEEEEEEEEAAAAAAAAAA',
+        '.hhhAAsAsAsAAAAAAAAAAAEEEEEEEEEAAAAAAAAAA',
+        '..hhAAsAsAsAAAAAAAAAAAEEEEEEEEEAAAAAAAAAO',
+        '..hhAAsAsAsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO',
+        '...hAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        '..hhFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.',
+        'hhhhFFFFFFFFFFFFFFFFFFFF.................',
+        '....GGGGGGGGGGUUUUUUUUU..................',
+        '.....GGGGGGGGGUUUr..UU...................',
+        '.....ggggggggGUUUr..UU...................',
+        '.....YYGGGGGGGUUUUUUUU...................',
+        '....GGGGGGGGGGUUUUUUUU...................',
+        '....GggggggggG...........................',
+        '....GGGGGGGGGG...........................',
+        '...GGGGGGGGGGG...........................',
+        '...GGYYggggggG...........................',
+        '...GGGGGGGGGGG...........................',
+        '...GGGGGGGGGG............................',
+        '..GGGggggggggG...........................',
+        '..BBBBBBBBBBBB...........................',
+        '...BBBBBBBBBBB...........................'] } },
+    // MP5: coronha fixa vazada, tambor de mira, tubo do ferrolho por cima, guarda-mão com nervuras e carregador curvo
+    mp5: { vox: {
+      vs: 0.016, o: [15, 11], muzzle: [45, 15],
+      key: { P: [3, 0x141414], S: [3, 0x1e1e1e], R: [4, 0x2c2c2e], r: [3, 0x3a3a3c], E: [3.3, 0x121213], Q: [2, 0x151515], C: [2.4, 0x262628], H: [4.4, 0x202022], h: [4.8, 0x151516], L: [2, 0x3a3b3f], Z: [3, 0x2a2a2c], G: [4, 0x1b1b1c], g: [4.4, 0x121213], U: [2, 0x1e1e1e], t: [1, 0x0c0c0c], M: [3, 0x2a2a2c, 'mag'], m: [3.4, 0x1c1c1e, 'mag'], B: [3.6, 0x141414, 'mag'], X: [2, 0x111111] },
+      rows: [
+        '.............QQQQ...................QQQQ.....',
+        '.............QQQQ.....CCCCCCCCCCCCCCCQQ......',
+        '...........rrrrrrrrrrrrrrrrrrrrrrrCCCQQ...ZZZ',
+        'PPSSSSSSSSSRRRRRRRRRRRRRRRRRRRRRRRLLLLLLLLZZZ',
+        'PPSSSSSSSSSRRRRRRREEEEEEERRRRRRRRRLLLLLLLLZZZ',
+        'PPSS.....SSRRRRRRREEEEEEERRRRRRRRR........ZZZ',
+        'PPSS.....SSRRRRRRRRRRRRRRRRRRRRRRR...........',
+        'PPSS.....SSRRRRRRRRRRRRRRRHhHhHhHXX..........',
+        'PPSS.....SS..RRRR.t...UMMMMhHhHhHXX..........',
+        'PPSSSSSSSSS..GGGGGt...UMMMM..................',
+        'PPSSSSSSSSS..ggggGt...U.mmmm.................',
+        '.............GGGGUUUUUU.MMMM.................',
+        '.............GGGGG......MMMM.................',
+        '............ggggG........mmmm................',
+        '............GGGGG........MMMM................',
+        '............ggggG........MMMM................',
+        '..........................mmmm...............',
+        '..........................MMMM...............',
+        '...........................BBBB..............'] } },
+    // UMP45 (baseada no modelo de referência): polímero preto, trilho com dentes, janela de ejeção, ventilação no guarda-mão,
+    // carregador reto comprido com nervuras, cabo inclinado e coronha esqueletada
+    ump: { vox: { vs: 0.0187, o: [18, 14], muzzle: [46, 16.5], key: {
+        Q: [1.2, 0x141414], T: [2, 0x18191b], t: [2, 0x0b0b0c], D: [4, 0x1f2023], R: [4, 0x2b2c2f], K: [4.6, 0x1a1b1d], E: [3.3, 0x0e0e0f],
+        V: [3.3, 0x111112], L: [2, 0x3d3f43], Z: [2.7, 0x232425], X: [2, 0x161616], S: [2, 0x1d1e21], P: [3, 0x121212],
+        G: [4, 0x1e1f22], g: [4.4, 0x151618], U: [2, 0x1d1e21], r: [1, 0x0c0c0c], M: [3, 0x26272a, 'mag'], m: [3.4, 0x1a1b1d, 'mag'], B: [3.8, 0x121212, 'mag'] },
+      rows: [
+        '.................QQ....................QQ.....',
+        '...............tTtTtTtTtTtTtTtTt......QQQ.....',
+        '..............DDDDDDDDDDDDDDDDDDDDDDDDDDD.....',
+        'PPSSSSSSSSSSSSKKKKRRRRRRRRRRRRRRRRRRRRRRR.....',
+        'PPSSSSSSSSSSSSKKKKRRREEEEEEERRRRVRVRVRVRRLLLZZ',
+        'PP....SS.SSSSSKKKKRRREEEEEEERRRRVRVRVRVRRLLLZZ',
+        'PP....SSSSSSSSKKKKRRRRRRRRRRRRRRRRRRRRRRRLLLZZ',
+        'PP....SSSSSS....DDDDDDDDDDDDDDDDDDDDDDDXX.....',
+        'PP.SSSSSS........DDDDDDDDDMMMMM.........X.....',
+        'PPSSSS..........GGGGUr..UUMMMMM...............',
+        'PPS.............GGGGUUUUUUMMMMM...............',
+        '...............gggggg......mmmm...............',
+        '...............GGGGG.......MMMM...............',
+        '...............gggg........MMMM...............',
+        '...............GGGG.........mmmm..............',
+        '............................MMMM..............',
+        '............................MMMM..............',
+        '............................mmmm..............',
+        '............................MMMM..............',
+        '.............................MMM..............',
+        '.............................BBBB.............',
+        '.............................BBBB.............'] } },
+    // AK-47: madeira (coronha, guarda-mão e cabo), tampa da caixa, tubo de gás, freio de boca e pente banana
+    ak47: { vox: {
+      vs: 0.018, o: [17, 12], muzzle: [56, 17],
+      key: { P: [3.4, 0x2a1a0e], W: [4, 0x8a5228], w: [3.6, 0x6e3e1a], v: [4.4, 0x5a3014], R: [4, 0x323234], T: [3.4, 0x3c3c3e], E: [3.3, 0x151516], k: [4.8, 0x1e1e1e], Q: [1.6, 0x161616], g: [2.4, 0x2a2a2c], L: [2, 0x1c1c1d], K: [3, 0x262628], Z: [2.6, 0x111112], G: [4, 0x7a4620], n: [4.4, 0x5e3416], U: [2, 0x2a2a2c], t: [1, 0x0e0e0e], M: [3, 0x6a3010, 'mag'], m: [3.4, 0x522408, 'mag'] },
+      rows: [
+        '................................................QQ......',
+        '...............................QQQ..............QQ......',
+        '..............TTTTTTTTTTTTTTTTgggggggggggggggggKKKK.....',
+        'PPWWWWWWWWWWWWRRRRRRRRRRRRRRRRRRRwwwwwwwwwwwKLLLLLLLZZZZ',
+        'PPWWWWWWWWWWWWRRRRREEEEEEEkkkkRRRwwwwwwwwwwwKLLLLLLLZZZZ',
+        'PPWwwwwwwwwwwWRRRRREEEEEEERRRRRRRWWWWWWWWWWWLLLLLL......',
+        'PPWWWWWWWWWWWWRRRRRRRRRRRRRRRRRRRWvWWvWWvWWvK...........',
+        'PPWWWWWWWWWWWWRRRRRRRRRRRRRRRRRRRWvWWvWWvWWvW...........',
+        'PP..WWWWWWWWWWRRRRRRRRRRRRRRRRRRRWWWWWWWWWWWW...........',
+        'PP..WWWWWWWWWW.RRRRR.t...UMMMMM.........................',
+        '......WWWWWWWW.GGGGG.t...UMMMMM.........................',
+        '...............nnnnG.....U.mmmmm........................',
+        '...............GGGGGUUUUUU.MMMMM........................',
+        '...............GGGGG........mmmmm.......................',
+        '..............nnnnG.........MMMMM.......................',
+        '..............GGGGG...........mmmmm.....................',
+        '..............GGGGG...........MMMMM.....................',
+        '................................mmmmm...................',
+        '................................MMMMM...................',
+        '..................................MMMMM.................',
+        '..................................MMMMM.................'] } },
+    // M4A1: coronha retrátil, trilho picatinny com dentes, guarda-mão quadrado com furos, assistente do ferrolho e carregador STANAG
+    m4a1: { vox: {
+      vs: 0.017, o: [17, 12], muzzle: [53, 16],
+      key: { P: [3, 0x141414], S: [3, 0x262628], s: [3.4, 0x1c1c1e], d: [3.4, 0x161618], B: [2.6, 0x1e1e20], R: [4, 0x2e2f31], D: [4, 0x252628], E: [3.3, 0x121213], f: [4.6, 0x1a1a1c], c: [2, 0x1a1a1c], T: [3, 0x1a1a1c], t: [3, 0x101011], Q: [1.6, 0x141414], H: [4.6, 0x2a2b2d], h: [4.2, 0x151516], L: [2, 0x1a1a1b], K: [2.6, 0x202022], Z: [2.8, 0x111112], G: [4, 0x1e1e20], n: [4.4, 0x141415], U: [2, 0x1e1e20], q: [1, 0x0d0d0d], M: [3, 0x2a2a2c, 'mag'], m: [3.4, 0x1e1e20, 'mag'], b: [3.6, 0x141414, 'mag'] },
+      rows: [
+        '.............tQQQQQt.t.t.t.t.tt.t.t.t.t.t.t.QQ.......',
+        '.............TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTQQ.......',
+        '.............RRRRRRRRRRRRRRRRRHHHHHHHHHHHHHHKKK....ZZ',
+        'PPsssssss...cRRRRREEEEEEffRRRRHHhHHhHHhHHhHHLLLLLLLZZ',
+        'PPSSSSSSSBBBBRRRRREEEEEERRRRRRHHhHHhHHhHHhHHLLLLLLLZZ',
+        'PPSdSdSdSBBBBRRRRRRRRRRRRRRRRRHHhHHhHHhHHhHH.......ZZ',
+        'PPSdSdSdS....DDDDDDDDDDDDDDDDDHHhHHhHHhHHhHH.........',
+        'PPSSSSSSS....DDDDDDDDDDDDDDDDDHHHHHHHHHHHHHH.........',
+        'PPSSSSSSS......DDDDD.q...UMMMMM......................',
+        'PP.............GGGGG.q...UMMMMM......................',
+        '...............nGnGG.q...Ummmmm......................',
+        '...............nGnGGUUUUUUMMMMMM.....................',
+        '...............nGnGG......MMMMMM.....................',
+        '..............GnGnG.......mmmmmM.....................',
+        '..............GnGnG........MMMMMM....................',
+        '..............GGGGG........MMMMMM....................',
+        '...........................mmmmmM....................',
+        '............................MMMMMM...................',
+        '............................MMMMMM...................',
+        '............................bbbbbb...................'] } },
+    // AWM: chassi verde com apoio de rosto, luneta grande, ferrolho de lado, cano longo com freio e bipé dobrado
+    awm: { vox: {
+      vs: 0.02, o: [15, 8], muzzle: [67, 15], pivot: { bolt: [30, 15] },
+      key: { P: [3.4, 0x161616], S: [4, 0x4a6a32], s: [3.6, 0x3a5a28], c: [3.4, 0x3e5a2a], R: [3.4, 0x2a2a2c], E: [2.8, 0x121213], O: [2.8, 0x141414], o: [3.4, 0x1e1e1e], l: [2.2, 0x3a7ac0], r: [3.4, 0x1e1e1e], v: [4.4, 0x2e4420], L: [2, 0x1c1c1d], Z: [3, 0x232325], z: [3.4, 0x111112], G: [4, 0x3e5a2a], n: [4.4, 0x2e4420], U: [2, 0x2a2a2c], q: [1, 0x0d0d0d], M: [3, 0x222224, 'mag'], b: [3.4, 0x141414, 'mag'], X: [2, 0x1a1a1c] },
+      extra: [{ c: 29.5, r: 14.5, len: 1, h: 1, d: 2.4, x: 2.9, color: 0x1e1e20, tag: 'bolt' }, { c: 29.5, r: 13.5, len: 1.4, h: 1.4, d: 1.4, x: 4.6, color: 0x111111, tag: 'bolt' }],
+      rows: [
+        '..............OOOOoOOOOOOOOOOOOOOOOOOOl............................',
+        '..............OOOO...rr.rrrrr.rr..OOOOl............................',
+        '.....................rr.rrrrr.rr...................................',
+        '....................RRRRRRRRRRRRR..............................zZzZ',
+        '..................RRRRRREEEEERRRRRLLLLLLLLLLLLLLLLLLLLLLLLLLLLLzZzZ',
+        '....cccccccccccc..RRRRRRRRRRRRRRRRLLLLLLLLLLLLLLLLLLLLLLLLLLLLLzZzZ',
+        'PPSSSSSSSSSSSSSSSssssssssssssssssSSSSSSSSSSSSSS................zZzZ',
+        'PPSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSvSSvSSvSSvSS....................',
+        'PPSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSvSSvSSvSSvSS....................',
+        'PPSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS....................',
+        'PPSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS.......XX.........................',
+        'PPSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS.......XX.........................',
+        'PPSSSSSSSSS..GGGGG.q..U.MMMMM...........XX.........................',
+        'PPSSSSSSSSS..nGnGG.q..U.MMMMM.........XXXXXX.......................',
+        '.............nGnGGUUUUU.MMMMM......................................',
+        '.............nGnGG......bbbbb......................................',
+        '............GnGnG..................................................',
+        '............GGGGG..................................................',
+        '...................................................................',
+        '...................................................................'] } },
+    // Kar98k: madeira inteira até a frente, luneta, ferrolho de lado, braçadeiras e cano fino
+    kar98: { vox: {
+      vs: 0.02, o: [16, 9], muzzle: [64, 14], pivot: { bolt: [28, 13] },
+      key: { P: [3.4, 0x2a1a0e], W: [3.6, 0x7a4a24], w: [3.2, 0x63391a], R: [3, 0x2a2a2c], E: [2.4, 0x111112], O: [2.6, 0x141414], l: [2, 0x3a7ac0], r: [3.2, 0x1e1e1e], L: [1.8, 0x1c1c1d], Z: [2.4, 0x111112], Q: [1.2, 0x161616], K: [4, 0x2a2a2c], U: [2, 0x2a2a2c], q: [1, 0x0d0d0d], M: [3.4, 0x2a2a2c, 'mag'] },
+      extra: [{ c: 27.5, r: 12.5, len: 1, h: 1, d: 2.4, x: 2.7, color: 0x1e1e20, tag: 'bolt' }, { c: 27.5, r: 11.4, len: 1.4, h: 1.4, d: 1.4, x: 4.2, color: 0x111111, tag: 'bolt' }],
+      rows: [
+        '................OOOOOOOOOOOOOOOOOOOOOl..........................',
+        '................OOO..rr......rr..OOOOl..........................',
+        '.....................rr......rr...........................QQ....',
+        '....................RRRRRRRRRRRR..........................QQ.ZZZ',
+        '................RRRRREEEEEERRRRwLLLLKKLLLLLLLLKKLLLLLLLLLLLLLZZZ',
+        'PPWwwwwwwwwwwwW.RRRRRRRRRRRRRRRLLLLLKKLLLLLLLLKKLLLLLLLLLLLLLZZZ',
+        'PPWWWWWWWWWWWWWwwwwwwwwwwwwwwwwwwwwwKKwwwWWWWWKK................',
+        'PPWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWKKWWWWWWWWKK................',
+        'PPWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWKKWWW.......................',
+        'PPWWWWWWWWWWWWWWWW.q..UMMMM.....................................',
+        'PPWWWWWWWW....WWWW.q..U.........................................',
+        'PPWWWWWWWW...WWWW.UUUUU.........................................',
+        '.............WWWW...............................................',
+        '................................................................',
+        '................................................................',
+        '................................................................',
+        '................................................................',
+        '................................................................'] } },
+    // M1887: caixa gravada, telha de madeira, cano duplo e a alavanca (que mexe ao recarregar)
+    m1887: { vox: {
+      vs: 0.018, o: [16, 7], muzzle: [59, 14], pivot: { lever: [27, 7] },
+      key: { P: [3.4, 0x2a1a0e], W: [3.8, 0x7a4a24], w: [3.4, 0x5e3416], R: [4, 0x2a2a2c], e: [4.4, 0x8a7a4a], r: [3.4, 0x38383a], F: [4.4, 0x8a5228], f: [4.8, 0x6e3e1a], L: [2.4, 0x1a1a1b], l: [2, 0x222224], Q: [1.2, 0xc8a050], Z: [2.8, 0x111112] },
+      extra: [{ c: 22.5, r: 6.5, len: 9, h: 1, d: 1.2, x: 0, color: 0x2a2a2c, tag: 'lever' }, { c: 22.5, r: 2.5, len: 7, h: 1, d: 1.2, x: 0, color: 0x2a2a2c, tag: 'lever' }, { c: 18.5, r: 4.5, len: 1, h: 3, d: 1.2, x: 0, color: 0x2a2a2c, tag: 'lever' }, { c: 26.5, r: 4.5, len: 1, h: 3, d: 1.2, x: 0, color: 0x2a2a2c, tag: 'lever' }],
+      rows: [
+        '...........................................................',
+        '........................................................Q..',
+        '............................LLLLLLLLLLLLLLLLLLLLLLLLLLLLLZZ',
+        '................rrrrrrrrrrrrLLLLLLLLLLLLLLLLLLLLLLLLLLLLLZZ',
+        '................ReeeeeeeeeeRlllllllllllllllllllllllllllll..',
+        '................ReeeeeeeeeeRlllllllllllllllllllllllllllll..',
+        'PPWWWWWWWWWWWW..RRRRRRRRRRRRFfFfFfFfFfFfFllllllllllllllll..',
+        'PPWwwwwwwwwwwW..RRRRRRRRRRRRFFFFFFFFFFFFF..................',
+        'PPWWWWWWWWWWWW..RRRRRRRRRRRR...............................',
+        'PPWWWWWWWWWWWWWWRRRRRRRRRRRR...............................',
+        'PPWWWWWWWW.....WWW.........................................',
+        'PP..WWWWWW.....WWW.........................................',
+        'PP..WWWWWW...WWWW..........................................',
+        'PP...........WWWW..........................................',
+        '...........................................................',
+        '...........................................................',
+        '...........................................................'] } },
+    // SPAS-12: coronha dobrável de metal, capa ventilada no cano, bomba grande e cabo de pistola
+    spas12: { vox: {
+      vs: 0.018, o: [19, 9], muzzle: [59, 15],
+      key: { S: [1.6, 0x3a3a3c], P: [3.2, 0x161616], R: [4, 0x1e1e20], T: [3, 0x2a2a2c], E: [3.3, 0x0f0f10], d: [4.4, 0x151516], Q: [1.4, 0x161616], L: [2.6, 0x151516], l: [2.4, 0x222224], Z: [3, 0x111112], v: [3, 0x050505], F: [4.6, 0x2e2e30, 'pump'], f: [5, 0x1e1e20, 'pump'], G: [4, 0x1c1c1e], n: [4.4, 0x121213], U: [2, 0x2a2a2c], q: [1, 0x0d0d0d] },
+      rows: [
+        '...........................................................',
+        '............................QQ.............................',
+        '................TTTTTTTTTTTTTTTLLLvLLvLLvLLvLLvLLvLLvLZZZZZ',
+        '................RRRRRRRRRRRRRRRLLLLLLLLLLLLLLLLLLLLLLLZZZZZ',
+        '..SSSSSSSSSSSSSSRRRREEEEEEERRRRllllllllllllllllllllll.ZZZZZ',
+        '..S...........SSRRRREEEEEEERRRRlFFFFFFFFFFFFFllllllll......',
+        '..S...........SSRRRRRRRRRRRRRRR.FfFfFfFfFfFfF..............',
+        '..S...........SSRdRRdRRdRRdRRdR.FFFFFFFFFFFFF..............',
+        '..S...........SSRdRRdRRdRRdRRdR............................',
+        'PPPP..........SS.RRRRR.q...U...............................',
+        'PPPSSSSSSSSSSSSS.GGGGG.q...U...............................',
+        '.................nGnGGUUUUUU...............................',
+        '.................nGnGG.....................................',
+        '.................nGnGG.....................................',
+        '................GnGnG......................................',
+        '................GGGGG......................................',
+        '...........................................................',
+        '...........................................................'] } },
   },
+  // ARMAS EM VOXEL (estilo Minecraft): a arma é desenhada de lado em "pixels" (cada letra = um material) e cada pixel
+  // vira um bloquinho com a espessura do material (centrado no meio da arma). Pixels vizinhos iguais viram um bloco só.
+  // Espessura menor que a do vizinho = rebaixo (janela, ventilação); maior = relevo (serrilhado, texturas do cabo).
+  // Como cada bloco ocupa só o seu quadradinho, nada fica um por cima do outro (sem z-fight).
+  //   rows: de cima pra baixo · key: letra -> [espessura em voxels, cor, tag?] · vs: tamanho do voxel (m) · o: [coluna, linha] da mão (topo do cabo)
+  //   linha = contada de baixo pra cima (0 = última string) · coluna 0 = traseira (coronha) · a arma aponta pra +z
+  sprite(def) {
+    const rows = def.rows, H = rows.length, vs = def.vs, ox = def.o[0], oy = def.o[1], out = [], open = {};
+    for (let r = 0; r < H; r++) {
+      const y = H - 1 - r, line = rows[r], runs = [];
+      for (let c = 0; c < line.length;) { const ch = line[c]; let e = c; while (e + 1 < line.length && line[e + 1] === ch) e++; if (ch !== '.' && ch !== ' ') runs.push([ch, c, e]); c = e + 1; }
+      // junta com o bloco da linha de cima se for igual (mesma letra e mesmas colunas): menos blocos
+      const next = {};
+      for (const [ch, c0, c1] of runs) { const k = ch + c0 + '_' + c1; if (open[k]) { open[k].y0 = y; next[k] = open[k]; delete open[k]; } else next[k] = { ch, c0, c1, y0: y, y1: y }; }
+      for (const k in open) out.push(open[k]);
+      for (const k in open) delete open[k]; Object.assign(open, next);
+    }
+    for (const k in open) out.push(open[k]);
+    // peças fora do plano (alavanca do ferrolho de lado, alavanca da M1887): { c, r = centro em colunas/linhas, len, h, d, x = deslocamento pro lado }
+    const extra = (def.extra || []).map(e => { const p = [e.x * vs, (e.r - oy) * vs, (e.c - ox) * vs, e.d * vs, e.h * vs, e.len * vs, e.color]; return e.tag ? T(e.tag, p) : p; });
+    return out.map(b => {
+      const K = def.key[b.ch]; if (!K) throw new Error('arma: letra sem material: ' + b.ch);
+      const len = b.c1 - b.c0 + 1, h = b.y1 - b.y0 + 1;
+      const p = [0, (b.y0 + h / 2 - oy) * vs, (b.c0 + len / 2 - ox) * vs, K[0] * vs, h * vs, len * vs, K[1]];
+      return K[2] ? T(K[2], p) : p;
+    }).concat(extra);
+  },
+  // pivô de uma peça móvel (m, antes da escala): vox usa [coluna, linha]
+  pivotOf(id, tag) { const g = this.GUNS[id]; if (g.vox) { const v = g.vox, pv = (v.pivot || {})[tag]; return pv ? [0, (pv[1] - v.o[1]) * v.vs, (pv[0] - v.o[0]) * v.vs] : [0, 0, 0]; } return (g.pivot || {})[tag] || [0, 0, 0]; },
   // peças comuns das armas
   G: {
     grip: (c, r = 0.25) => [[0, -0.07, -0.02, 0.045, 0.12, 0.06, c, r]],
@@ -123,13 +331,14 @@ LS.Items = {
       [0, y, z + L / 2 + 0.066, 0.05, 0.05, 0.004, 0x3a7ac0], [0, y + 0.034, z, 0.03, 0.026, 0.03, 0x222222], [0.034, y, z, 0.026, 0.03, 0.03, 0x222222],
       [0, y - 0.04, z - L / 3, 0.02, 0.034, 0.025, 0x222222], [0, y - 0.04, z + L / 3, 0.02, 0.034, 0.025, 0x222222]]
   },
-  gunGeometry(id, center) { return this.geometry('gun:' + id, () => this.GUNS[id].parts(this.G), this.GUNS[id].scale || 1, center); },
+  gunParts(id) { const g = this.GUNS[id]; return g.vox ? this.sprite(g.vox) : g.parts(this.G); },
+  gunGeometry(id, center) { return this.geometry('gun:' + id, () => this.gunParts(id), this.GUNS[id].scale || 1, center); },
   // corpo da arma sem as peças móveis / só uma peça móvel (posições relativas ao pivô)
-  gunBody(id) { return this.geometry('gunbody:' + id, () => this.GUNS[id].parts(this.G).filter(p => !p.tag), this.GUNS[id].scale || 1); },
-  gunTags(id) { return [...new Set(this.GUNS[id].parts(this.G).filter(p => p.tag).map(p => p.tag))]; },
+  gunBody(id) { return this.geometry('gunbody:' + id, () => this.gunParts(id).filter(p => !p.tag), this.GUNS[id].scale || 1); },
+  gunTags(id) { return [...new Set(this.gunParts(id).filter(p => p.tag).map(p => p.tag))]; },
   gunPart(id, tag) {
-    const pv = (this.GUNS[id].pivot || {})[tag] || [0, 0, 0];
-    return this.geometry('gunpart:' + id + ':' + tag, () => this.GUNS[id].parts(this.G).filter(p => p.tag === tag).map(p => { const q = p.slice(); q[0] -= pv[0]; q[1] -= pv[1]; q[2] -= pv[2]; return q; }), this.GUNS[id].scale || 1);
+    const pv = this.pivotOf(id, tag);
+    return this.geometry('gunpart:' + id + ':' + tag, () => this.gunParts(id).filter(p => p.tag === tag).map(p => { const q = p.slice(); q[0] -= pv[0]; q[1] -= pv[1]; q[2] -= pv[2]; return q; }), this.GUNS[id].scale || 1);
   },
 
   // ---------------- munição e cura ----------------
@@ -223,10 +432,11 @@ LS.buildGunMesh = function (id) {
   // peças móveis em grupos de pivô: userData.parts.mag / bolt / pump / lever (animadas pelo personagem)
   g.userData.parts = {};
   for (const tag of I.gunTags(id)) {
-    const pv = ((def.pivot || {})[tag] || [0, 0, 0]).map(v => v * k), piv = new THREE.Group();
+    const pv = I.pivotOf(id, tag).map(v => v * k), piv = new THREE.Group();
     piv.position.set(...pv); piv.userData.base = piv.position.clone(); piv.add(I.mesh(I.gunPart(id, tag)));
     g.add(piv); g.userData.parts[tag] = piv;
   }
-  g.userData.muzzle = new THREE.Object3D(); g.userData.muzzle.position.set(0, def.muzzle[0] * k, def.muzzle[1] * k); g.add(g.userData.muzzle);
+  const mz = def.vox ? [(def.vox.muzzle[1] - def.vox.o[1]) * def.vox.vs, (def.vox.muzzle[0] - def.vox.o[0]) * def.vox.vs] : def.muzzle; // vox: [coluna, linha] da boca do cano
+  g.userData.muzzle = new THREE.Object3D(); g.userData.muzzle.position.set(0, mz[0] * k, mz[1] * k); g.add(g.userData.muzzle);
   return g;
 };

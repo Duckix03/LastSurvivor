@@ -3,9 +3,9 @@
 // (vai junto nas flags do estado: bits 8..11 = qual emote). Andar, pular, atirar, mirar, recarregar ou curar cancela.
 'use strict';
 LS.Emotes = {
-  // id (1..15, vai na rede) · clip (em anims/emotes.json) · loops: quantas vezes repete antes de parar sozinho
+  // id (1..15, vai na rede) · clip (em anims/emotes.json) · loops: quantas vezes toca (1 = uma vez só)
   LIST: [
-    { id: 1, key: 'risada', name: 'Risada', clip: 'emote_risada', loops: 3, free: true }
+    { id: 1, key: 'risada', name: 'Risada', clip: 'emote_risada', loops: 1, free: true }
   ],
   SLOTS: 8, // a roda tem 8 espaços; os vazios aparecem como "em breve"
   open: false, sel: -1, mode: 'game', acc: { x: 0, y: 0 },
@@ -85,7 +85,7 @@ LS.Emotes = {
     let clip; try { clip = await LS.Anim.ensure(e.clip); } catch (err) { LS.HUD.toast('Emote indisponível: ' + err.message); return; }
     const m = lobby ? LS.Lobby.model : G.player.model;
     this.stop();
-    LS.Anim.player(m).play(clip, { loop: true, fade: 0.2 });
+    LS.Anim.player(m).play(clip, { loop: (e.loops || 1) > 1, fade: 0.2 });
     m.gunSocket.visible = false; // mãos livres (a arma volta quando o emote acaba)
     this.local = { m, t: clip.duration * (e.loops || 1), id: e.id, lobby };
     if (!lobby) G.player.emote = e.id;
@@ -106,7 +106,7 @@ LS.Emotes = {
     }
     const L = this.local; if (!L) return;
     L.t -= dt;
-    if (L.t <= 0) return this.stop();
+    if (L.t <= 0.2) return this.stop(); // sai suave no fim (sem repetir o começo)
     if (L.lobby) { if (!this.inLobby()) this.stop(); return; }
     const G = LS.Game, P = G.player, I = LS.Input, k = I.keys;
     const moving = k.KeyW || k.KeyA || k.KeyS || k.KeyD || k.Space || Math.hypot(P.vel.x, P.vel.z) > 0.6;
@@ -117,6 +117,6 @@ LS.Emotes = {
     const m = f.model;
     if (!id) { if (m.anim) m.anim.stop(0.25); m.gunSocket.visible = true; return; }
     const e = this.byId(id); if (!e) return;
-    try { const c = await LS.Anim.ensure(e.clip); if (f._em !== id) return; LS.Anim.player(m).play(c, { loop: true, fade: 0.2 }); m.gunSocket.visible = false; } catch (err) { /* ignora */ }
+    try { const c = await LS.Anim.ensure(e.clip); if (f._em !== id) return; LS.Anim.player(m).play(c, { loop: false, fade: 0.2 }); m.gunSocket.visible = false; } catch (err) { /* ignora */ }
   }
 };
