@@ -11,9 +11,9 @@
 <link rel="preconnect" href="https://lastsurvivor.lastsurvivorbr.workers.dev" crossorigin>
 <link rel="preload" href="fonts/tiny5-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/pixelify-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=114">
-<link rel="stylesheet" href="css/ui.css?v=114">
-<link rel="stylesheet" href="css/pixel.css?v=114">
+<link rel="stylesheet" href="css/style.css?v=115">
+<link rel="stylesheet" href="css/ui.css?v=115">
+<link rel="stylesheet" href="css/pixel.css?v=115">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
 <style>
@@ -95,6 +95,7 @@
   </div>
   <div class="lb-side">
     <button class="lb-icon" data-action="friends" title="Amigos"><i data-icon="friends"></i><em class="lb-dot hidden" id="lb-fr-dot"></em></button>
+    <button class="lb-icon" data-action="emotes" title="Emotes (segure B)"><i data-icon="smile"></i></button>
     <button class="lb-icon" data-action="mail" title="Correio"><i data-icon="mail"></i><em class="lb-badge hidden" id="lb-mail-n">0</em></button>
     <button class="lb-icon" data-action="stats" title="Perfil"><i data-icon="medal"></i></button>
     <button class="lb-icon" data-action="news" title="Novidades"><i data-icon="news"></i></button>
@@ -170,6 +171,7 @@
   <div class="panel">
     <h2>NOVIDADES</h2>
     <div class="news-list">
+      <div><b>Emotes!</b><span>Roda de emotes: segure B no PC (mexa o mouse e solte), no celular toque no botão de carinha e no lobby use o ícone. O primeiro é a Risada, e seus amigos veem você rindo na partida.</span></div>
       <div><b>Spin de Natal maior</b><span>Agora o spin também dá 100 moedas e 25 diamantes (até 4 vezes por dia, com conta) e tem 6 acessórios novos: Chapéu de Elfo, Cachecol Natalino, Óculos de Neve, Barba de Noel, Suéter Natalino e Nariz de Rena (que brilha!).</span></div>
       <div><b>Ilha com neve</b><span>Durante o evento de Natal a ilha do Battle Royale fica coberta de neve (com umas manchinhas de grama e as ruas de terra aparecendo) e as árvores ganham neve em cima.</span></div>
       <div><b>Natal: Biscoito de Gengibre e mais</b><span>No Spin de Natal: personagem Biscoito de Gengibre (prêmio máximo junto com o Frost Reaper), Tiara de Rena e o Colar Pisca-Pisca, que pisca de verdade. O Frost Reaper ganhou pelinho e flocos de neve em 3D.</span></div>
@@ -555,67 +557,68 @@
 </div>
 
 <script src="js/vendor/three.min.js"></script>
-<script src="js/config.js?v=114"></script>
-<script src="js/icons.js?v=114"></script>
-<script src="js/post.js?v=114"></script>
-<script src="js/console.js?v=114"></script>
-<script src="js/audio.js?v=114"></script>
-<script src="js/gunsound.js?v=114"></script>
-<script src="js/music.js?v=114"></script>
-<script src="js/input.js?v=114"></script>
-<script src="js/pixicons.js?v=114"></script>
-<script src="js/touch.js?v=114"></script>
-<script src="js/perf.js?v=114"></script>
-<script src="js/world.js?v=114"></script>
-<script src="js/sky.js?v=114"></script>
-<script src="js/worldbuild.js?v=114"></script>
-<script src="js/housekit.js?v=114"></script>
-<script src="js/houses.js?v=114"></script>
-<script src="js/skin.js?v=114"></script>
-<script src="js/character.js?v=114"></script>
-<script src="js/animlib.js?v=114"></script>
-<script src="js/itemmodels.js?v=114"></script>
-<script src="js/itemicons.js?v=114"></script>
-<script src="js/textures.js?v=114"></script>
-<script src="js/flora.js?v=114"></script>
-<script src="js/effects.js?v=114"></script>
-<script src="js/gelwall.js?v=114"></script>
-<script src="js/loot.js?v=114"></script>
-<script src="js/combat.js?v=114"></script>
-<script src="js/player.js?v=114"></script>
-<script src="js/bot.js?v=114"></script>
-<script src="js/zone.js?v=114"></script>
-<script src="js/plane.js?v=114"></script>
-<script src="js/net.js?v=114"></script>
-<script src="js/duel.js?v=114"></script>
-<script src="js/custommap.js?v=114"></script>
-<script src="js/hud.js?v=114"></script>
-<script src="js/victory.js?v=114"></script>
-<script src="js/esp.js?v=114"></script>
-<script src="js/lobbyscene.js?v=114"></script>
-<script src="js/lobbythemes.js?v=114"></script>
-<script src="js/lobby.js?v=114"></script>
-<script src="js/banners.js?v=114"></script>
-<script src="js/account.js?v=114"></script>
-<script src="js/mail.js?v=114"></script>
-<script src="js/cosmetics.js?v=114"></script>
-<script src="js/thumbs.js?v=114"></script>
-<script src="js/wardrobe.js?v=114"></script>
-<script src="js/shop.js?v=114"></script>
-<script src="js/xmas.js?v=114"></script>
-<script src="js/loading.js?v=114"></script>
-<script src="js/friends.js?v=114"></script>
-<script src="js/profile.js?v=114"></script>
-<script src="js/conta.js?v=114"></script>
-<script src="js/modes.js?v=114"></script>
-<script src="js/menu.js?v=114"></script>
-<script src="js/spectate.js?v=114"></script>
-<script src="js/custom.js?v=114"></script>
-<script src="js/party.js?v=114"></script>
-<script src="js/hudedit.js?v=114"></script>
-<script src="js/game.js?v=114"></script>
-<script src="js/app.js?v=114"></script>
-<script src="js/uikit.js?v=114"></script>
-<script src="js/main.js?v=114"></script>
+<script src="js/config.js?v=115"></script>
+<script src="js/icons.js?v=115"></script>
+<script src="js/post.js?v=115"></script>
+<script src="js/console.js?v=115"></script>
+<script src="js/audio.js?v=115"></script>
+<script src="js/gunsound.js?v=115"></script>
+<script src="js/music.js?v=115"></script>
+<script src="js/input.js?v=115"></script>
+<script src="js/pixicons.js?v=115"></script>
+<script src="js/touch.js?v=115"></script>
+<script src="js/perf.js?v=115"></script>
+<script src="js/world.js?v=115"></script>
+<script src="js/sky.js?v=115"></script>
+<script src="js/worldbuild.js?v=115"></script>
+<script src="js/housekit.js?v=115"></script>
+<script src="js/houses.js?v=115"></script>
+<script src="js/skin.js?v=115"></script>
+<script src="js/character.js?v=115"></script>
+<script src="js/animlib.js?v=115"></script>
+<script src="js/itemmodels.js?v=115"></script>
+<script src="js/itemicons.js?v=115"></script>
+<script src="js/textures.js?v=115"></script>
+<script src="js/flora.js?v=115"></script>
+<script src="js/effects.js?v=115"></script>
+<script src="js/gelwall.js?v=115"></script>
+<script src="js/loot.js?v=115"></script>
+<script src="js/combat.js?v=115"></script>
+<script src="js/player.js?v=115"></script>
+<script src="js/bot.js?v=115"></script>
+<script src="js/zone.js?v=115"></script>
+<script src="js/plane.js?v=115"></script>
+<script src="js/net.js?v=115"></script>
+<script src="js/duel.js?v=115"></script>
+<script src="js/custommap.js?v=115"></script>
+<script src="js/hud.js?v=115"></script>
+<script src="js/victory.js?v=115"></script>
+<script src="js/esp.js?v=115"></script>
+<script src="js/lobbyscene.js?v=115"></script>
+<script src="js/lobbythemes.js?v=115"></script>
+<script src="js/lobby.js?v=115"></script>
+<script src="js/banners.js?v=115"></script>
+<script src="js/account.js?v=115"></script>
+<script src="js/mail.js?v=115"></script>
+<script src="js/cosmetics.js?v=115"></script>
+<script src="js/thumbs.js?v=115"></script>
+<script src="js/wardrobe.js?v=115"></script>
+<script src="js/shop.js?v=115"></script>
+<script src="js/xmas.js?v=115"></script>
+<script src="js/loading.js?v=115"></script>
+<script src="js/emotes.js?v=115"></script>
+<script src="js/friends.js?v=115"></script>
+<script src="js/profile.js?v=115"></script>
+<script src="js/conta.js?v=115"></script>
+<script src="js/modes.js?v=115"></script>
+<script src="js/menu.js?v=115"></script>
+<script src="js/spectate.js?v=115"></script>
+<script src="js/custom.js?v=115"></script>
+<script src="js/party.js?v=115"></script>
+<script src="js/hudedit.js?v=115"></script>
+<script src="js/game.js?v=115"></script>
+<script src="js/app.js?v=115"></script>
+<script src="js/uikit.js?v=115"></script>
+<script src="js/main.js?v=115"></script>
 </body>
 </html>

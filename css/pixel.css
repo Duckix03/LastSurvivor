@@ -505,3 +505,25 @@ body.mobile .xm-luck small { font-size: 16px; }
 .sh-pct { position: absolute; top: 4px; right: 4px; z-index: 2; font: 400 11px var(--display); font-style: normal; letter-spacing: 0.5px; color: #fff; padding: 1px 5px; background: rgba(11, 13, 19, 0.82); border: 2px solid #0b0d13; text-shadow: 0 1px 0 #000; pointer-events: none; }
 body.mobile .sh-pct { font-size: 9px; padding: 0 3px; border-width: 1px; }
 .gr-grid .sh-rar { font-size: 8px !important; padding: 1px 4px !important; left: 4px !important; top: 4px !important; letter-spacing: 0.5px !important; } .gr-grid .sh-pct { font-size: 10px; padding: 0 4px; }
+
+/* ===== RODA DE EMOTES ===== */
+#emote-wheel { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(6, 8, 18, 0.55), rgba(6, 8, 18, 0.15) 60%); }
+#emote-wheel.hidden { display: none; }
+.ew-ring { position: relative; width: 330px; height: 330px; zoom: var(--hz, 1); animation: ewIn 0.16s steps(4) both; }
+.ew-ring::before { content: ''; position: absolute; inset: 40px; border: 4px solid rgba(255, 255, 255, 0.18); border-radius: 50%; }
+.ew-slot { position: absolute; width: 78px; height: 78px; margin: -39px 0 0 -39px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;
+  background: #262c3e var(--px-noise); border: 3px solid #0b0d13; box-shadow: var(--px-raise); color: #fff; padding: 4px; transition: transform 0.08s steps(2); }
+.ew-slot span { font: 400 10px var(--display); letter-spacing: 0.5px; text-shadow: 0 1px 0 #000; }
+.ew-slot .ew-ico { width: 40px; height: 40px; filter: drop-shadow(0 2px 0 #0b0d13); }
+.ew-slot.on, .ew-slot:not(.empty):hover { transform: scale(1.14); border-color: #ffc531; background-color: #3a3218; }
+.ew-slot.empty { opacity: 0.45; cursor: default; }
+.ew-slot.empty i { font: 400 26px var(--display); font-style: normal; color: #8a93a6; }
+.ew-mid { position: absolute; left: 50%; top: 50%; width: 120px; transform: translate(-50%, -50%); text-align: center; display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
+.ew-mid b { font: 400 18px var(--display); color: #ffc531; text-shadow: 0 2px 0 #0b0d13; }
+.ew-mid small { font: 500 10px var(--body); color: #c9d2e3; text-shadow: 0 1px 0 #000; }
+@keyframes ewIn { from { transform: scale(0.7); opacity: 0; } }
+body.mobile .ew-ring { zoom: calc(var(--hz, 1) * 0.92); }
+/* botão de emote no celular: embaixo da mochila */
+#touch-ui .emote { width: calc(var(--u) * 10); height: calc(var(--u) * 10); clip-path: var(--pxr); -webkit-clip-path: var(--pxr); top: calc(155px * var(--hz, 1) + 4vh + var(--u) * 11); right: 2vh; }
+#touch-ui .emote .pix { width: 66%; height: 66%; }
+#touch-ui.air .emote { display: none; }

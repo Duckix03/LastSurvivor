@@ -100,7 +100,8 @@ LS.RemoteFighter = class extends LS.Fighter {
     }
     this.spd = LS.util.lerp(this.spd, Math.hypot(this.pos.x - px, this.pos.z - pz) / Math.max(dt, 1e-3), 1 - Math.exp(-8 * dt));
     this.vel.set(0, s[6], 0);
-    const f = this.netFlags = s[11] | 0;
+    const f = this.netFlags = s[11] | 0, em = this.alive ? (f >> 8) & 15 : 0;
+    if (em !== (this._em | 0)) { this._em = em; LS.Emotes.remote(this, em); } // emote começou/parou
     this.crouch = !!(f & 1); this.running = !!(f & 2); this.aiming = !!(f & 4); this.onGround = !(f & 8);
     // arma e equipamento que aparecem no boneco
     const wid = s[8] || null;
@@ -337,7 +338,7 @@ LS.Net = {
     const G = LS.Game, e = [], ls = this._ls, now = nowp;
     const pack = (f, pitch) => {
       const w = f.weapon(), fl = (f.crouch ? 1 : 0) | (f.running ? 2 : 0) | (f.aiming || f.fireCd > 0 || f.ai === 'fight' ? 4 : 0) | (f.state === 'ground' && !f.onGround ? 8 : 0) |
-        (f.reloadT > 0 ? 16 : 0) | (f.healType === 'medkit' ? 32 : 0) | (f.healType === 'bandage' ? 64 : 0) | (f.dive || f.diving ? 128 : 0);
+        (f.reloadT > 0 ? 16 : 0) | (f.healType === 'medkit' ? 32 : 0) | (f.healType === 'bandage' ? 64 : 0) | (f.dive || f.diving ? 128 : 0) | ((f.emote | 0) & 15) << 8; // bits 8..11: emote
       const r = v => Math.round(v * 100) / 100;
       const row = [f.netId, r(f.pos.x), r(f.pos.y), r(f.pos.z), r(f.yaw), r(pitch), r(f.vel.y), { plane: 0, fall: 1, chute: 2, ground: 3 }[f.state] || 0,
         w ? w.id : null, [f.vest.level, Math.round(f.vest.dur), f.helmet.level, Math.round(f.helmet.dur), f.bag], fl];

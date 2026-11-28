@@ -9,7 +9,7 @@ LS.Fighter = class {
     this.reset();
   }
   reset() {
-    this.hp = 100; this.alive = true;
+    this.hp = 100; this.alive = true; this.emote = 0;
     this.vest = { level: 0, dur: 0 }; this.helmet = { level: 0, dur: 0 }; this.bag = 0;
     this.weapons = [null, null]; this.slot = 0;
     this.ammo = { light: 0, rifle: 0, sniper: 0, shell: 0 };

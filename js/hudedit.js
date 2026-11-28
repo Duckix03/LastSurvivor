@@ -9,7 +9,7 @@ LS.HudEdit = {
     { id: 'fire', name: 'Atirar' }, { id: 'fire2', name: 'Atirar (esquerda)' }, { id: 'aim', name: 'Mirar' }, { id: 'jump', name: 'Pular' },
     { id: 'crouch', name: 'Agachar' }, { id: 'reload', name: 'Recarregar' }, { id: 'med', name: 'Kit médico' }, { id: 'band', name: 'Bandagem' },
     { id: 'gel', name: 'Bola de gelo' }, { id: 'use', name: 'Pegar' }, { id: 'zoom', name: 'Zoom da luneta' }, { id: 'run', name: 'Correr' },
-    { id: 'bag', name: 'Mochila' }, { id: 'map', name: 'Mapa' }, { id: 'pause', name: 'Pausa' }, { id: 'joy', name: 'Joystick' },
+    { id: 'bag', name: 'Mochila' }, { id: 'map', name: 'Mapa' }, { id: 'pause', name: 'Pausa' }, { id: 'emote', name: 'Emotes' }, { id: 'joy', name: 'Joystick' },
     { id: 'minimap-wrap', name: 'Minimapa', hud: 1 }, { id: 'top-left', name: 'Vivos / abates / tempo', hud: 1 }, { id: 'bottom-left', name: 'Vida e itens', hud: 1 },
     { id: 'weapon-slots', name: 'Armas', hud: 1 }, { id: 'ammo-box', name: 'Munição', hud: 1 }, { id: 'killfeed', name: 'Abates (feed)', hud: 1 }, { id: 'squad', name: 'Esquadrão', hud: 1 }
   ],
