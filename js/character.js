@@ -267,7 +267,10 @@ LS.CharacterModel = class {
       [-3, -1.5, 0, 1.5, 3].forEach(x => add(0.8, 1, 0.7, x, 7.9, 5.9, Wt));    // dentes
       [-1.4, 1.4].forEach(x => add(0.8, 0.5, 0.3, x, 10.8, 6.15, Bk));         // narinas
       [-1, 1].forEach(sd => { add(1.8, 1.8, 1.2, sd * 3.3, 11.2, 1.6, Wt); add(0.8, 0.9, 0.3, sd * 3.3, 11.1, 2.3, Bk); }); // olhos
-      [[11.8, 0.4], [11.6, -2.2], [10.6, -4.4], [7.6, -5.6], [4.8, -5.6]].forEach(([y, z], i) => add(1.3, 1.6 - i * 0.12, 1.5, 0, y, z, Or)); // espinhos
+      // espinhos grudados no capuz (cada um afunda um pouquinho na superfície: nada flutua). Em cima do focinho, no topo e descendo pelas costas
+      [[11.4, 3.4, 1.7], [11.4, 1.5, 1.5]].forEach(([y, z, h]) => { add(1.4, h, 1.4, 0, y + h / 2 - 0.15, z, Or); add(0.8, 0.6, 0.8, 0, y + h - 0.15 + 0.25, z, Or); });
+      [[8.95, -1.0, 1.4], [8.95, -3.2, 1.25]].forEach(([y, z, h]) => { add(1.3, h, 1.4, 0, y + h / 2 - 0.15, z, Or); add(0.7, 0.55, 0.7, 0, y + h - 0.15 + 0.22, z, Or); });
+      [[6.6, 1.3], [3.8, 1.1]].forEach(([y, d]) => { add(1.2, 1.3, d, 0, y, -5.3 - d / 2 + 0.15, Or); add(0.65, 0.65, 0.55, 0, y, -5.3 - d + 0.15 - 0.22, Or); });
       // rabo (no quadril), em 3 pedaços que balançam
       const seg = (parent, w, h, d, z, y) => { const sg = new THREE.Group(); sg.position.set(0, y * S, z * S); parent.add(sg);
         const m = new THREE.Mesh(LS.boxGeo(w * S, h * S, d * S), Gn); m.position.z = -d / 2 * S; m.castShadow = true; sg.add(m);
